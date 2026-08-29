@@ -826,10 +826,10 @@ void VM_LogSyscalls( int *args ) {
 
 
 
-#ifdef oDLL_ONLY // bk010215 - for DLL_ONLY dedicated servers/builds w/o VM
+#if defined(C_ONLY) || defined(DLL_ONLY) || !defined(__i386__)
 int	VM_CallCompiled( vm_t *vm, int *args ) {
   return(0); 
 }
 
 void VM_Compile( vm_t *vm, vmHeader_t *header ) {}
-#endif // DLL_ONLY
+#endif

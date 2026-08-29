@@ -494,7 +494,7 @@ void Sys_ConsoleInputInit()
               characters  EOF,  EOL,  EOL2, ERASE, KILL, REPRINT,
               STATUS, and WERASE, and buffers by lines.
      ISIG: when any of the characters  INTR,  QUIT,  SUSP,  or
-              DSUSP are received, generate the corresponding sig­
+              DSUSP are received, generate the corresponding sigï¿½
               nal
     */              
     tc.c_lflag &= ~(ECHO | ICANON);
@@ -724,6 +724,10 @@ void *Sys_LoadDll( const char *name, char *fqpath ,
   getcwd(curpath, sizeof(curpath));
 #if defined __i386__
   snprintf (fname, sizeof(fname), "%si386.so", name);
+#elif defined __x86_64__ || defined __amd64__
+  snprintf (fname, sizeof(fname), "%sx86_64.so", name);
+#elif defined __aarch64__ || defined __arm64__
+  snprintf (fname, sizeof(fname), "%sarm64.so", name);
 #elif defined __powerpc__   //rcg010207 - PPC support.
   snprintf (fname, sizeof(fname), "%sppc.so", name);
 #elif defined __axp__
@@ -731,7 +735,7 @@ void *Sys_LoadDll( const char *name, char *fqpath ,
 #elif defined __mips__
   snprintf (fname, sizeof(fname), "%smips.so", name);
 #else
-#error Unknown arch
+  snprintf (fname, sizeof(fname), "%s.so", name);
 #endif
 
 // bk001129 - was RTLD_LAZY 

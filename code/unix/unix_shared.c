@@ -433,3 +433,10 @@ unsigned int Sys_ProcessorCount()
   return sysconf(_SC_NPROCESSORS_ONLN);
 }
 #endif
+
+void Sys_SnapVector( float *v ) {
+	v[0] = rint(v[0]);
+	v[1] = rint(v[1]);
+	v[2] = rint(v[2]);
+}
+
