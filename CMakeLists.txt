@@ -29,8 +29,13 @@ add_definitions(
     -DARCH_STRING="x86_64"
 )
 
+# Packages
+find_package(SDL2 REQUIRED)
+find_package(OpenGL REQUIRED)
+
 # Include directories
 include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/modern
     ${CMAKE_CURRENT_SOURCE_DIR}/code/game
     ${CMAKE_CURRENT_SOURCE_DIR}/code/qcommon
     ${CMAKE_CURRENT_SOURCE_DIR}/code/botlib
@@ -41,6 +46,8 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/code/q3_ui
     ${CMAKE_CURRENT_SOURCE_DIR}/code/jpeg-6
     ${CMAKE_CURRENT_SOURCE_DIR}/code/unix
+    ${SDL2_INCLUDE_DIRS}
+    ${OPENGL_INCLUDE_DIR}
 )
 
 # ---------------------------------------------------------------------------
@@ -153,6 +160,9 @@ set(MODERN_SOURCES
     code/modern/cvar/cvar_manager.cpp
     code/modern/net/bitstream.cpp
     code/modern/scripting/script_engine.cpp
+    code/modern/fs/vfs.cpp
+    code/modern/multiplayer/session.cpp
+    code/modern/platform/sdl_backend.cpp
 )
 add_library(q3modern STATIC ${MODERN_SOURCES})
 target_include_directories(q3modern PUBLIC
@@ -160,7 +170,7 @@ target_include_directories(q3modern PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/code/game
     ${CMAKE_CURRENT_SOURCE_DIR}/code/qcommon
 )
-target_link_libraries(q3modern PUBLIC qcommon)
+target_link_libraries(q3modern PUBLIC qcommon ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
 
 # ---------------------------------------------------------------------------
 # Server Library
@@ -348,7 +358,6 @@ if(NOT GTest_FOUND)
         googletest
         URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
     )
-    # For Windows: Prevent overriding the parent project's compiler/linker settings
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
 endif()
