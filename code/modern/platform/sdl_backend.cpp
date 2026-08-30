@@ -11,6 +11,14 @@ extern "C" {
 
 extern glconfig_t glConfig;
 extern refimport_t ri;
+// Global struct to satisfy linux_qgl.c dependencies
+typedef struct {
+    void* OpenGLLib;
+    FILE* log_fp;
+} glwstate_t;
+
+glwstate_t glw_state;
+
 qboolean QGL_Init( const char *dllname );
 
 static SDL_Window*   s_window = nullptr;
@@ -344,6 +352,11 @@ void Sys_SendKeyEvents( void ) {
             }
         }
     }
+}
+
+void Snd_Memset (void* dest, const int val, const size_t count)
+{
+	std::memset(dest, val, count);
 }
 
 } // extern "C"

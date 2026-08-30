@@ -216,6 +216,86 @@ target_link_libraries(q3ded PRIVATE
 )
 
 # ---------------------------------------------------------------------------
+# Client Library
+# ---------------------------------------------------------------------------
+set(CLIENT_SOURCES
+    code/client/cl_cgame.c
+    code/client/cl_cin.c
+    code/client/cl_console.c
+    code/client/cl_input.c
+    code/client/cl_keys.c
+    code/client/cl_main.c
+    code/client/cl_net_chan.c
+    code/client/cl_parse.c
+    code/client/cl_scrn.c
+    code/client/cl_ui.c
+    code/client/snd_adpcm.c
+    code/client/snd_dma.c
+    code/client/snd_mem.c
+    code/client/snd_mix.c
+    code/client/snd_wavelet.c
+)
+add_library(q3client STATIC ${CLIENT_SOURCES})
+
+# ---------------------------------------------------------------------------
+# Renderer Library
+# ---------------------------------------------------------------------------
+set(RENDERER_SOURCES
+    code/renderer/tr_animation.c
+    code/renderer/tr_backend.c
+    code/renderer/tr_bsp.c
+    code/renderer/tr_cmds.c
+    code/renderer/tr_curve.c
+    code/renderer/tr_flares.c
+    code/renderer/tr_font.c
+    code/renderer/tr_image.c
+    code/renderer/tr_init.c
+    code/renderer/tr_light.c
+    code/renderer/tr_main.c
+    code/renderer/tr_marks.c
+    code/renderer/tr_mesh.c
+    code/renderer/tr_model.c
+    code/renderer/tr_noise.c
+    code/renderer/tr_scene.c
+    code/renderer/tr_shade.c
+    code/renderer/tr_shade_calc.c
+    code/renderer/tr_shader.c
+    code/renderer/tr_shadows.c
+    code/renderer/tr_sky.c
+    code/renderer/tr_surface.c
+    code/renderer/tr_world.c
+)
+add_library(q3renderer STATIC ${RENDERER_SOURCES})
+
+# ---------------------------------------------------------------------------
+# Modern Client Executable (quake3_modern)
+# ---------------------------------------------------------------------------
+set(CLIENT_PLATFORM_SOURCES
+    code/unix/linux_signals.c
+    code/unix/linux_qgl.c
+    code/unix/unix_main.c
+    code/unix/unix_net.c
+    code/unix/unix_shared.c
+)
+add_executable(quake3_modern ${CLIENT_PLATFORM_SOURCES})
+target_link_libraries(quake3_modern PRIVATE
+    -Wl,--start-group
+    q3modern
+    q3client
+    q3renderer
+    q3server
+    qcommon
+    botlib
+    q3jpeg
+    -Wl,--end-group
+    ${SDL2_LIBRARIES}
+    ${OPENGL_LIBRARIES}
+    m
+    dl
+    pthread
+)
+
+# ---------------------------------------------------------------------------
 # Game Module (qagame)
 # ---------------------------------------------------------------------------
 set(GAME_SOURCES

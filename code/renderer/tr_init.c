@@ -148,12 +148,14 @@ int		max_polys;
 cvar_t	*r_maxpolyverts;
 int		max_polyverts;
 
+#if !defined(__linux__) || defined(Q3_STATIC)
 void ( APIENTRY * qglMultiTexCoord2fARB )( GLenum texture, GLfloat s, GLfloat t );
 void ( APIENTRY * qglActiveTextureARB )( GLenum texture );
 void ( APIENTRY * qglClientActiveTextureARB )( GLenum texture );
 
-void ( APIENTRY * qglLockArraysEXT)( GLint, GLint);
+void ( APIENTRY * qglLockArraysEXT)( int, int);
 void ( APIENTRY * qglUnlockArraysEXT) ( void );
+#endif
 
 static void AssertCvarRange( cvar_t *cv, float minVal, float maxVal, qboolean shouldBeIntegral )
 {
