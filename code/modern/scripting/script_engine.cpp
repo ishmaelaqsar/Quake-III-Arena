@@ -2,6 +2,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 namespace q3::scripting {
 
@@ -44,6 +45,27 @@ ModernScriptEngine::ModernScriptEngine() {
             }
         }
         return ScriptValue(prod);
+    });
+
+    register_function("sqrt", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+        if (!args.empty() && std::holds_alternative<double>(args[0])) {
+            return ScriptValue(std::sqrt(std::get<double>(args[0])));
+        }
+        return ScriptValue(0.0);
+    });
+
+    register_function("sin", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+        if (!args.empty() && std::holds_alternative<double>(args[0])) {
+            return ScriptValue(std::sin(std::get<double>(args[0])));
+        }
+        return ScriptValue(0.0);
+    });
+
+    register_function("cos", [](const std::vector<ScriptValue>& args) -> ScriptValue {
+        if (!args.empty() && std::holds_alternative<double>(args[0])) {
+            return ScriptValue(std::cos(std::get<double>(args[0])));
+        }
+        return ScriptValue(0.0);
     });
 }
 
@@ -176,6 +198,39 @@ void ModernScriptEngine::dispatch_event(std::string_view event_name, const std::
             handler(args);
         }
     }
+}
+
+void ModernScriptEngine::schedule(double delay_seconds, std::function<void()> callback) {
+    tasks_.push_back({current_time_ + delay_seconds, std::move(callback)});
+}
+
+void ModernScriptEngine::update_timers(double current_time_seconds) {
+    current_time_ = current_time_seconds;
+    auto it = tasks_.begin();
+    while (it != tasks_.end()) {
+        if (current_time_ >= it->trigger_time) {
+            auto cb = std::move(it->callback);
+            it = tasks_.erase(it);
+            if (cb) cb();
+        } else {
+            ++it;
+        }
+    }
+}
+
+void ModernScriptEngine::set_entity_property(int entity_id, std::string_view key, const ScriptValue& val) {
+    entity_properties_[entity_id][std::string(key)] = val;
+}
+
+std::optional<ScriptValue> ModernScriptEngine::get_entity_property(int entity_id, std::string_view key) const {
+    auto e_it = entity_properties_.find(entity_id);
+    if (e_it != entity_properties_.end()) {
+        auto p_it = e_it->second.find(std::string(key));
+        if (p_it != e_it->second.end()) {
+            return p_it->second;
+        }
+    }
+    return std::nullopt;
 }
 
 } // namespace q3::scripting

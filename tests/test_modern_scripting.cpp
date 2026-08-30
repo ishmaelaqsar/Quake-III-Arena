@@ -50,3 +50,36 @@ TEST(ModernScriptingTest, EventSubscriptionAndDispatch) {
     EXPECT_TRUE(player_spawned);
     EXPECT_EQ(player_name, "Ranger");
 }
+
+TEST(ModernScriptingTest, ScheduledTimerQueue) {
+    ModernScriptEngine engine;
+
+    bool timer_fired = false;
+    engine.schedule(1.5, [&]() {
+        timer_fired = true;
+    });
+
+    // Advance time before trigger
+    engine.update_timers(1.0);
+    EXPECT_FALSE(timer_fired);
+
+    // Advance time past trigger
+    engine.update_timers(1.6);
+    EXPECT_TRUE(timer_fired);
+}
+
+TEST(ModernScriptingTest, EntityPropertyReflection) {
+    ModernScriptEngine engine;
+
+    engine.set_entity_property(1, "score", 42.0);
+    engine.set_entity_property(1, "team", "red");
+
+    auto score = engine.get_entity_property(1, "score");
+    auto team = engine.get_entity_property(1, "team");
+
+    ASSERT_TRUE(score.has_value());
+    ASSERT_TRUE(team.has_value());
+
+    EXPECT_DOUBLE_EQ(std::get<double>(*score), 42.0);
+    EXPECT_EQ(std::get<std::string>(*team), "red");
+}

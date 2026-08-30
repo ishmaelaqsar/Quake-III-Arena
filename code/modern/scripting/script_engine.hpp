@@ -9,10 +9,16 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <cmath>
 
 namespace q3::scripting {
 
 using ScriptValue = std::variant<std::monostate, double, std::string, bool>;
+
+struct ScheduledTask {
+    double trigger_time{0.0};
+    std::function<void()> callback;
+};
 
 class IScriptEngine {
 public:
@@ -30,6 +36,12 @@ public:
     using EventHandler = std::function<void(const std::vector<ScriptValue>& args)>;
     virtual void subscribe_event(std::string_view event_name, EventHandler handler) = 0;
     virtual void dispatch_event(std::string_view event_name, const std::vector<ScriptValue>& args) = 0;
+
+    virtual void schedule(double delay_seconds, std::function<void()> callback) = 0;
+    virtual void update_timers(double current_time_seconds) = 0;
+
+    virtual void set_entity_property(int entity_id, std::string_view key, const ScriptValue& val) = 0;
+    virtual std::optional<ScriptValue> get_entity_property(int entity_id, std::string_view key) const = 0;
 };
 
 class ModernScriptEngine : public IScriptEngine {
@@ -47,12 +59,21 @@ public:
     void subscribe_event(std::string_view event_name, EventHandler handler) override;
     void dispatch_event(std::string_view event_name, const std::vector<ScriptValue>& args) override;
 
+    void schedule(double delay_seconds, std::function<void()> callback) override;
+    void update_timers(double current_time_seconds) override;
+
+    void set_entity_property(int entity_id, std::string_view key, const ScriptValue& val) override;
+    std::optional<ScriptValue> get_entity_property(int entity_id, std::string_view key) const override;
+
 private:
     std::vector<std::string> tokenize_line(std::string_view line);
 
+    double current_time_{0.0};
     std::unordered_map<std::string, ScriptValue> variables_;
     std::unordered_map<std::string, ScriptFunction> functions_;
     std::unordered_map<std::string, std::vector<EventHandler>> event_handlers_;
+    std::vector<ScheduledTask> tasks_;
+    std::unordered_map<int, std::unordered_map<std::string, ScriptValue>> entity_properties_;
 };
 
 } // namespace q3::scripting
