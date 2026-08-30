@@ -1091,21 +1091,10 @@ void AddPointToBounds( const vec3_t v, vec3_t mins, vec3_t maxs ) {
 }
 
 
+#include "../modern/modern_c_api.h"
+
 vec_t VectorNormalize( vec3_t v ) {
-	// NOTE: TTimo - Apple G4 altivec source uses double?
-	float	length, ilength;
-
-	length = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-	length = sqrt (length);
-
-	if ( length ) {
-		ilength = 1/length;
-		v[0] *= ilength;
-		v[1] *= ilength;
-		v[2] *= ilength;
-	}
-		
-	return length;
+	return Modern_VectorNormalize(v);
 }
 
 vec_t VectorNormalize2( const vec3_t v, vec3_t out) {

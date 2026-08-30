@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../game/q_shared.h"
 #include "qcommon.h"
 #include "unzip.h"
+#include "../modern/modern_c_api.h"
 
 /*
 =============================================================================
@@ -1497,6 +1498,10 @@ a null buffer will just return the file length without loading
 ============
 */
 int FS_ReadFile( const char *qpath, void **buffer ) {
+	int ret = Modern_ReadFile(qpath, buffer);
+	if (ret >= 0) return ret;
+
+	// Fallback to legacy if modern doesn't find it (optional)
 	fileHandle_t	h;
 	byte*			buf;
 	qboolean		isConfig;
@@ -1635,6 +1640,8 @@ Filename are reletive to the quake search path
 ============
 */
 void FS_WriteFile( const char *qpath, const void *buffer, int size ) {
+	Modern_WriteFile(qpath, buffer, size);
+
 	fileHandle_t f;
 
 	if ( !fs_searchpaths ) {

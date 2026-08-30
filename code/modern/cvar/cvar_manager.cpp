@@ -5,9 +5,7 @@ namespace q3::cvar {
 void CvarRef::set(std::string_view val) {
     if (!raw_) return;
     std::string s(val);
-    std::string old_val(raw_->string);
     Cvar_Set(raw_->name, s.c_str());
-    CvarManager::instance().notify_change(raw_->name, old_val, s);
 }
 
 void CvarRef::set(int val) {
