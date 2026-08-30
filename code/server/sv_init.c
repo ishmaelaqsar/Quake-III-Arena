@@ -335,6 +335,8 @@ void SV_TouchCGame(void) {
 	}
 }
 
+#include "../modern/modern_c_api.h"
+
 /*
 ================
 SV_SpawnServer
@@ -356,6 +358,8 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 
 	Com_Printf ("------ Server Initialization ------\n");
 	Com_Printf ("Server: %s\n",server);
+
+	Modern_ScriptEvent("game_init", server);
 
 	// if not running a dedicated server CL_MapLoading will connect the client to the server
 	// also print some status stuff

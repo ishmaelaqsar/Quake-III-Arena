@@ -163,6 +163,7 @@ set(MODERN_SOURCES
     code/modern/fs/vfs.cpp
     code/modern/multiplayer/session.cpp
     code/modern/platform/sdl_backend.cpp
+    code/modern/modern_c_api.cpp
 )
 add_library(q3modern STATIC ${MODERN_SOURCES})
 target_include_directories(q3modern PUBLIC
