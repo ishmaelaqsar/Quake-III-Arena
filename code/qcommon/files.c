@@ -2510,7 +2510,7 @@ static void FS_AddGameDirectory( const char *path, const char *dir ) {
 		sorted[i] = pakfiles[i];
 	}
 
-	qsort( sorted, numfiles, 4, paksort );
+	qsort( sorted, numfiles, sizeof( sorted[0] ), paksort );
 
 	for ( i = 0 ; i < numfiles ; i++ ) {
 		pakfile = FS_BuildOSPath( path, dir, sorted[i] );
@@ -2871,7 +2871,8 @@ static void FS_SetRestrictions( void ) {
 			if ( i == sizeof( fs_scrambledProductId ) ) {
 				return;	// no restrictions
 			}
-			Com_Error( ERR_FATAL, "Invalid product identification" );
+			// Fall through to unrestricted mode for mods/open-source assets
+			return;
 		}
 	}
 #endif
