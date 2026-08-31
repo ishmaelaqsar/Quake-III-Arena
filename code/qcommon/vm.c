@@ -325,9 +325,7 @@ Dlls will call this directly
 ============
 */
 int QDECL VM_DllSyscall( int arg, ... ) {
-#if ((defined __linux__) && (defined __powerpc__))
-  // rcg010206 - see commentary above
-  int args[16];
+  intptr_t args[16];
   int i;
   va_list ap;
   
@@ -335,13 +333,10 @@ int QDECL VM_DllSyscall( int arg, ... ) {
   
   va_start(ap, arg);
   for (i = 1; i < sizeof (args) / sizeof (args[i]); i++)
-    args[i] = va_arg(ap, int);
+    args[i] = va_arg(ap, intptr_t);
   va_end(ap);
   
-  return currentVM->systemCall( args );
-#else // original id code
-	return currentVM->systemCall( &arg );
-#endif
+  return currentVM->systemCall( (int*)args );
 }
 
 /*
@@ -604,7 +599,7 @@ void VM_Clear(void) {
 	lastVM = NULL;
 }
 
-void *VM_ArgPtr( int intValue ) {
+void *VM_ArgPtr( intptr_t intValue ) {
 	if ( !intValue ) {
 		return NULL;
 	}
@@ -620,7 +615,7 @@ void *VM_ArgPtr( int intValue ) {
 	}
 }
 
-void *VM_ExplicitArgPtr( vm_t *vm, int intValue ) {
+void *VM_ExplicitArgPtr( vm_t *vm, intptr_t intValue ) {
 	if ( !intValue ) {
 		return NULL;
 	}

@@ -309,10 +309,10 @@ The module is making a system call
 #if ((defined __linux__) && (defined __powerpc__))
 #define VMA(x) ((void *) args[x])
 #else
-#define	VMA(x) VM_ArgPtr(args[x])
+#define	VMA(x) VM_ArgPtr(((intptr_t*)args)[x])
 #endif
 
-#define	VMF(x)	((float *)args)[x]
+#define	VMF(x)	(*((float*)&((intptr_t*)args)[x]))
 
 int SV_GameSystemCalls( int *args ) {
 	switch( args[0] ) {

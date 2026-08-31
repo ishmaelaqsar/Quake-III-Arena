@@ -412,8 +412,8 @@ CL_CgameSystemCalls
 The cgame module is making a system call
 ====================
 */
-#define	VMA(x) VM_ArgPtr(args[x])
-#define	VMF(x)	((float *)args)[x]
+#define	VMA(x) VM_ArgPtr(((intptr_t*)args)[x])
+#define	VMF(x)	(*((float*)&((intptr_t*)args)[x]))
 int CL_CgameSystemCalls( int *args ) {
 	switch( args[0] ) {
 	case CG_PRINT:
