@@ -730,12 +730,10 @@ void CL_InitCGame( void ) {
 	Com_sprintf( cl.mapname, sizeof( cl.mapname ), "maps/%s.bsp", mapname );
 
 	// load the dll or bytecode
-	if ( cl_connectedToPureServer != 0 ) {
+	interpret = Cvar_VariableValue( "vm_cgame" );
+	if ( cl_connectedToPureServer != 0 && interpret != VMI_NATIVE ) {
 		// if sv_pure is set we only allow qvms to be loaded
 		interpret = VMI_COMPILED;
-	}
-	else {
-		interpret = Cvar_VariableValue( "vm_cgame" );
 	}
 	cgvm = VM_Create( "cgame", CL_CgameSystemCalls, interpret );
 	if ( !cgvm ) {

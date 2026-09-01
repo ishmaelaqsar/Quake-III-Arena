@@ -960,9 +960,12 @@ static void SV_VerifyPaks_f( client_t *cl ) {
 		bGood = qtrue;
 		nChkSum1 = nChkSum2 = 0;
 		// we run the game, so determine which cgame and ui the client "should" be running
-		bGood = (FS_FileIsInPAK("vm/cgame.qvm", &nChkSum1) == 1);
-		if (bGood)
-			bGood = (FS_FileIsInPAK("vm/ui.qvm", &nChkSum2) == 1);
+		if (FS_FileIsInPAK("vm/cgame.qvm", &nChkSum1) != 1) {
+			nChkSum1 = 0;
+		}
+		if (FS_FileIsInPAK("vm/ui.qvm", &nChkSum2) != 1) {
+			nChkSum2 = 0;
+		}
 
 		nClientPaks = Cmd_Argc();
 
@@ -996,13 +999,13 @@ static void SV_VerifyPaks_f( client_t *cl ) {
 			}
 			// verify first to be the cgame checksum
 			pArg = Cmd_Argv(nCurArg++);
-			if (!pArg || *pArg == '@' || atoi(pArg) != nChkSum1 ) {
+			if (!pArg || *pArg == '@' || (nChkSum1 != 0 && atoi(pArg) != nChkSum1) ) {
 				bGood = qfalse;
 				break;
 			}
 			// verify the second to be the ui checksum
 			pArg = Cmd_Argv(nCurArg++);
-			if (!pArg || *pArg == '@' || atoi(pArg) != nChkSum2 ) {
+			if (!pArg || *pArg == '@' || (nChkSum2 != 0 && atoi(pArg) != nChkSum2) ) {
 				bGood = qfalse;
 				break;
 			}
