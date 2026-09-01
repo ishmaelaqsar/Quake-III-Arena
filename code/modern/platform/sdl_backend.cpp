@@ -248,19 +248,20 @@ static void AudioCallback(void* userdata, Uint8* stream, int len) {
         return;
     }
 
-    int bytesPerSample = (dma.samplebits / 8) * dma.channels;
-    int totalBytes = dma.samples * bytesPerSample;
-    int currentOffset = (s_dmaPos * bytesPerSample) % totalBytes;
+    int bytesPerSampleValue = dma.samplebits / 8; // 2 bytes for 16-bit
+    int totalBufferBytes = dma.samples * bytesPerSampleValue;
+    int currentOffsetBytes = (s_dmaPos * bytesPerSampleValue) % totalBufferBytes;
 
-    if (currentOffset + len <= totalBytes) {
-        std::memcpy(stream, dma.buffer + currentOffset, len);
+    if (currentOffsetBytes + len <= totalBufferBytes) {
+        std::memcpy(stream, dma.buffer + currentOffsetBytes, len);
     } else {
-        int firstPart = totalBytes - currentOffset;
-        std::memcpy(stream, dma.buffer + currentOffset, firstPart);
+        int firstPart = totalBufferBytes - currentOffsetBytes;
+        std::memcpy(stream, dma.buffer + currentOffsetBytes, firstPart);
         std::memcpy(stream + firstPart, dma.buffer, len - firstPart);
     }
 
-    s_dmaPos = (s_dmaPos + (len / bytesPerSample)) % dma.samples;
+    int samplesInChunk = len / bytesPerSampleValue;
+    s_dmaPos = (s_dmaPos + samplesInChunk) % dma.samples;
 }
 
 qboolean SNDDMA_Init( void ) {
@@ -299,9 +300,9 @@ qboolean SNDDMA_Init( void ) {
     dma.channels = obtained.channels;
     dma.samplebits = 16;
     dma.speed = obtained.freq;
-    dma.samples = obtained.samples * 8;
+    dma.samples = obtained.samples * 8 * dma.channels;
     dma.submission_chunk = 1;
-    dma.buffer = (byte*)calloc(dma.samples * (dma.samplebits / 8) * dma.channels, 1);
+    dma.buffer = (byte*)calloc(dma.samples * (dma.samplebits / 8), 1);
 
     SDL_PauseAudioDevice(s_audioDevice, 0);
     return qtrue;

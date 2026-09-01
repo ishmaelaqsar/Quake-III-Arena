@@ -168,10 +168,17 @@ void UI_LoadArenas( void ) {
 	}
 
 	for( n = 0; n < ui_numArenas; n++ ) {
-		// determine type
+		const char *mapName = Info_ValueForKey(ui_arenaInfos[n], "map");
+		if (!mapName || !mapName[0]) {
+			continue;
+		}
+		// Skip map entries if the map bsp does not exist
+		if (!trap_FS_FOpenFile(va("maps/%s.bsp", mapName), NULL, FS_READ)) {
+			continue;
+		}
 
 		uiInfo.mapList[uiInfo.mapCount].cinematic = -1;
-		uiInfo.mapList[uiInfo.mapCount].mapLoadName = String_Alloc(Info_ValueForKey(ui_arenaInfos[n], "map"));
+		uiInfo.mapList[uiInfo.mapCount].mapLoadName = String_Alloc(mapName);
 		uiInfo.mapList[uiInfo.mapCount].mapName = String_Alloc(Info_ValueForKey(ui_arenaInfos[n], "longname"));
 		uiInfo.mapList[uiInfo.mapCount].levelShot = -1;
 		uiInfo.mapList[uiInfo.mapCount].imageName = String_Alloc(va("levelshots/%s", uiInfo.mapList[uiInfo.mapCount].mapLoadName));
