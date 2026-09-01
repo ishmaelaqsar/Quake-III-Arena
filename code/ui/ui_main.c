@@ -4823,8 +4823,15 @@ static qboolean MapList_Parse(char **p) {
 			  // only load the first cinematic, selection loads the others
   			//  uiInfo.mapList[uiInfo.mapCount].cinematic = trap_CIN_PlayCinematic(va("%s.roq",uiInfo.mapList[uiInfo.mapCount].mapLoadName), qfalse, qfalse, qtrue, 0, 0, 0, 0);
 			//}
-  		uiInfo.mapList[uiInfo.mapCount].cinematic = -1;
+			uiInfo.mapList[uiInfo.mapCount].cinematic = -1;
 			uiInfo.mapList[uiInfo.mapCount].levelShot = trap_R_RegisterShaderNoMip(va("levelshots/%s_small", uiInfo.mapList[uiInfo.mapCount].mapLoadName));
+
+			fileHandle_t fHandle;
+			if (!uiInfo.mapList[uiInfo.mapCount].mapLoadName ||
+				trap_FS_FOpenFile(va("maps/%s.bsp", uiInfo.mapList[uiInfo.mapCount].mapLoadName), &fHandle, FS_READ) < 0) {
+				continue; // Skip map if .bsp file does not exist
+			}
+			trap_FS_FCloseFile(fHandle);
 
 			if (uiInfo.mapCount < MAX_MAPS) {
 				uiInfo.mapCount++;
