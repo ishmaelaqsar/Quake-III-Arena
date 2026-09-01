@@ -4795,6 +4795,7 @@ static qboolean MapList_Parse(char **p) {
 		}
 
 		if (token[0] == '{') {
+			Com_Memset(&uiInfo.mapList[uiInfo.mapCount], 0, sizeof(mapInfo));
 			if (!String_Parse(p, &uiInfo.mapList[uiInfo.mapCount].mapName) || !String_Parse(p, &uiInfo.mapList[uiInfo.mapCount].mapLoadName) 
 				||!Int_Parse(p, &uiInfo.mapList[uiInfo.mapCount].teamMembers) ) {
 				return qfalse;
@@ -4818,20 +4819,17 @@ static qboolean MapList_Parse(char **p) {
 				} 
 			}
 
-			//mapList[mapCount].imageName = String_Alloc(va("levelshots/%s", mapList[mapCount].mapLoadName));
-			//if (uiInfo.mapCount == 0) {
-			  // only load the first cinematic, selection loads the others
-  			//  uiInfo.mapList[uiInfo.mapCount].cinematic = trap_CIN_PlayCinematic(va("%s.roq",uiInfo.mapList[uiInfo.mapCount].mapLoadName), qfalse, qfalse, qtrue, 0, 0, 0, 0);
-			//}
-			uiInfo.mapList[uiInfo.mapCount].cinematic = -1;
-			uiInfo.mapList[uiInfo.mapCount].levelShot = trap_R_RegisterShaderNoMip(va("levelshots/%s_small", uiInfo.mapList[uiInfo.mapCount].mapLoadName));
-
 			fileHandle_t fHandle;
-			if (!uiInfo.mapList[uiInfo.mapCount].mapLoadName ||
+			if (!uiInfo.mapList[uiInfo.mapCount].mapLoadName || !uiInfo.mapList[uiInfo.mapCount].mapLoadName[0] ||
 				trap_FS_FOpenFile(va("maps/%s.bsp", uiInfo.mapList[uiInfo.mapCount].mapLoadName), &fHandle, FS_READ) < 0) {
-				continue; // Skip map if .bsp file does not exist
+				// Skip uninstalled map entry
+				Com_Memset(&uiInfo.mapList[uiInfo.mapCount], 0, sizeof(mapInfo));
+				continue;
 			}
 			trap_FS_FCloseFile(fHandle);
+
+			uiInfo.mapList[uiInfo.mapCount].cinematic = -1;
+			uiInfo.mapList[uiInfo.mapCount].levelShot = trap_R_RegisterShaderNoMip(va("levelshots/%s_small", uiInfo.mapList[uiInfo.mapCount].mapLoadName));
 
 			if (uiInfo.mapCount < MAX_MAPS) {
 				uiInfo.mapCount++;
