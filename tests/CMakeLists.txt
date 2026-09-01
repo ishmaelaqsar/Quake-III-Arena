@@ -6,6 +6,7 @@ set(TEST_SOURCES
     test_huffman.cpp
     test_md4.cpp
     test_cvar_cmd.cpp
+    test_legacy_vm_syscalls.cpp
     test_modern_math.cpp
     test_modern_cvar.cpp
     test_modern_net.cpp

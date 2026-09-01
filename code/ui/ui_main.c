@@ -3017,13 +3017,13 @@ static void UI_StartSkirmish(qboolean next) {
 		temp = uiInfo.mapList[ui_currentMap.integer].teamMembers * 2;
 		trap_Cvar_Set("sv_maxClients", va("%d", temp));
 		for (i =0; i < uiInfo.mapList[ui_currentMap.integer].teamMembers; i++) {
-			Com_sprintf( buff, sizeof(buff), "addbot %s %f %s %i %s\n", UI_AIFromName(uiInfo.teamList[k].teamMembers[i]), skill, (g == GT_FFA) ? "" : "Blue", delay, uiInfo.teamList[k].teamMembers[i]);
+			Com_sprintf( buff, sizeof(buff), "wait ; addbot %s %f %s %i %s\n", UI_AIFromName(uiInfo.teamList[k].teamMembers[i]), skill, (g == GT_FFA) ? "" : "Blue", delay, uiInfo.teamList[k].teamMembers[i]);
 			trap_Cmd_ExecuteText( EXEC_APPEND, buff );
 			delay += 500;
 		}
 		k = UI_TeamIndexFromName(UI_Cvar_VariableString("ui_teamName"));
 		for (i =0; i < uiInfo.mapList[ui_currentMap.integer].teamMembers-1; i++) {
-			Com_sprintf( buff, sizeof(buff), "addbot %s %f %s %i %s\n", UI_AIFromName(uiInfo.teamList[k].teamMembers[i]), skill, (g == GT_FFA) ? "" : "Red", delay, uiInfo.teamList[k].teamMembers[i]);
+			Com_sprintf( buff, sizeof(buff), "wait ; addbot %s %f %s %i %s\n", UI_AIFromName(uiInfo.teamList[k].teamMembers[i]), skill, (g == GT_FFA) ? "" : "Red", delay, uiInfo.teamList[k].teamMembers[i]);
 			trap_Cmd_ExecuteText( EXEC_APPEND, buff );
 			delay += 500;
 		}
@@ -3198,18 +3198,18 @@ static void UI_RunMenuScript(char **args) {
 				int bot = trap_Cvar_VariableValue( va("ui_blueteam%i", i+1));
 				if (bot > 1) {
 					if (ui_actualNetGameType.integer >= GT_TEAM) {
-						Com_sprintf( buff, sizeof(buff), "addbot %s %f %s\n", uiInfo.characterList[bot-2].name, skill, "Blue");
+						Com_sprintf( buff, sizeof(buff), "wait ; addbot %s %f %s\n", uiInfo.characterList[bot-2].name, skill, "Blue");
 					} else {
-						Com_sprintf( buff, sizeof(buff), "addbot %s %f \n", UI_GetBotNameByNumber(bot-2), skill);
+						Com_sprintf( buff, sizeof(buff), "wait ; addbot %s %f \n", UI_GetBotNameByNumber(bot-2), skill);
 					}
 					trap_Cmd_ExecuteText( EXEC_APPEND, buff );
 				}
 				bot = trap_Cvar_VariableValue( va("ui_redteam%i", i+1));
 				if (bot > 1) {
 					if (ui_actualNetGameType.integer >= GT_TEAM) {
-						Com_sprintf( buff, sizeof(buff), "addbot %s %f %s\n", uiInfo.characterList[bot-2].name, skill, "Red");
+						Com_sprintf( buff, sizeof(buff), "wait ; addbot %s %f %s\n", uiInfo.characterList[bot-2].name, skill, "Red");
 					} else {
-						Com_sprintf( buff, sizeof(buff), "addbot %s %f \n", UI_GetBotNameByNumber(bot-2), skill);
+						Com_sprintf( buff, sizeof(buff), "wait ; addbot %s %f \n", UI_GetBotNameByNumber(bot-2), skill);
 					}
 					trap_Cmd_ExecuteText( EXEC_APPEND, buff );
 				}
