@@ -122,6 +122,17 @@ int UI_ParseInfos( char *buf, int max, char *infos[] ) {
 			}
 			Info_SetValueForKey( info, key, token );
 		}
+
+		const char *mapName = Info_ValueForKey(info, "map");
+		fileHandle_t f;
+		if (mapName && mapName[0]) {
+			if (trap_FS_FOpenFile(va("maps/%s.bsp", mapName), &f, FS_READ) < 0) {
+				Com_Printf("UI_ParseInfos: Skipping missing map 'maps/%s.bsp'\n", mapName);
+				continue;
+			}
+			trap_FS_FCloseFile(f);
+		}
+
 		//NOTE: extra space for arena number
 		infos[count] = UI_Alloc(strlen(info) + strlen("\\num\\") + strlen(va("%d", MAX_ARENAS)) + 1);
 		if (infos[count]) {
