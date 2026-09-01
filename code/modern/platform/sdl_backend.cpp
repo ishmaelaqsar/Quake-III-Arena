@@ -1,4 +1,5 @@
 #include "sdl_backend.hpp"
+#include "logger/logger.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <vector>
@@ -94,7 +95,10 @@ static int TranslateSDLKey(SDL_Keycode key) {
 // ---------------------------------------------------------------------------
 
 void GLimp_Init( void ) {
+    LOG_INFO("GLimp_Init: Initializing SDL2 video subsystem");
+
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
+        LOG_ERROR("GLimp_Init: Unable to initialize SDL video: ", SDL_GetError());
         ri.Error(ERR_FATAL, "GLimp_Init: Unable to initialize SDL video: %s\n", SDL_GetError());
         return;
     }
@@ -147,15 +151,21 @@ void GLimp_Init( void ) {
                                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                 width, height, flags);
     if (!s_window) {
+        LOG_ERROR("GLimp_Init: Failed to create SDL window: ", SDL_GetError());
         ri.Error(ERR_FATAL, "GLimp_Init: Failed to create window: %s\n", SDL_GetError());
         return;
     }
 
+    LOG_INFO("GLimp_Init: Created ", width, "x", height, " window successfully");
+
     s_glContext = SDL_GL_CreateContext(s_window);
     if (!s_glContext) {
+        LOG_ERROR("GLimp_Init: Failed to create OpenGL context: ", SDL_GetError());
         ri.Error(ERR_FATAL, "GLimp_Init: Failed to create GL context: %s\n", SDL_GetError());
         return;
     }
+
+    LOG_INFO("GLimp_Init: Created OpenGL context successfully");
 
     if (r_swapInterval) {
         SDL_GL_SetSwapInterval(r_swapInterval->integer);
@@ -174,6 +184,7 @@ void GLimp_Init( void ) {
 }
 
 void GLimp_Shutdown( void ) {
+    LOG_INFO("GLimp_Shutdown: Shutting down SDL2 video subsystem");
     if (s_glContext) {
         SDL_GL_DeleteContext(s_glContext);
         s_glContext = nullptr;
@@ -240,7 +251,10 @@ static void AudioCallback(void* userdata, Uint8* stream, int len) {
 }
 
 qboolean SNDDMA_Init( void ) {
+    LOG_INFO("SNDDMA_Init: Initializing SDL2 audio subsystem");
+
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
+        LOG_WARN("SNDDMA_Init: SDL Audio init failed: ", SDL_GetError());
         Com_Printf("SNDDMA_Init: SDL Audio init failed: %s\n", SDL_GetError());
         return qfalse;
     }
@@ -255,9 +269,12 @@ qboolean SNDDMA_Init( void ) {
 
     s_audioDevice = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
     if (s_audioDevice == 0) {
+        LOG_WARN("SNDDMA_Init: Failed to open audio device: ", SDL_GetError());
         Com_Printf("SNDDMA_Init: Failed to open audio device: %s\n", SDL_GetError());
         return qfalse;
     }
+
+    LOG_INFO("SNDDMA_Init: Audio device opened at ", obtained.freq, " Hz, ", obtained.channels, " channels");
 
     dma.channels = obtained.channels;
     dma.samplebits = 16;
@@ -275,6 +292,7 @@ int SNDDMA_GetDMAPos( void ) {
 }
 
 void SNDDMA_Shutdown( void ) {
+    LOG_INFO("SNDDMA_Shutdown: Shutting down audio device");
     if (s_audioDevice) {
         SDL_CloseAudioDevice(s_audioDevice);
         s_audioDevice = 0;

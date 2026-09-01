@@ -10,14 +10,17 @@ static q3::scripting::ModernScriptEngine* g_scriptEngine = nullptr;
 extern "C" {
 
 void Modern_Init(void) {
+    LOG_INFO("Modern_Init: Initializing C++17 modern subsystem layers");
     q3::multiplayer::SessionManager::instance().reset();
     
     if (!g_scriptEngine) {
         g_scriptEngine = new q3::scripting::ModernScriptEngine();
+        LOG_INFO("Modern_Init: Scripting engine initialized");
     }
     
     // Mount baseq3 using modern VFS
     q3::fs::VirtualFileSystem::instance().mount_search_path("baseq3");
+    LOG_INFO("Modern_Init: Mounted baseq3 into VirtualFileSystem");
 }
 
 void Modern_Frame(int msec) {
@@ -29,12 +32,14 @@ void Modern_Frame(int msec) {
 
 void Modern_ScriptExecute(const char* script) {
     if (g_scriptEngine && script) {
+        LOG_DEBUG("Modern_ScriptExecute: Running script (", std::strlen(script), " chars)");
         g_scriptEngine->execute(script);
     }
 }
 
 void Modern_ScriptEvent(const char* event_name, const char* arg) {
     if (g_scriptEngine && event_name) {
+        LOG_DEBUG("Modern_ScriptEvent: Event ", event_name, arg ? " (arg: " : "", arg ? arg : "", arg ? ")" : "");
         std::vector<q3::scripting::ScriptValue> args;
         if (arg) {
             args.push_back(std::string(arg));
@@ -44,8 +49,11 @@ void Modern_ScriptEvent(const char* event_name, const char* arg) {
 }
 
 int Modern_ReadFile(const char *qpath, void **buffer) {
+    if (!qpath) return -1;
     auto data = q3::fs::VirtualFileSystem::instance().read_binary(qpath);
     if (!data) return -1;
+
+    LOG_DEBUG("Modern_ReadFile: VFS read ", qpath, " (", data->size(), " bytes)");
     if (buffer) {
         *buffer = Hunk_AllocateTempMemory(data->size() + 1);
         std::memcpy(*buffer, data->data(), data->size());
@@ -55,6 +63,8 @@ int Modern_ReadFile(const char *qpath, void **buffer) {
 }
 
 void Modern_WriteFile(const char *qpath, const void *buffer, int size) {
+    if (!qpath || !buffer) return;
+    LOG_INFO("Modern_WriteFile: VFS write ", qpath, " (", size, " bytes)");
     q3::fs::VirtualFileSystem::instance().write_binary(
         qpath, static_cast<const uint8_t*>(buffer), static_cast<std::size_t>(size)
     );
@@ -62,6 +72,7 @@ void Modern_WriteFile(const char *qpath, const void *buffer, int size) {
 
 void Modern_Cvar_NotifyChange(const char *var_name, const char *old_val, const char *new_val) {
     if (var_name) {
+        LOG_DEBUG("Modern_Cvar_NotifyChange: ", var_name, " changed to '", new_val ? new_val : "", "' (was '", old_val ? old_val : "", "')");
         q3::cvar::CvarManager::instance().notify_change(
             var_name,
             old_val ? old_val : "",
