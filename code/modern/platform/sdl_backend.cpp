@@ -181,6 +181,11 @@ void GLimp_Init( void ) {
 
     // Direct QGL function bindings via SDL_GL_GetProcAddress
     QGL_Init("libGL.so.1");
+
+    if (s_window) {
+        SDL_SetRelativeMouseMode(SDL_TRUE);
+        s_mouseGrabbed = qtrue;
+    }
 }
 
 void GLimp_Shutdown( void ) {
@@ -259,12 +264,19 @@ qboolean SNDDMA_Init( void ) {
         return qfalse;
     }
 
+    int khz = (s_khz && s_khz->integer) ? s_khz->integer : 22;
+    int target_freq = 22050;
+    if (khz == 44) target_freq = 44100;
+    else if (khz == 22) target_freq = 22050;
+    else if (khz == 11) target_freq = 11025;
+    else target_freq = (khz > 1000) ? khz : khz * 1000;
+
     SDL_AudioSpec desired, obtained;
     std::memset(&desired, 0, sizeof(desired));
-    desired.freq = (s_khz && s_khz->integer) ? s_khz->integer * 1000 : 22050;
+    desired.freq = target_freq;
     desired.format = AUDIO_S16SYS;
     desired.channels = 2;
-    desired.samples = 1024;
+    desired.samples = 512;
     desired.callback = AudioCallback;
 
     s_audioDevice = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
@@ -274,12 +286,12 @@ qboolean SNDDMA_Init( void ) {
         return qfalse;
     }
 
-    LOG_INFO("SNDDMA_Init: Audio device opened at ", obtained.freq, " Hz, ", obtained.channels, " channels");
+    LOG_INFO("SNDDMA_Init: Audio device opened at ", obtained.freq, " Hz, ", static_cast<int>(obtained.channels), " channels");
 
     dma.channels = obtained.channels;
     dma.samplebits = 16;
     dma.speed = obtained.freq;
-    dma.samples = obtained.samples * 4;
+    dma.samples = obtained.samples * 8;
     dma.submission_chunk = 1;
     dma.buffer = (byte*)calloc(dma.samples * (dma.samplebits / 8) * dma.channels, 1);
 
