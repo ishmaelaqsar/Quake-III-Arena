@@ -346,21 +346,39 @@ void SNDDMA_BeginPainting( void ) {}
 void SNDDMA_Submit( void ) {}
 
 // ---------------------------------------------------------------------------
-// Input Implementation
+// Input & Controller Implementation
 // ---------------------------------------------------------------------------
+
+static SDL_GameController* s_controllers[4] = {nullptr, nullptr, nullptr, nullptr};
 
 void IN_Init( void ) {
     if (s_window) {
         SDL_SetRelativeMouseMode(SDL_TRUE);
         s_mouseGrabbed = qtrue;
     }
+    SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
+    for (int i = 0; i < SDL_NumJoysticks() && i < 4; ++i) {
+        if (SDL_IsGameController(i)) {
+            s_controllers[i] = SDL_GameControllerOpen(i);
+            if (s_controllers[i]) {
+                LOG_INFO("IN_Init: Connected controller ", i, ": ", SDL_GameControllerName(s_controllers[i]));
+            }
+        }
+    }
 }
 
 void IN_Shutdown( void ) {
+    for (int i = 0; i < 4; ++i) {
+        if (s_controllers[i]) {
+            SDL_GameControllerClose(s_controllers[i]);
+            s_controllers[i] = nullptr;
+        }
+    }
     if (s_mouseGrabbed) {
         SDL_SetRelativeMouseMode(SDL_FALSE);
         s_mouseGrabbed = qfalse;
     }
+    SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
 }
 
 void IN_Frame( void ) {}
@@ -400,6 +418,44 @@ void Sys_SendKeyEvents( void ) {
                 if (event.button.button == SDL_BUTTON_X2)     btn = K_MOUSE5;
 
                 Sys_QueEvent(time, SE_KEY, btn, (event.type == SDL_MOUSEBUTTONDOWN) ? qtrue : qfalse, 0, nullptr);
+                break;
+            }
+            case SDL_CONTROLLERDEVICEADDED: {
+                int id = event.cdevice.which;
+                if (id >= 0 && id < 4 && !s_controllers[id] && SDL_IsGameController(id)) {
+                    s_controllers[id] = SDL_GameControllerOpen(id);
+                    if (s_controllers[id]) {
+                        LOG_INFO("Sys_SendKeyEvents: Controller added at slot ", id);
+                    }
+                }
+                break;
+            }
+            case SDL_CONTROLLERDEVICEREMOVED: {
+                int id = event.cdevice.which;
+                for (int i = 0; i < 4; ++i) {
+                    if (s_controllers[i] && SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(s_controllers[i])) == id) {
+                        SDL_GameControllerClose(s_controllers[i]);
+                        s_controllers[i] = nullptr;
+                        LOG_INFO("Sys_SendKeyEvents: Controller removed from slot ", i);
+                        break;
+                    }
+                }
+                break;
+            }
+            case SDL_CONTROLLERBUTTONDOWN:
+            case SDL_CONTROLLERBUTTONUP: {
+                qboolean pressed = (event.type == SDL_CONTROLLERBUTTONDOWN) ? qtrue : qfalse;
+                int key = 0;
+                switch (event.cbutton.button) {
+                    case SDL_CONTROLLER_BUTTON_A: key = K_SPACE; break;
+                    case SDL_CONTROLLER_BUTTON_B: key = 'c'; break;
+                    case SDL_CONTROLLER_BUTTON_Y: key = K_TAB; break;
+                    case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: key = K_MOUSE1; break;
+                    case SDL_CONTROLLER_BUTTON_START: key = K_ESCAPE; break;
+                }
+                if (key) {
+                    Sys_QueEvent(time, SE_KEY, key, pressed, 0, nullptr);
+                }
                 break;
             }
             case SDL_QUIT: {

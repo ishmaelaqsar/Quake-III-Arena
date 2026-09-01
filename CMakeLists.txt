@@ -444,3 +444,21 @@ if(NOT GTest_FOUND)
 endif()
 
 add_subdirectory(tests)
+
+# ---------------------------------------------------------------------------
+# Installation & Standalone Packaging Targets
+# ---------------------------------------------------------------------------
+include(GNUInstallDirs)
+
+install(TARGETS quake3_modern q3ded
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS qagame cgame ui
+    LIBRARY DESTINATION ${CMAKE_INSTALL_DATADIR}/quake3/baseq3
+)
+
+install(DIRECTORY baseq3/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/quake3/baseq3
+    FILES_MATCHING PATTERN "*.pk3"
+)

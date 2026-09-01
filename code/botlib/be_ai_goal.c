@@ -134,7 +134,8 @@ typedef struct iteminfo_s
 	int number;							//number of the item info
 } iteminfo_t;
 
-#define ITEMINFO_OFS(x)	(int)&(((iteminfo_t *)0)->x)
+#include <stddef.h>
+#define ITEMINFO_OFS(x)	((int)offsetof(iteminfo_t, x))
 
 fielddef_t iteminfo_fields[] =
 {
