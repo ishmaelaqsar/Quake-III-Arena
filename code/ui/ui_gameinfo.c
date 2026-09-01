@@ -175,9 +175,11 @@ void UI_LoadArenas( void ) {
 		}
 		// Skip map entries if the map bsp does not exist
 		if (trap_FS_FOpenFile(va("maps/%s.bsp", mapName), &f, FS_READ) < 0) {
+			trap_Print(va("UI_LoadArenas: Skipping missing map 'maps/%s.bsp'\n", mapName));
 			continue;
 		}
 		trap_FS_FCloseFile(f);
+		trap_Print(va("UI_LoadArenas: Loaded valid map '%s'\n", mapName));
 
 		uiInfo.mapList[uiInfo.mapCount].cinematic = -1;
 		uiInfo.mapList[uiInfo.mapCount].mapLoadName = String_Alloc(mapName);

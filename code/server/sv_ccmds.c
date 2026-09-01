@@ -144,8 +144,11 @@ static void SV_Map_f( void ) {
 
 	map = Cmd_Argv(1);
 	if ( !map || !map[0] ) {
+		Com_Printf ("SV_Map_f: Received empty map parameter\n");
 		return;
 	}
+
+	Com_Printf ("SV_Map_f: Loading map '%s'\n", map);
 
 	// make sure the level exists before trying to change, so that
 	// a typo at the server console won't end the game
