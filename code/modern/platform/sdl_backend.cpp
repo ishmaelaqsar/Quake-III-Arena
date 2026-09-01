@@ -144,7 +144,7 @@ void GLimp_Init( void ) {
 
     Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
     if (r_fullscreen && r_fullscreen->integer) {
-        flags |= SDL_WINDOW_FULLSCREEN;
+        flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     }
 
     s_window = SDL_CreateWindow("Quake III Arena (C++17)",
@@ -198,6 +198,8 @@ void GLimp_Shutdown( void ) {
         SDL_DestroyWindow(s_window);
         s_window = nullptr;
     }
+    glConfig.vidWidth = 0;
+    glConfig.vidHeight = 0;
     SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
