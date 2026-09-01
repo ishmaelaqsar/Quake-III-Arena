@@ -159,6 +159,8 @@ target_compile_definitions(qcommon PUBLIC C_ONLY)
 set(SYS_SOURCES
     code/sys/cvar/cvar_manager.cpp
     code/sys/net/bitstream.cpp
+    code/sys/net/http_downloader.cpp
+    code/sys/rpc/discord_rpc.cpp
     code/sys/scripting/script_engine.cpp
     code/sys/fs/vfs.cpp
     code/sys/multiplayer/session.cpp
@@ -260,6 +262,7 @@ set(RENDERER_SOURCES
     code/renderer/tr_scene.c
     code/renderer/tr_shade.c
     code/renderer/tr_shade_calc.c
+    code/renderer/vulkan/vk_backend.cpp
     code/renderer/tr_shader.c
     code/renderer/tr_shadows.c
     code/renderer/tr_sky.c

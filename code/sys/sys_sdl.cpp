@@ -205,6 +205,19 @@ void GLimp_Init( void ) {
     qglBindVertexArray = (void (APIENTRY *)(GLuint))SDL_GL_GetProcAddress("glBindVertexArray");
     qglDeleteVertexArrays = (void (APIENTRY *)(GLsizei, const GLuint*))SDL_GL_GetProcAddress("glDeleteVertexArrays");
 
+    qglCreateShader = (GLuint (APIENTRY *)(GLenum))SDL_GL_GetProcAddress("glCreateShader");
+    qglShaderSource = (void (APIENTRY *)(GLuint, GLsizei, const GLchar *const*, const GLint *))SDL_GL_GetProcAddress("glShaderSource");
+    qglCompileShader = (void (APIENTRY *)(GLuint))SDL_GL_GetProcAddress("glCompileShader");
+    qglCreateProgram = (GLuint (APIENTRY *)(void))SDL_GL_GetProcAddress("glCreateProgram");
+    qglAttachShader = (void (APIENTRY *)(GLuint, GLuint))SDL_GL_GetProcAddress("glAttachShader");
+    qglLinkProgram = (void (APIENTRY *)(GLuint))SDL_GL_GetProcAddress("glLinkProgram");
+    qglUseProgram = (void (APIENTRY *)(GLuint))SDL_GL_GetProcAddress("glUseProgram");
+    qglDeleteShader = (void (APIENTRY *)(GLuint))SDL_GL_GetProcAddress("glDeleteShader");
+    qglDeleteProgram = (void (APIENTRY *)(GLuint))SDL_GL_GetProcAddress("glDeleteProgram");
+    qglGetUniformLocation = (GLint (APIENTRY *)(GLuint, const GLchar *))SDL_GL_GetProcAddress("glGetUniformLocation");
+    qglUniform1f = (void (APIENTRY *)(GLint, GLfloat))SDL_GL_GetProcAddress("glUniform1f");
+    qglUniform1i = (void (APIENTRY *)(GLint, GLint))SDL_GL_GetProcAddress("glUniform1i");
+
     if (s_window) {
         SDL_SetRelativeMouseMode(SDL_TRUE);
         s_mouseGrabbed = qtrue;

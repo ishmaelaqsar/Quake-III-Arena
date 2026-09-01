@@ -185,6 +185,35 @@ extern void ( APIENTRY * qglGenVertexArrays )(GLsizei n, GLuint *arrays);
 extern void ( APIENTRY * qglBindVertexArray )(GLuint array);
 extern void ( APIENTRY * qglDeleteVertexArrays )(GLsizei n, const GLuint *arrays);
 
+// GLSL Shader extensions
+#ifndef GL_FRAGMENT_SHADER
+#define GL_FRAGMENT_SHADER 0x8B30
+#endif
+#ifndef GL_VERTEX_SHADER
+#define GL_VERTEX_SHADER 0x8B31
+#endif
+#ifndef GL_COMPILE_STATUS
+#define GL_COMPILE_STATUS 0x8B81
+#endif
+#ifndef GL_LINK_STATUS
+#define GL_LINK_STATUS 0x8B82
+#endif
+
+typedef char GLchar;
+
+extern GLuint ( APIENTRY * qglCreateShader )(GLenum type);
+extern void ( APIENTRY * qglShaderSource )(GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
+extern void ( APIENTRY * qglCompileShader )(GLuint shader);
+extern GLuint ( APIENTRY * qglCreateProgram )(void);
+extern void ( APIENTRY * qglAttachShader )(GLuint program, GLuint shader);
+extern void ( APIENTRY * qglLinkProgram )(GLuint program);
+extern void ( APIENTRY * qglUseProgram )(GLuint program);
+extern void ( APIENTRY * qglDeleteShader )(GLuint shader);
+extern void ( APIENTRY * qglDeleteProgram )(GLuint program);
+extern GLint ( APIENTRY * qglGetUniformLocation )(GLuint program, const GLchar *name);
+extern void ( APIENTRY * qglUniform1f )(GLint location, GLfloat v0);
+extern void ( APIENTRY * qglUniform1i )(GLint location, GLint v0);
+
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

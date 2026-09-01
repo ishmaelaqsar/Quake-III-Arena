@@ -421,6 +421,19 @@ void ( APIENTRY * qglGenVertexArrays )(GLsizei n, GLuint *arrays);
 void ( APIENTRY * qglBindVertexArray )(GLuint array);
 void ( APIENTRY * qglDeleteVertexArrays )(GLsizei n, const GLuint *arrays);
 
+GLuint ( APIENTRY * qglCreateShader )(GLenum type);
+void ( APIENTRY * qglShaderSource )(GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
+void ( APIENTRY * qglCompileShader )(GLuint shader);
+GLuint ( APIENTRY * qglCreateProgram )(void);
+void ( APIENTRY * qglAttachShader )(GLuint program, GLuint shader);
+void ( APIENTRY * qglLinkProgram )(GLuint program);
+void ( APIENTRY * qglUseProgram )(GLuint program);
+void ( APIENTRY * qglDeleteShader )(GLuint shader);
+void ( APIENTRY * qglDeleteProgram )(GLuint program);
+GLint ( APIENTRY * qglGetUniformLocation )(GLuint program, const GLchar *name);
+void ( APIENTRY * qglUniform1f )(GLint location, GLfloat v0);
+void ( APIENTRY * qglUniform1i )(GLint location, GLint v0);
+
 void ( APIENTRY * qglPointParameterfEXT)( GLenum param, GLfloat value );
 void ( APIENTRY * qglPointParameterfvEXT)( GLenum param, const GLfloat *value );
 void ( APIENTRY * qglColorTableEXT)( int, int, int, int, int, const void * );

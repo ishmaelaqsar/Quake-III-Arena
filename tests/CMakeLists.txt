@@ -10,6 +10,9 @@ set(TEST_SOURCES
     test_modern_math.cpp
     test_modern_cvar.cpp
     test_modern_net.cpp
+    test_http_downloader.cpp
+    test_discord_rpc.cpp
+    test_vulkan_backend.cpp
     test_modern_scripting.cpp
     test_modern_fs.cpp
     test_modern_multiplayer.cpp
@@ -36,6 +39,7 @@ if(TARGET GTest::gtest_main)
     target_link_libraries(quake3_tests PRIVATE
         -Wl,--start-group
         q3sys
+        q3renderer
         q3server
         qcommon
         botlib
@@ -49,6 +53,7 @@ else()
     target_link_libraries(quake3_tests PRIVATE
         -Wl,--start-group
         q3sys
+        q3renderer
         q3server
         qcommon
         botlib
