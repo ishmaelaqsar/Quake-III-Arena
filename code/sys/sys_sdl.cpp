@@ -7,6 +7,7 @@
 #include <cmath>
 
 extern "C" {
+#include "qgl.h"
 #include "tr_public.h"
 #include "snd_local.h"
 
@@ -188,6 +189,22 @@ void GLimp_Init( void ) {
     // Direct QGL function bindings via SDL_GL_GetProcAddress
     QGL_Init("libGL.so.1");
 
+    qglActiveTextureARB = (void (APIENTRY *)(GLenum))SDL_GL_GetProcAddress("glActiveTextureARB");
+    qglClientActiveTextureARB = (void (APIENTRY *)(GLenum))SDL_GL_GetProcAddress("glClientActiveTextureARB");
+    qglMultiTexCoord2fARB = (void (APIENTRY *)(GLenum, GLfloat, GLfloat))SDL_GL_GetProcAddress("glMultiTexCoord2fARB");
+    qglLockArraysEXT = (void (APIENTRY *)(int, int))SDL_GL_GetProcAddress("glLockArraysEXT");
+    qglUnlockArraysEXT = (void (APIENTRY *)(void))SDL_GL_GetProcAddress("glUnlockArraysEXT");
+
+    qglGenBuffers = (void (APIENTRY *)(GLsizei, GLuint*))SDL_GL_GetProcAddress("glGenBuffers");
+    qglBindBuffer = (void (APIENTRY *)(GLenum, GLuint))SDL_GL_GetProcAddress("glBindBuffer");
+    qglBufferData = (void (APIENTRY *)(GLenum, GLsizeiptr, const GLvoid*, GLenum))SDL_GL_GetProcAddress("glBufferData");
+    qglBufferSubData = (void (APIENTRY *)(GLenum, GLintptr, GLsizeiptr, const GLvoid*))SDL_GL_GetProcAddress("glBufferSubData");
+    qglDeleteBuffers = (void (APIENTRY *)(GLsizei, const GLuint*))SDL_GL_GetProcAddress("glDeleteBuffers");
+
+    qglGenVertexArrays = (void (APIENTRY *)(GLsizei, GLuint*))SDL_GL_GetProcAddress("glGenVertexArrays");
+    qglBindVertexArray = (void (APIENTRY *)(GLuint))SDL_GL_GetProcAddress("glBindVertexArray");
+    qglDeleteVertexArrays = (void (APIENTRY *)(GLsizei, const GLuint*))SDL_GL_GetProcAddress("glDeleteVertexArrays");
+
     if (s_window) {
         SDL_SetRelativeMouseMode(SDL_TRUE);
         s_mouseGrabbed = qtrue;
@@ -273,7 +290,7 @@ qboolean SNDDMA_Init( void ) {
         return qfalse;
     }
 
-    int khz = (s_khz && s_khz->integer) ? s_khz->integer : 22;
+    int khz = (s_khz && s_khz->integer) ? s_khz->integer : 44;
     int target_freq = 22050;
     if (khz == 44) target_freq = 44100;
     else if (khz == 22) target_freq = 22050;

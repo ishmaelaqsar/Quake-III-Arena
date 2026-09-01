@@ -154,6 +154,37 @@ extern	void ( APIENTRY * qglClientActiveTextureARB )( GLenum texture );
 extern	void ( APIENTRY * qglLockArraysEXT) (GLint, GLint);
 extern	void ( APIENTRY * qglUnlockArraysEXT) (void);
 
+// VBO and VAO modern OpenGL extensions
+#ifndef GL_ARRAY_BUFFER
+#define GL_ARRAY_BUFFER 0x8892
+#endif
+#ifndef GL_ELEMENT_ARRAY_BUFFER
+#define GL_ELEMENT_ARRAY_BUFFER 0x8893
+#endif
+#ifndef GL_STREAM_DRAW
+#define GL_STREAM_DRAW 0x88E0
+#endif
+#ifndef GL_STATIC_DRAW
+#define GL_STATIC_DRAW 0x88E4
+#endif
+
+#ifndef GLintptr
+typedef ptrdiff_t GLintptr;
+#endif
+#ifndef GLsizeiptr
+typedef ptrdiff_t GLsizeiptr;
+#endif
+
+extern void ( APIENTRY * qglGenBuffers )(GLsizei n, GLuint *buffers);
+extern void ( APIENTRY * qglBindBuffer )(GLenum target, GLuint buffer);
+extern void ( APIENTRY * qglBufferData )(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage);
+extern void ( APIENTRY * qglBufferSubData )(GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid *data);
+extern void ( APIENTRY * qglDeleteBuffers )(GLsizei n, const GLuint *buffers);
+
+extern void ( APIENTRY * qglGenVertexArrays )(GLsizei n, GLuint *arrays);
+extern void ( APIENTRY * qglBindVertexArray )(GLuint array);
+extern void ( APIENTRY * qglDeleteVertexArrays )(GLsizei n, const GLuint *arrays);
+
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

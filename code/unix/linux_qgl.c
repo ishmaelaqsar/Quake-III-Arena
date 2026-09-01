@@ -411,6 +411,16 @@ void ( APIENTRY * qglClientActiveTextureARB )( GLenum texture );
 void ( APIENTRY * qglLockArraysEXT)( int, int);
 void ( APIENTRY * qglUnlockArraysEXT) ( void );
 
+void ( APIENTRY * qglGenBuffers )(GLsizei n, GLuint *buffers);
+void ( APIENTRY * qglBindBuffer )(GLenum target, GLuint buffer);
+void ( APIENTRY * qglBufferData )(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage);
+void ( APIENTRY * qglBufferSubData )(GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid *data);
+void ( APIENTRY * qglDeleteBuffers )(GLsizei n, const GLuint *buffers);
+
+void ( APIENTRY * qglGenVertexArrays )(GLsizei n, GLuint *arrays);
+void ( APIENTRY * qglBindVertexArray )(GLuint array);
+void ( APIENTRY * qglDeleteVertexArrays )(GLsizei n, const GLuint *arrays);
+
 void ( APIENTRY * qglPointParameterfEXT)( GLenum param, GLfloat value );
 void ( APIENTRY * qglPointParameterfvEXT)( GLenum param, const GLfloat *value );
 void ( APIENTRY * qglColorTableEXT)( int, int, int, int, int, const void * );

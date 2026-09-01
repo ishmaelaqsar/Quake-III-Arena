@@ -165,9 +165,9 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 
 	primitives = r_primitives->integer;
 
-	// default is to use triangles if compiled vertex arrays are present
+	// default is to use triangles if compiled vertex arrays or VBOs are present
 	if ( primitives == 0 ) {
-		if ( qglLockArraysEXT ) {
+		if ( qglLockArraysEXT || qglBindBuffer ) {
 			primitives = 2;
 		} else {
 			primitives = 1;
@@ -179,7 +179,7 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 		qglDrawElements( GL_TRIANGLES, 
 						numIndexes,
 						GL_INDEX_TYPE,
-						indexes );
+						qglBindBuffer ? 0 : indexes );
 		return;
 	}
 
