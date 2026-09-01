@@ -1,11 +1,13 @@
 #include "sys_api.h"
 #include "cvar/cvar_manager.hpp"
 #include "fs/vfs.hpp"
+#include "net/http_downloader.hpp"
 #include "multiplayer/session.hpp"
 #include "scripting/script_engine.hpp"
 #include "logger/logger.hpp"
 
 static q3::scripting::ScriptEngine* g_scriptEngine = nullptr;
+static q3::net::HttpDownloader g_httpDownloader;
 
 static void ConsolePrintSink(const char* msg) {
     if (msg) {
@@ -75,6 +77,65 @@ void Sys_VFS_WriteFile(const char *qpath, const void *buffer, int size) {
     q3::fs::VirtualFileSystem::instance().write_binary(
         qpath, static_cast<const uint8_t*>(buffer), static_cast<std::size_t>(size)
     );
+}
+
+qboolean Sys_SanitizeDownloadFilename(const char *filename) {
+    if (!filename || !*filename) return qfalse;
+
+    std::string_view name(filename);
+
+    // Prevent path traversal
+    if (name.find("..") != std::string_view::npos || name.find(':') != std::string_view::npos) {
+        LOG_WARN("Sys_SanitizeDownloadFilename: Path traversal blocked in '", filename, "'");
+        return qfalse;
+    }
+
+    // Prevent absolute paths
+    if (name.front() == '/' || name.front() == '\\') {
+        LOG_WARN("Sys_SanitizeDownloadFilename: Absolute path blocked in '", filename, "'");
+        return qfalse;
+    }
+
+    // Check dangerous file extensions
+    auto ext_pos = name.rfind('.');
+    if (ext_pos != std::string_view::npos) {
+        std::string_view ext = name.substr(ext_pos);
+        if (ext == ".so" || ext == ".dll" || ext == ".dylib" || ext == ".exe" ||
+            ext == ".bat" || ext == ".sh" || ext == ".cmd") {
+            LOG_WARN("Sys_SanitizeDownloadFilename: Executable extension blocked in '", filename, "'");
+            return qfalse;
+        }
+
+        // Prevent config overwrites
+        if (name == "autoexec.cfg" || name == "q3config.cfg" || name == "default.cfg") {
+            LOG_WARN("Sys_SanitizeDownloadFilename: Config overwrite blocked in '", filename, "'");
+            return qfalse;
+        }
+    }
+
+    return qtrue;
+}
+
+void Sys_StartHttpDownload(const char *url, const char *outputPath) {
+    if (!url || !outputPath) return;
+
+    LOG_INFO("Sys_StartHttpDownload: ", url, " -> ", outputPath);
+    g_httpDownloader.start_download(url, outputPath, [](std::size_t downloaded, std::size_t total) {
+        Cvar_SetValue("cl_downloadCount", downloaded);
+        if (total > 0) {
+            Cvar_SetValue("cl_downloadSize", total);
+        }
+    });
+}
+
+int Sys_GetHttpDownloadStatus(void) {
+    auto status = g_httpDownloader.status();
+    switch (status) {
+        case q3::net::DownloadStatus::Downloading: return 1;
+        case q3::net::DownloadStatus::Completed:   return 2;
+        case q3::net::DownloadStatus::Failed:      return 3;
+        default:                                   return 0;
+    }
 }
 
 void Sys_Cvar_NotifyChange(const char *var_name, const char *old_val, const char *new_val) {

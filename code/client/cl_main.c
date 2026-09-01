@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "client.h"
 #include <limits.h>
+#include "../sys/sys_api.h"
 
 cvar_t	*cl_nodelta;
 cvar_t	*cl_debugMove;
@@ -1375,6 +1376,11 @@ game directory.
 =================
 */
 void CL_BeginDownload( const char *localName, const char *remoteName ) {
+	if ( !Sys_SanitizeDownloadFilename( localName ) || !Sys_SanitizeDownloadFilename( remoteName ) ) {
+		Com_Printf( "^1SECURITY WARNING: Refusing to download unsafe file '%s'\n", remoteName );
+		CL_NextDownload();
+		return;
+	}
 
 	Com_DPrintf("***** CL_BeginDownload *****\n"
 				"Localname: %s\n"
@@ -1393,7 +1399,29 @@ void CL_BeginDownload( const char *localName, const char *remoteName ) {
 	clc.downloadBlock = 0; // Starting new file
 	clc.downloadCount = 0;
 
-	CL_AddReliableCommand( va("download %s", remoteName) );
+	// Check FastDL URLs (sv_dlURL or cl_cURL_URL or ws.q3df.org fallback)
+	cvar_t *sv_dlURL = Cvar_Get( "sv_dlURL", "", CVAR_SYSTEMINFO );
+	cvar_t *cl_cURL_URL = Cvar_Get( "cl_cURL_URL", "", CVAR_ARCHIVE );
+
+	char downloadURL[1024];
+	if ( sv_dlURL && *sv_dlURL->string ) {
+		Com_sprintf( downloadURL, sizeof(downloadURL), "%s/%s", sv_dlURL->string, remoteName );
+	} else if ( cl_cURL_URL && *cl_cURL_URL->string ) {
+		Com_sprintf( downloadURL, sizeof(downloadURL), "%s/%s", cl_cURL_URL->string, remoteName );
+	} else {
+		// Fallback to Worldspawn / DeFRaG ws.q3df.org repository
+		const char *mapname = remoteName;
+		const char *slash = strrchr( remoteName, '/' );
+		if ( slash ) mapname = slash + 1;
+		Com_sprintf( downloadURL, sizeof(downloadURL), "https://ws.q3df.org/maps/downloads/%s", mapname );
+	}
+
+	Com_Printf( "FastDL: Downloading '%s' via FastDL (%s)...\n", remoteName, downloadURL );
+
+	char targetPath[1024];
+	Com_sprintf( targetPath, sizeof(targetPath), "baseq3/%s", localName );
+
+	Sys_StartHttpDownload( downloadURL, targetPath );
 }
 
 /*
@@ -2311,7 +2339,7 @@ void CL_Init( void ) {
 
 	cl_showMouseRate = Cvar_Get ("cl_showmouserate", "0", 0);
 
-	cl_allowDownload = Cvar_Get ("cl_allowDownload", "0", CVAR_ARCHIVE);
+	cl_allowDownload = Cvar_Get ("cl_allowDownload", "1", CVAR_ARCHIVE);
 
 	cl_conXOffset = Cvar_Get ("cl_conXOffset", "0", 0);
 #ifdef MACOS_X

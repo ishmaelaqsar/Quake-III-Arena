@@ -1,5 +1,7 @@
 #pragma once
 
+#include "q_shared.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -12,6 +14,11 @@ void Sys_ScriptEvent(const char* event_name, const char* arg);
 // Filesystem wrappers
 int Sys_VFS_ReadFile(const char *qpath, void **buffer);
 void Sys_VFS_WriteFile(const char *qpath, const void *buffer, int size);
+
+// HTTP FastDL wrappers
+qboolean Sys_SanitizeDownloadFilename(const char *filename);
+void Sys_StartHttpDownload(const char *url, const char *outputPath);
+int Sys_GetHttpDownloadStatus(void);
 
 // Cvar wrappers
 struct cvar_s;
