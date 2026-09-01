@@ -125,16 +125,26 @@ int UI_ParseInfos( char *buf, int max, char *infos[] ) {
 
 		const char *mapName = Info_ValueForKey(info, "map");
 		fileHandle_t f;
-		if (mapName && mapName[0]) {
-			if (trap_FS_FOpenFile(va("maps/%s.bsp", mapName), &f, FS_READ) < 0) {
-				Com_Printf("UI_ParseInfos: Skipping missing map 'maps/%s.bsp'\n", mapName);
-				continue;
-			}
-			trap_FS_FCloseFile(f);
+		if (!mapName || !mapName[0]) {
+			continue;
+		}
+		if (trap_FS_FOpenFile(va("maps/%s.bsp", mapName), &f, FS_READ) < 0) {
+			Com_Printf("UI_ParseInfos: Skipping missing map 'maps/%s.bsp'\n", mapName);
+			continue;
+		}
+		trap_FS_FCloseFile(f);
+
+		const char *typeStr = Info_ValueForKey(info, "type");
+		if (!typeStr || !typeStr[0]) {
+			Info_SetValueForKey(info, "type", "single ffa tourney");
+		} else if (!strstr(typeStr, "single")) {
+			char newType[MAX_INFO_STRING];
+			Com_sprintf(newType, sizeof(newType), "single %s", typeStr);
+			Info_SetValueForKey(info, "type", newType);
 		}
 
 		//NOTE: extra space for arena number
-		infos[count] = UI_Alloc(strlen(info) + strlen("\\num\\") + strlen(va("%d", MAX_ARENAS)) + 1);
+		infos[count] = UI_Alloc(strlen(info) + strlen("\\num\\") + strlen(va("%d", MAX_ARENAS)) + 64);
 		if (infos[count]) {
 			strcpy(infos[count], info);
 			count++;
@@ -239,13 +249,6 @@ static void UI_LoadArenas( void ) {
 		}
 	}
 
-	// If no explicit singleplayer arena tags are defined, treat all arenas as singleplayer eligible
-	if ( ui_numSinglePlayerArenas == 0 && ui_numArenas > 0 ) {
-		ui_numSinglePlayerArenas = ui_numArenas;
-		for( n = 0; n < ui_numArenas; n++ ) {
-			Info_SetValueForKey( ui_arenaInfos[n], "type", "single ffa tourney" );
-		}
-	}
 
 	n = ui_numSinglePlayerArenas % ARENAS_PER_TIER;
 	if( n != 0 ) {
