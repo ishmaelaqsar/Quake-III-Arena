@@ -179,7 +179,7 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 		qglDrawElements( GL_TRIANGLES, 
 						numIndexes,
 						GL_INDEX_TYPE,
-						qglBindBuffer ? 0 : indexes );
+						indexes );
 		return;
 	}
 
