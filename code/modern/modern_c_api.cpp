@@ -7,9 +7,16 @@
 
 static q3::scripting::ModernScriptEngine* g_scriptEngine = nullptr;
 
+static void ConsolePrintSink(const char* msg) {
+    if (msg) {
+        CL_ConsolePrint(const_cast<char*>(msg));
+    }
+}
+
 extern "C" {
 
 void Modern_Init(void) {
+    q3::log::Logger::instance().set_console_sink(ConsolePrintSink);
     LOG_INFO("Modern_Init: Initializing C++17 modern subsystem layers");
     q3::multiplayer::SessionManager::instance().reset();
     
@@ -92,6 +99,10 @@ void Modern_CrossProduct(const float *v1, const float *v2, float *cross) {
     q3::math::Vec3 vec1(v1);
     q3::math::Vec3 vec2(v2);
     vec1.cross(vec2).to_c_array(cross);
+}
+
+void Modern_SetConsoleSink(void (*sink)(const char *msg)) {
+    q3::log::Logger::instance().set_console_sink(sink);
 }
 
 void Modern_LogDebug(const char *msg) {

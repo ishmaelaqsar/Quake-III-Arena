@@ -22,6 +22,7 @@ float Modern_VectorNormalize(float *v);
 void Modern_CrossProduct(const float *v1, const float *v2, float *cross);
 
 // Logging wrappers
+void Modern_SetConsoleSink(void (*sink)(const char *msg));
 void Modern_LogDebug(const char *msg);
 void Modern_LogInfo(const char *msg);
 void Modern_LogWarn(const char *msg);

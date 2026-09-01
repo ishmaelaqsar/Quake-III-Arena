@@ -16,9 +16,15 @@ enum class Level {
 
 class Logger {
 public:
+    using ConsoleSink = void(*)(const char*);
+
     static Logger& instance() noexcept {
         static Logger logger;
         return logger;
+    }
+
+    void set_console_sink(ConsoleSink sink) noexcept {
+        m_console_sink = sink;
     }
 
     template <typename... Args>
@@ -26,12 +32,19 @@ public:
         std::ostringstream ss;
         (ss << ... << std::forward<Args>(args));
 
+        std::string formatted = std::string("[") + level_to_string(level) + "] [" + std::string(file) + ":" + std::to_string(line) + "] " + ss.str() + "\n";
+
         std::ostream& out = (level == Level::Error) ? std::cerr : std::cout;
-        out << "[" << level_to_string(level) << "] [" << file << ":" << line << "] " << ss.str() << "\n";
+        out << formatted;
+
+        if (m_console_sink) {
+            m_console_sink(formatted.c_str());
+        }
     }
 
 private:
     Logger() = default;
+    ConsoleSink m_console_sink = nullptr;
 
     static constexpr const char* level_to_string(Level level) noexcept {
         switch (level) {
