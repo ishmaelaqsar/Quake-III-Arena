@@ -34,10 +34,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define POOLSIZE	128 * 1024
 
 int				ui_numBots;
-static char		*ui_botInfos[MAX_BOTS];
+static char		ui_botInfos[MAX_BOTS][MAX_INFO_STRING];
 
 static int		ui_numArenas;
-static char		*ui_arenaInfos[MAX_ARENAS];
+static char		ui_arenaInfos[MAX_ARENAS][MAX_INFO_STRING];
 
 static int		ui_numSinglePlayerArenas;
 static int		ui_numSpecialSinglePlayerArenas;
@@ -81,7 +81,7 @@ void UI_InitMemory( void ) {
 UI_ParseInfos
 ===============
 */
-int UI_ParseInfos( char *buf, int max, char *infos[] ) {
+int UI_ParseInfos( char *buf, int max, char infos[][MAX_INFO_STRING] ) {
 	char	*token;
 	int		count;
 	char	key[MAX_TOKEN_CHARS];
@@ -106,7 +106,7 @@ int UI_ParseInfos( char *buf, int max, char *infos[] ) {
 
 		info[0] = '\0';
 		while ( 1 ) {
-			token = COM_ParseExt( &buf, qtrue );
+			token = COM_Parse( &buf );
 			if ( !token[0] ) {
 				Com_Printf( "Unexpected end of info file\n" );
 				break;
@@ -116,7 +116,7 @@ int UI_ParseInfos( char *buf, int max, char *infos[] ) {
 			}
 			Q_strncpyz( key, token, sizeof( key ) );
 
-			token = COM_ParseExt( &buf, qfalse );
+			token = COM_Parse( &buf );
 			if ( !token[0] ) {
 				strcpy( token, "<NULL>" );
 			}
@@ -143,12 +143,8 @@ int UI_ParseInfos( char *buf, int max, char *infos[] ) {
 			Info_SetValueForKey(info, "type", newType);
 		}
 
-		//NOTE: extra space for arena number
-		infos[count] = UI_Alloc(strlen(info) + strlen("\\num\\") + strlen(va("%d", MAX_ARENAS)) + 64);
-		if (infos[count]) {
-			strcpy(infos[count], info);
-			count++;
-		}
+		Q_strncpyz(infos[count], info, MAX_INFO_STRING);
+		count++;
 	}
 	return count;
 }

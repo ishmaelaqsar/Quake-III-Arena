@@ -221,6 +221,11 @@ UI_SPLevelMenu_SetMenuItems
 static void UI_SPLevelMenu_SetMenuArena( int n, int level, const char *arenaInfo ) {
 	char		map[MAX_QPATH];
 
+	if ( !arenaInfo ) {
+		levelMenuInfo.item_maps[n].generic.flags |= ( QMF_INACTIVE | QMF_HIDDEN );
+		return;
+	}
+
 	Q_strncpyz( map, Info_ValueForKey( arenaInfo, "map" ), sizeof(map) );
 	trap_Print( va("UI_SPLevelMenu_SetMenuArena: slot %i, level %i, map '%s'\n", n, level, map) );
 
@@ -318,6 +323,14 @@ static void UI_SPLevelMenu_SetMenuItems( void ) {
 		for ( n = 0; n < 4; n++ ) {
 			level = selectedArenaSet * ARENAS_PER_TIER + n;
 			arenaInfo = UI_GetArenaInfoByNumber( level );
+			if ( !arenaInfo ) {
+				levelMenuInfo.item_maps[n].generic.flags |= ( QMF_INACTIVE | QMF_HIDDEN );
+				levelMenuInfo.levelPicNames[n][0] = 0;
+				levelMenuInfo.levelNames[n][0] = 0;
+				levelMenuInfo.item_maps[n].shader = 0;
+				continue;
+			}
+			levelMenuInfo.item_maps[n].generic.flags &= ~( QMF_INACTIVE | QMF_HIDDEN );
 			UI_SPLevelMenu_SetMenuArena( n, level, arenaInfo );
 		}
 
