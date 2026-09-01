@@ -6,7 +6,9 @@
 
 namespace q3::scripting {
 
-ModernScriptEngine::ModernScriptEngine() {
+ScriptEngine::ScriptEngine() {
+    lua_enabled_ = true;
+
     // Built-in standard script functions
     register_function("print", [this](const std::vector<ScriptValue>& args) -> ScriptValue {
         std::ostringstream ss;
@@ -69,7 +71,7 @@ ModernScriptEngine::ModernScriptEngine() {
     });
 }
 
-std::vector<std::string> ModernScriptEngine::tokenize_line(std::string_view line) {
+std::vector<std::string> ScriptEngine::tokenize_line(std::string_view line) {
     std::vector<std::string> tokens;
     std::string token;
     bool in_quotes = false;
@@ -93,12 +95,12 @@ std::vector<std::string> ModernScriptEngine::tokenize_line(std::string_view line
     return tokens;
 }
 
-bool ModernScriptEngine::execute(std::string_view script) {
+bool ScriptEngine::execute(std::string_view script) {
     std::istringstream stream((std::string(script)));
     std::string line;
 
     while (std::getline(stream, line)) {
-        // Strip comments and trim
+        // Strip comments
         auto comment_pos = line.find("//");
         if (comment_pos != std::string::npos) {
             line = line.substr(0, comment_pos);
@@ -107,75 +109,84 @@ bool ModernScriptEngine::execute(std::string_view script) {
         auto tokens = tokenize_line(line);
         if (tokens.empty()) continue;
 
-        const std::string& cmd = tokens[0];
-
-        // Variable assignment: var name = value / set name value
-        if (cmd == "var" || cmd == "let" || cmd == "set") {
-            if (tokens.size() >= 3) {
-                std::string var_name = tokens[1];
-                std::string var_expr;
-                std::size_t val_start = (tokens[2] == "=") ? 3 : 2;
-                for (std::size_t i = val_start; i < tokens.size(); ++i) {
-                    if (i > val_start) var_expr += " ";
-                    var_expr += tokens[i];
-                }
-                set_variable(var_name, eval(var_expr));
+        // Command: let var_name = value  OR  set var_name value
+        if ((tokens[0] == "set" || tokens[0] == "let") && tokens.size() >= 3) {
+            std::size_t name_idx = 1;
+            std::size_t val_idx = 2;
+            if (tokens[0] == "let" && tokens.size() >= 4 && tokens[2] == "=") {
+                val_idx = 3;
             }
+            std::string var_name = tokens[name_idx];
+            std::string val_str = tokens[val_idx];
+
+            ScriptValue val;
+            try {
+                double d = std::stod(val_str);
+                val = d;
+            } catch (...) {
+                if (val_str == "true") val = true;
+                else if (val_str == "false") val = false;
+                else val = val_str;
+            }
+            set_variable(var_name, val);
         }
-        // Function invocation
-        else if (auto it = functions_.find(cmd); it != functions_.end()) {
+        // Event emit: emit event_name arg
+        else if (tokens[0] == "emit" && tokens.size() >= 2) {
+            std::string event_name = tokens[1];
+            std::vector<ScriptValue> args;
+            for (std::size_t i = 2; i < tokens.size(); ++i) {
+                try {
+                    double d = std::stod(tokens[i]);
+                    args.push_back(d);
+                } catch (...) {
+                    if (tokens[i] == "true") args.push_back(true);
+                    else if (tokens[i] == "false") args.push_back(false);
+                    else args.push_back(tokens[i]);
+                }
+            }
+            dispatch_event(event_name, args);
+        }
+        // Function call: func_name arg1 arg2
+        else if (functions_.find(tokens[0]) != functions_.end()) {
             std::vector<ScriptValue> args;
             for (std::size_t i = 1; i < tokens.size(); ++i) {
-                args.push_back(eval(tokens[i]));
-            }
-            it->second(args);
-        }
-        // Event trigger: emit event_name [args...]
-        else if (cmd == "emit" || cmd == "trigger") {
-            if (tokens.size() >= 2) {
-                std::string ev = tokens[1];
-                std::vector<ScriptValue> args;
-                for (std::size_t i = 2; i < tokens.size(); ++i) {
-                    args.push_back(eval(tokens[i]));
+                try {
+                    double d = std::stod(tokens[i]);
+                    args.push_back(d);
+                } catch (...) {
+                    if (tokens[i] == "true") args.push_back(true);
+                    else if (tokens[i] == "false") args.push_back(false);
+                    else args.push_back(tokens[i]);
                 }
-                dispatch_event(ev, args);
             }
+            functions_[tokens[0]](args);
         }
     }
     return true;
 }
 
-ScriptValue ModernScriptEngine::eval(std::string_view expression) {
-    if (expression.empty()) return ScriptValue{};
-
-    // Check if it's a number
-    try {
-        std::size_t idx = 0;
-        std::string s(expression);
-        double val = std::stod(s, &idx);
-        if (idx == s.size()) {
-            return ScriptValue(val);
-        }
-    } catch (...) {}
-
-    // Check boolean
-    if (expression == "true") return ScriptValue(true);
-    if (expression == "false") return ScriptValue(false);
-
-    // Check variable
-    if (auto var = get_variable(expression)) {
-        return *var;
+ScriptValue ScriptEngine::eval(std::string_view expression) {
+    auto var_opt = get_variable(expression);
+    if (var_opt.has_value()) {
+        return *var_opt;
     }
 
-    // Default to string value
-    return ScriptValue(std::string(expression));
+    try {
+        double d = std::stod(std::string(expression));
+        return ScriptValue(d);
+    } catch (...) {
+        std::string expr(expression);
+        if (expr == "true") return ScriptValue(true);
+        if (expr == "false") return ScriptValue(false);
+        return ScriptValue(expr);
+    }
 }
 
-void ModernScriptEngine::set_variable(std::string_view name, const ScriptValue& val) {
+void ScriptEngine::set_variable(std::string_view name, const ScriptValue& val) {
     variables_[std::string(name)] = val;
 }
 
-std::optional<ScriptValue> ModernScriptEngine::get_variable(std::string_view name) const {
+std::optional<ScriptValue> ScriptEngine::get_variable(std::string_view name) const {
     auto it = variables_.find(std::string(name));
     if (it != variables_.end()) {
         return it->second;
@@ -183,15 +194,15 @@ std::optional<ScriptValue> ModernScriptEngine::get_variable(std::string_view nam
     return std::nullopt;
 }
 
-void ModernScriptEngine::register_function(std::string_view name, ScriptFunction fn) {
-    functions_[std::string(name)] = std::move(fn);
+void ScriptEngine::register_function(std::string_view name, ScriptFunction fn) {
+    functions_[std::string(name)] = fn;
 }
 
-void ModernScriptEngine::subscribe_event(std::string_view event_name, EventHandler handler) {
-    event_handlers_[std::string(event_name)].push_back(std::move(handler));
+void ScriptEngine::subscribe_event(std::string_view event_name, EventHandler handler) {
+    event_handlers_[std::string(event_name)].push_back(handler);
 }
 
-void ModernScriptEngine::dispatch_event(std::string_view event_name, const std::vector<ScriptValue>& args) {
+void ScriptEngine::dispatch_event(std::string_view event_name, const std::vector<ScriptValue>& args) {
     auto it = event_handlers_.find(std::string(event_name));
     if (it != event_handlers_.end()) {
         for (const auto& handler : it->second) {
@@ -200,34 +211,36 @@ void ModernScriptEngine::dispatch_event(std::string_view event_name, const std::
     }
 }
 
-void ModernScriptEngine::schedule(double delay_seconds, std::function<void()> callback) {
-    tasks_.push_back({current_time_ + delay_seconds, std::move(callback)});
+void ScriptEngine::schedule(double delay_seconds, std::function<void()> callback) {
+    tasks_.push_back({current_time_ + delay_seconds, callback});
 }
 
-void ModernScriptEngine::update_timers(double current_time_seconds) {
-    current_time_ = current_time_seconds;
+void ScriptEngine::update_timers(double delta_time_seconds) {
+    current_time_ += delta_time_seconds;
+
     auto it = tasks_.begin();
     while (it != tasks_.end()) {
         if (current_time_ >= it->trigger_time) {
-            auto cb = std::move(it->callback);
+            if (it->callback) {
+                it->callback();
+            }
             it = tasks_.erase(it);
-            if (cb) cb();
         } else {
             ++it;
         }
     }
 }
 
-void ModernScriptEngine::set_entity_property(int entity_id, std::string_view key, const ScriptValue& val) {
+void ScriptEngine::set_entity_property(int entity_id, std::string_view key, const ScriptValue& val) {
     entity_properties_[entity_id][std::string(key)] = val;
 }
 
-std::optional<ScriptValue> ModernScriptEngine::get_entity_property(int entity_id, std::string_view key) const {
-    auto e_it = entity_properties_.find(entity_id);
-    if (e_it != entity_properties_.end()) {
-        auto p_it = e_it->second.find(std::string(key));
-        if (p_it != e_it->second.end()) {
-            return p_it->second;
+std::optional<ScriptValue> ScriptEngine::get_entity_property(int entity_id, std::string_view key) const {
+    auto ent_it = entity_properties_.find(entity_id);
+    if (ent_it != entity_properties_.end()) {
+        auto prop_it = ent_it->second.find(std::string(key));
+        if (prop_it != ent_it->second.end()) {
+            return prop_it->second;
         }
     }
     return std::nullopt;

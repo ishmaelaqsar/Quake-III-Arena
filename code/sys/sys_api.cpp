@@ -5,7 +5,7 @@
 #include "scripting/script_engine.hpp"
 #include "logger/logger.hpp"
 
-static q3::scripting::ModernScriptEngine* g_scriptEngine = nullptr;
+static q3::scripting::ScriptEngine* g_scriptEngine = nullptr;
 
 static void ConsolePrintSink(const char* msg) {
     if (msg) {
@@ -21,7 +21,7 @@ void Sys_SubsystemInit(void) {
     q3::multiplayer::SessionManager::instance().reset();
     
     if (!g_scriptEngine) {
-        g_scriptEngine = new q3::scripting::ModernScriptEngine();
+        g_scriptEngine = new q3::scripting::ScriptEngine();
         LOG_INFO("Sys_SubsystemInit: Scripting engine initialized");
     }
     

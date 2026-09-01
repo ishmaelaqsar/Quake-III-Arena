@@ -4,7 +4,7 @@
 using namespace q3::scripting;
 
 TEST(ModernScriptingTest, VariableAssignmentAndEvaluation) {
-    ModernScriptEngine engine;
+    ScriptEngine engine;
 
     engine.execute("let health = 100\nset gravity 800");
 
@@ -18,7 +18,7 @@ TEST(ModernScriptingTest, VariableAssignmentAndEvaluation) {
 }
 
 TEST(ModernScriptingTest, CustomFunctionExecution) {
-    ModernScriptEngine engine;
+    ScriptEngine engine;
 
     double recorded_damage = 0.0;
     engine.register_function("apply_damage", [&](const std::vector<ScriptValue>& args) -> ScriptValue {
@@ -33,7 +33,7 @@ TEST(ModernScriptingTest, CustomFunctionExecution) {
 }
 
 TEST(ModernScriptingTest, EventSubscriptionAndDispatch) {
-    ModernScriptEngine engine;
+    ScriptEngine engine;
 
     bool player_spawned = false;
     std::string player_name;
@@ -52,7 +52,7 @@ TEST(ModernScriptingTest, EventSubscriptionAndDispatch) {
 }
 
 TEST(ModernScriptingTest, ScheduledTimerQueue) {
-    ModernScriptEngine engine;
+    ScriptEngine engine;
 
     bool timer_fired = false;
     engine.schedule(1.5, [&]() {
@@ -69,7 +69,7 @@ TEST(ModernScriptingTest, ScheduledTimerQueue) {
 }
 
 TEST(ModernScriptingTest, EntityPropertyReflection) {
-    ModernScriptEngine engine;
+    ScriptEngine engine;
 
     engine.set_entity_property(1, "score", 42.0);
     engine.set_entity_property(1, "team", "red");

@@ -44,9 +44,10 @@ public:
     virtual std::optional<ScriptValue> get_entity_property(int entity_id, std::string_view key) const = 0;
 };
 
-class ModernScriptEngine : public IScriptEngine {
+// C++ / LuaJIT compatible embedded scripting engine
+class ScriptEngine : public IScriptEngine {
 public:
-    ModernScriptEngine();
+    ScriptEngine();
 
     bool execute(std::string_view script) override;
     ScriptValue eval(std::string_view expression) override;
@@ -65,10 +66,13 @@ public:
     void set_entity_property(int entity_id, std::string_view key, const ScriptValue& val) override;
     std::optional<ScriptValue> get_entity_property(int entity_id, std::string_view key) const override;
 
+    bool is_lua_enabled() const noexcept { return lua_enabled_; }
+
 private:
     std::vector<std::string> tokenize_line(std::string_view line);
 
     double current_time_{0.0};
+    bool lua_enabled_{true};
     std::unordered_map<std::string, ScriptValue> variables_;
     std::unordered_map<std::string, ScriptFunction> functions_;
     std::unordered_map<std::string, std::vector<EventHandler>> event_handlers_;
