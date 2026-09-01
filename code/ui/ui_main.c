@@ -3564,6 +3564,13 @@ static int UI_MapCountByGameType(qboolean singlePlayer) {
 					continue;
 				}
 			}
+			fileHandle_t f;
+			if (!uiInfo.mapList[i].mapLoadName || !uiInfo.mapList[i].mapLoadName[0] ||
+				trap_FS_FOpenFile(va("maps/%s.bsp", uiInfo.mapList[i].mapLoadName), &f, FS_READ) < 0) {
+				continue;
+			}
+			trap_FS_FCloseFile(f);
+
 			c++;
 			uiInfo.mapList[i].active = qtrue;
 		}
