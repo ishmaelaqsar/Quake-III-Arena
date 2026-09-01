@@ -171,9 +171,15 @@ void GLimp_Init( void ) {
         SDL_GL_SetSwapInterval(r_swapInterval->integer);
     }
 
-    glConfig.vidWidth = width;
-    glConfig.vidHeight = height;
-    glConfig.windowAspect = (float)width / (float)height;
+    int drawableWidth = width;
+    int drawableHeight = height;
+    SDL_GL_GetDrawableSize(s_window, &drawableWidth, &drawableHeight);
+
+    LOG_INFO("GLimp_Init: Drawable surface dimensions: ", drawableWidth, "x", drawableHeight);
+
+    glConfig.vidWidth = drawableWidth;
+    glConfig.vidHeight = drawableHeight;
+    glConfig.windowAspect = (float)drawableWidth / (float)drawableHeight;
     glConfig.colorBits = 32;
     glConfig.depthBits = 24;
     glConfig.stencilBits = 8;
