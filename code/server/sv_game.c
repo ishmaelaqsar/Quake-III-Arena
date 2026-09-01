@@ -306,15 +306,11 @@ The module is making a system call
 ====================
 */
 //rcg010207 - see my comments in VM_DllSyscall(), in qcommon/vm.c ...
-#if ((defined __linux__) && (defined __powerpc__))
-#define VMA(x) ((void *) args[x])
-#else
-#define	VMA(x) VM_ArgPtr(((intptr_t*)args)[x])
-#endif
+#define	VMA(x) VM_ArgPtr(args[x])
+#define	VMF(x)	(*((float*)&args[x]))
 
-#define	VMF(x)	(*((float*)&((intptr_t*)args)[x]))
-
-int SV_GameSystemCalls( int *args ) {
+int SV_GameSystemCalls( int *parms ) {
+	intptr_t *args = (intptr_t *)parms;
 	switch( args[0] ) {
 	case G_PRINT:
 		Com_Printf( "%s", VMA(1) );
