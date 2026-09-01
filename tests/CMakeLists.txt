@@ -12,6 +12,7 @@ set(TEST_SOURCES
     test_modern_scripting.cpp
     test_modern_fs.cpp
     test_modern_multiplayer.cpp
+    test_modern_logger.cpp
 )
 
 add_executable(quake3_tests ${TEST_SOURCES})

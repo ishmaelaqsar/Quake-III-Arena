@@ -21,6 +21,12 @@ void Modern_Cvar_NotifyChange(const char *var_name, const char *old_val, const c
 float Modern_VectorNormalize(float *v);
 void Modern_CrossProduct(const float *v1, const float *v2, float *cross);
 
+// Logging wrappers
+void Modern_LogDebug(const char *msg);
+void Modern_LogInfo(const char *msg);
+void Modern_LogWarn(const char *msg);
+void Modern_LogError(const char *msg);
+
 #ifdef __cplusplus
 }
 #endif

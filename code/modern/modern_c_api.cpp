@@ -3,6 +3,7 @@
 #include "fs/vfs.hpp"
 #include "multiplayer/session.hpp"
 #include "scripting/script_engine.hpp"
+#include "logger/logger.hpp"
 
 static q3::scripting::ModernScriptEngine* g_scriptEngine = nullptr;
 
@@ -80,6 +81,22 @@ void Modern_CrossProduct(const float *v1, const float *v2, float *cross) {
     q3::math::Vec3 vec1(v1);
     q3::math::Vec3 vec2(v2);
     vec1.cross(vec2).to_c_array(cross);
+}
+
+void Modern_LogDebug(const char *msg) {
+    if (msg) LOG_DEBUG(msg);
+}
+
+void Modern_LogInfo(const char *msg) {
+    if (msg) LOG_INFO(msg);
+}
+
+void Modern_LogWarn(const char *msg) {
+    if (msg) LOG_WARN(msg);
+}
+
+void Modern_LogError(const char *msg) {
+    if (msg) LOG_ERROR(msg);
 }
 
 } // extern "C"
