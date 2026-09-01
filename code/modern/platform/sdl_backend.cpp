@@ -107,7 +107,7 @@ void GLimp_Init( void ) {
     cvar_t* r_fullscreen = Cvar_Get("r_fullscreen", "0", CVAR_ARCHIVE | CVAR_LATCH);
     cvar_t* r_depthbits = Cvar_Get("r_depthbits", "24", CVAR_ARCHIVE | CVAR_LATCH);
     cvar_t* r_stencilbits = Cvar_Get("r_stencilbits", "8", CVAR_ARCHIVE | CVAR_LATCH);
-    cvar_t* r_swapInterval = Cvar_Get("r_swapInterval", "0", CVAR_ARCHIVE);
+    cvar_t* r_swapInterval = Cvar_Get("r_swapInterval", "1", CVAR_ARCHIVE);
 
     int width = 1024;
     int height = 768;
