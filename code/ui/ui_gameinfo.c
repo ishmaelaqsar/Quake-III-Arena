@@ -169,13 +169,15 @@ void UI_LoadArenas( void ) {
 
 	for( n = 0; n < ui_numArenas; n++ ) {
 		const char *mapName = Info_ValueForKey(ui_arenaInfos[n], "map");
+		fileHandle_t f;
 		if (!mapName || !mapName[0]) {
 			continue;
 		}
 		// Skip map entries if the map bsp does not exist
-		if (!trap_FS_FOpenFile(va("maps/%s.bsp", mapName), NULL, FS_READ)) {
+		if (trap_FS_FOpenFile(va("maps/%s.bsp", mapName), &f, FS_READ) < 0) {
 			continue;
 		}
+		trap_FS_FCloseFile(f);
 
 		uiInfo.mapList[uiInfo.mapCount].cinematic = -1;
 		uiInfo.mapList[uiInfo.mapCount].mapLoadName = String_Alloc(mapName);
