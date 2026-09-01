@@ -1092,10 +1092,10 @@ void AddPointToBounds( const vec3_t v, vec3_t mins, vec3_t maxs ) {
 
 
 #if !defined(GAME_DLL) && !defined(CGAME_DLL) && !defined(UI_DLL) && !defined(Q3_VM)
-#include "../modern/modern_c_api.h"
+#include "../sys/sys_api.h"
 
 vec_t VectorNormalize( vec3_t v ) {
-	return Modern_VectorNormalize(v);
+	return Sys_VectorNormalize(v);
 }
 #else
 vec_t VectorNormalize( vec3_t v ) {

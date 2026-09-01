@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/q_shared.h"
 #include "qcommon.h"
-#include "../modern/modern_c_api.h"
+#include "../sys/sys_api.h"
 
 cvar_t		*cvar_vars;
 cvar_t		*cvar_cheats;
@@ -387,7 +387,7 @@ cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force ) {
 	var->value = atof (var->string);
 	var->integer = atoi (var->string);
 
-	Modern_Cvar_NotifyChange(var->name, old_val, var->string);
+	Sys_Cvar_NotifyChange(var->name, old_val, var->string);
 	Z_Free (old_val);	// free the old value string
 
 	return var;

@@ -35,7 +35,7 @@ find_package(OpenGL REQUIRED)
 
 # Include directories
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/code/modern
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/sys
     ${CMAKE_CURRENT_SOURCE_DIR}/code/game
     ${CMAKE_CURRENT_SOURCE_DIR}/code/qcommon
     ${CMAKE_CURRENT_SOURCE_DIR}/code/botlib
@@ -154,24 +154,24 @@ add_library(qcommon STATIC ${QCOMMON_SOURCES})
 target_compile_definitions(qcommon PUBLIC C_ONLY)
 
 # ---------------------------------------------------------------------------
-# Modern C++17 Extensions Library (q3modern)
+# Cross-Platform System Layer Library (q3sys)
 # ---------------------------------------------------------------------------
-set(MODERN_SOURCES
-    code/modern/cvar/cvar_manager.cpp
-    code/modern/net/bitstream.cpp
-    code/modern/scripting/script_engine.cpp
-    code/modern/fs/vfs.cpp
-    code/modern/multiplayer/session.cpp
-    code/modern/platform/sdl_backend.cpp
-    code/modern/modern_c_api.cpp
+set(SYS_SOURCES
+    code/sys/cvar/cvar_manager.cpp
+    code/sys/net/bitstream.cpp
+    code/sys/scripting/script_engine.cpp
+    code/sys/fs/vfs.cpp
+    code/sys/multiplayer/session.cpp
+    code/sys/sys_sdl.cpp
+    code/sys/sys_api.cpp
 )
-add_library(q3modern STATIC ${MODERN_SOURCES})
-target_include_directories(q3modern PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/code/modern
+add_library(q3sys STATIC ${SYS_SOURCES})
+target_include_directories(q3sys PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/sys
     ${CMAKE_CURRENT_SOURCE_DIR}/code/game
     ${CMAKE_CURRENT_SOURCE_DIR}/code/qcommon
 )
-target_link_libraries(q3modern PUBLIC qcommon ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(q3sys PUBLIC qcommon ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
 
 # ---------------------------------------------------------------------------
 # Server Library
@@ -207,7 +207,7 @@ target_compile_definitions(q3ded PRIVATE DEDICATED C_ONLY)
 target_link_libraries(q3ded PRIVATE
     -Wl,--start-group
     q3server
-    q3modern
+    q3sys
     qcommon
     botlib
     -Wl,--end-group
@@ -281,7 +281,7 @@ set(CLIENT_PLATFORM_SOURCES
 add_executable(quake3_modern ${CLIENT_PLATFORM_SOURCES})
 target_link_libraries(quake3_modern PRIVATE
     -Wl,--start-group
-    q3modern
+    q3sys
     q3client
     q3renderer
     q3server

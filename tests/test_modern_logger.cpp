@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "../code/modern/logger/logger.hpp"
-#include "../code/modern/modern_c_api.h"
+#include "../code/sys/logger/logger.hpp"
+#include "../code/sys/sys_api.h"
 #include <sstream>
 
 TEST(ModernLoggerTest, MacroFormattingAndLevels) {

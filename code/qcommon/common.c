@@ -2344,7 +2344,7 @@ static void Com_WriteCDKey( const char *filename, const char *ikey ) {
 #endif
 
 
-#include "../modern/modern_c_api.h"
+#include "../sys/sys_api.h"
 
 /*
 =================
@@ -2366,7 +2366,7 @@ void Com_Init( char *commandLine ) {
 	Com_InitSmallZoneMemory();
 	Cvar_Init ();
 
-	Modern_Init();
+	Sys_SubsystemInit();
 
 	// prepare enough of the subsystems to handle
 	// cvar and command buffer management
@@ -2682,7 +2682,7 @@ void Com_Frame( void ) {
 	// figure out how much time has passed since the last frame
 	msec = Com_EventLoop();
 
-	Modern_Frame(msec); 
+	Sys_SubsystemFrame(msec); 
 
 	// if "viewlog" has been modified, show or hide the log console
 	if ( com_viewlog->modified ) {

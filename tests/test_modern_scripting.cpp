@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../code/modern/scripting/script_engine.hpp"
+#include "../code/sys/scripting/script_engine.hpp"
 
 using namespace q3::scripting;
 

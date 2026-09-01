@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../code/modern/multiplayer/session.hpp"
+#include "../code/sys/multiplayer/session.hpp"
 
 using namespace q3::multiplayer;
 

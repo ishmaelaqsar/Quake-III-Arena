@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "../code/modern/net/bitstream.hpp"
-#include "../code/modern/net/transport.hpp"
+#include "../code/sys/net/bitstream.hpp"
+#include "../code/sys/net/transport.hpp"
 
 using namespace q3::net;
 using namespace q3::math;

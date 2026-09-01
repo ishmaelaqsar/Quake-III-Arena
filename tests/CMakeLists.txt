@@ -24,7 +24,7 @@ target_compile_definitions(quake3_tests PRIVATE
 )
 
 target_include_directories(quake3_tests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../code/modern
+    ${CMAKE_CURRENT_SOURCE_DIR}/../code/sys
     ${CMAKE_CURRENT_SOURCE_DIR}/../code/game
     ${CMAKE_CURRENT_SOURCE_DIR}/../code/qcommon
     ${CMAKE_CURRENT_SOURCE_DIR}/../code/botlib
@@ -35,7 +35,7 @@ target_include_directories(quake3_tests PRIVATE
 if(TARGET GTest::gtest_main)
     target_link_libraries(quake3_tests PRIVATE
         -Wl,--start-group
-        q3modern
+        q3sys
         q3server
         qcommon
         botlib
@@ -48,7 +48,7 @@ if(TARGET GTest::gtest_main)
 else()
     target_link_libraries(quake3_tests PRIVATE
         -Wl,--start-group
-        q3modern
+        q3sys
         q3server
         qcommon
         botlib

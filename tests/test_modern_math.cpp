@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../code/modern/math/vec3.hpp"
+#include "../code/sys/math/vec3.hpp"
 
 using namespace q3::math;
 

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../code/modern/cvar/cvar_manager.hpp"
+#include "../code/sys/cvar/cvar_manager.hpp"
 
 extern "C" {
 void Com_InitSmallZoneMemory(void);
