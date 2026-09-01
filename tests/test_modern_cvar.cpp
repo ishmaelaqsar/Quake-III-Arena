@@ -52,3 +52,21 @@ TEST_F(ModernCvarFixture, ChangeListeners) {
     EXPECT_EQ(observed_old, "initial");
     EXPECT_EQ(observed_new, "updated");
 }
+
+TEST_F(ModernCvarFixture, FastMapLookup) {
+    auto& mgr = q3::cvar::CvarManager::instance();
+    mgr.declare("fast_lookup_cvar", "speed_test");
+
+    auto found = mgr.find("fast_lookup_cvar");
+    ASSERT_TRUE(found.has_value());
+    EXPECT_EQ(found->string_value(), "speed_test");
+
+    auto missing = mgr.find("non_existent_cvar_xyz");
+    EXPECT_FALSE(missing.has_value());
+}
+
+TEST_F(ModernCvarFixture, OffsetofStructFieldSanity) {
+    EXPECT_EQ(offsetof(cvar_t, name), 0);
+    EXPECT_GT(offsetof(cvar_t, string), 0);
+    EXPECT_GT(offsetof(cvar_t, value), offsetof(cvar_t, string));
+}
