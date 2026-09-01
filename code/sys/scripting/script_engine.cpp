@@ -1,4 +1,5 @@
 #include "script_engine.hpp"
+#include "../logger/logger.hpp"
 #include <sstream>
 #include <algorithm>
 #include <cctype>
@@ -8,6 +9,14 @@ namespace q3::scripting {
 
 ScriptEngine::ScriptEngine() {
     lua_enabled_ = true;
+
+    // Open standard Sol2 Lua libraries
+    try {
+        lua_.open_libraries(sol::lib::base, sol::lib::package, sol::lib::math, sol::lib::string, sol::lib::table);
+        LOG_INFO("ScriptEngine: Initialized Sol2 Lua/LuaJIT engine instance");
+    } catch (const std::exception& e) {
+        LOG_WARN("ScriptEngine: Sol2 initialization warning: ", e.what());
+    }
 
     // Built-in standard script functions
     register_function("print", [this](const std::vector<ScriptValue>& args) -> ScriptValue {
@@ -96,7 +105,19 @@ std::vector<std::string> ScriptEngine::tokenize_line(std::string_view line) {
 }
 
 bool ScriptEngine::execute(std::string_view script) {
-    std::istringstream stream((std::string(script)));
+    std::string script_str(script);
+
+    // First try running via Sol2 Lua engine
+    try {
+        auto result = lua_.script(script_str);
+        if (result.valid()) {
+            return true;
+        }
+    } catch (...) {
+        // Fallback to command token parser
+    }
+
+    std::istringstream stream(script_str);
     std::string line;
 
     while (std::getline(stream, line)) {
@@ -183,7 +204,18 @@ ScriptValue ScriptEngine::eval(std::string_view expression) {
 }
 
 void ScriptEngine::set_variable(std::string_view name, const ScriptValue& val) {
-    variables_[std::string(name)] = val;
+    std::string key(name);
+    variables_[key] = val;
+
+    // Synchronize to Sol2 Lua state
+    std::visit([this, &key](auto&& arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, std::monostate>) {
+            lua_[key] = sol::nil;
+        } else {
+            lua_[key] = arg;
+        }
+    }, val);
 }
 
 std::optional<ScriptValue> ScriptEngine::get_variable(std::string_view name) const {
@@ -195,7 +227,20 @@ std::optional<ScriptValue> ScriptEngine::get_variable(std::string_view name) con
 }
 
 void ScriptEngine::register_function(std::string_view name, ScriptFunction fn) {
-    functions_[std::string(name)] = fn;
+    std::string fn_name(name);
+    functions_[fn_name] = fn;
+
+    // Register in Sol2 Lua state
+    lua_.set_function(fn_name, [fn](sol::variadic_args va) -> sol::object {
+        std::vector<ScriptValue> args;
+        for (auto arg : va) {
+            if (arg.is<double>()) args.push_back(arg.as<double>());
+            else if (arg.is<bool>()) args.push_back(arg.as<bool>());
+            else if (arg.is<std::string>()) args.push_back(arg.as<std::string>());
+        }
+        auto ret = fn(args);
+        return sol::nil;
+    });
 }
 
 void ScriptEngine::subscribe_event(std::string_view event_name, EventHandler handler) {

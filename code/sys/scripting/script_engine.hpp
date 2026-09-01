@@ -11,6 +11,11 @@
 #include <sstream>
 #include <cmath>
 
+#ifndef SOL_HAS_STD_OPTIONAL
+#define SOL_HAS_STD_OPTIONAL 1
+#endif
+#include "sol/sol.hpp"
+
 namespace q3::scripting {
 
 using ScriptValue = std::variant<std::monostate, double, std::string, bool>;
@@ -44,7 +49,7 @@ public:
     virtual std::optional<ScriptValue> get_entity_property(int entity_id, std::string_view key) const = 0;
 };
 
-// C++ / LuaJIT compatible embedded scripting engine
+// Sol2 C++17 Sol2 Lua / LuaJIT embedded scripting engine
 class ScriptEngine : public IScriptEngine {
 public:
     ScriptEngine();
@@ -66,11 +71,13 @@ public:
     void set_entity_property(int entity_id, std::string_view key, const ScriptValue& val) override;
     std::optional<ScriptValue> get_entity_property(int entity_id, std::string_view key) const override;
 
+    sol::state& lua_state() noexcept { return lua_; }
     bool is_lua_enabled() const noexcept { return lua_enabled_; }
 
 private:
     std::vector<std::string> tokenize_line(std::string_view line);
 
+    sol::state lua_;
     double current_time_{0.0};
     bool lua_enabled_{true};
     std::unordered_map<std::string, ScriptValue> variables_;

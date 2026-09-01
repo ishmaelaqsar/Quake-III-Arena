@@ -32,10 +32,15 @@ add_definitions(
 # Packages
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(LUAJIT QUIET luajit)
+endif()
 
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/code/sys
+    ${CMAKE_CURRENT_SOURCE_DIR}/code/sys/scripting
     ${CMAKE_CURRENT_SOURCE_DIR}/code/game
     ${CMAKE_CURRENT_SOURCE_DIR}/code/qcommon
     ${CMAKE_CURRENT_SOURCE_DIR}/code/botlib
@@ -172,8 +177,9 @@ target_include_directories(q3sys PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/code/sys
     ${CMAKE_CURRENT_SOURCE_DIR}/code/game
     ${CMAKE_CURRENT_SOURCE_DIR}/code/qcommon
+    ${LUAJIT_INCLUDE_DIRS}
 )
-target_link_libraries(q3sys PUBLIC qcommon ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(q3sys PUBLIC qcommon ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES} ${LUAJIT_LIBRARIES})
 
 # ---------------------------------------------------------------------------
 # Server Library
