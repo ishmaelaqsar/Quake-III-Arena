@@ -222,6 +222,7 @@ static void UI_SPLevelMenu_SetMenuArena( int n, int level, const char *arenaInfo
 	char		map[MAX_QPATH];
 
 	Q_strncpyz( map, Info_ValueForKey( arenaInfo, "map" ), sizeof(map) );
+	trap_Print( va("UI_SPLevelMenu_SetMenuArena: slot %i, level %i, map '%s'\n", n, level, map) );
 
 	Q_strncpyz( levelMenuInfo.levelNames[n], map, sizeof(levelMenuInfo.levelNames[n]) );
 	Q_strupr( levelMenuInfo.levelNames[n] );
@@ -396,6 +397,7 @@ static void UI_SPLevelMenu_LevelEvent( void* ptr, int notification ) {
 
 	selectedArena = ((menucommon_s*)ptr)->id - ID_PICTURE0;
 	levelMenuInfo.selectedArenaInfo = UI_GetArenaInfoByNumber( selectedArenaSet * ARENAS_PER_TIER + selectedArena );
+	trap_Print( va("UI_SPLevelMenu_LevelEvent: Selected arena set %i, slot %i -> map '%s'\n", selectedArenaSet, selectedArena, Info_ValueForKey(levelMenuInfo.selectedArenaInfo, "map")) );
 	UI_SPLevelMenu_SetBots();
 
 	trap_Cvar_SetValue( "ui_spSelection", selectedArenaSet * ARENAS_PER_TIER + selectedArena );
@@ -489,6 +491,7 @@ static void UI_SPLevelMenu_NextEvent( void* ptr, int notification ) {
 		selectedArena = 0;
 	}
 
+	trap_Print( va("UI_SPLevelMenu_NextEvent: Opening skill menu for map '%s'\n", Info_ValueForKey(levelMenuInfo.selectedArenaInfo, "map")) );
 	UI_SPSkillMenu( levelMenuInfo.selectedArenaInfo );
 }
 

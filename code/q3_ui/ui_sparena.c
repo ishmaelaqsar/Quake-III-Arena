@@ -46,5 +46,6 @@ void UI_SPArena_Start( const char *arenaInfo ) {
 	trap_Cvar_SetValue( "ui_spSelection", level );
 
 	map = Info_ValueForKey( arenaInfo, "map" );
+	trap_Print( va("UI_SPArena_Start: Starting singleplayer arena level %i, map '%s'\n", level, map ? map : "<null>") );
 	trap_Cmd_ExecuteText( EXEC_APPEND, va( "spmap %s\n", map ) );
 }
