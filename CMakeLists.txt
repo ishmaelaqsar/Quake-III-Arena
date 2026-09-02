@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
+
+# Default build type before project() (A3.2)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
+endif()
+
 project(quake3 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
@@ -8,8 +14,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Compile options
-if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+# Build options (A3.6, A3.7, A6.1, A6.2)
+option(Q3_WERROR "Treat warnings as errors" OFF)
+option(Q3_USE_CURL "HTTP downloads through libcurl" ON)
+option(Q3_FETCH_DEPS "Fetch SDL2, LuaJIT, and GoogleTest into the build tree" OFF)
+option(Q3_FETCH_LUAJIT "Build LuaJIT from source when no system package is found" ON)
+set(Q3_SANITIZE "" CACHE STRING "Sanitizers: address,undefined or thread")
+
+# Compile warnings and sanitizer flags (A3.6, A3.7)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(
         -pipe
         -Wall
@@ -17,24 +30,122 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         -Wno-unused-variable
         -Wno-unused-but-set-variable
         -Wno-deprecated-declarations
-        -Wno-implicit-function-declaration
-        -Wno-int-conversion
+        $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>
+        $<$<COMPILE_LANGUAGE:C>:-Werror=int-conversion>
+        $<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>
         -Wno-format-security
+    )
+    if(Q3_WERROR)
+        add_compile_options(-Werror)
+    endif()
+    if(Q3_SANITIZE)
+        add_compile_options(-fsanitize=${Q3_SANITIZE} -fno-omit-frame-pointer -fno-sanitize-recover=undefined -g)
+        add_link_options(-fsanitize=${Q3_SANITIZE})
+        add_compile_definitions(Q3_SANITIZE)
+    endif()
+elseif(MSVC)
+    add_compile_options(/W3 /wd4996 /wd4244 /wd4267 /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE /utf-8)
+    if(Q3_SANITIZE STREQUAL "address")
+        add_compile_options(/fsanitize=address)
+    endif()
+endif()
+
+# Derive architecture and platform strings (A3.1)
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _q3_proc)
+if(_q3_proc MATCHES "^(x86_64|amd64)$")
+    set(Q3_ARCH x86_64)
+elseif(_q3_proc MATCHES "^(arm64|aarch64)$")
+    set(Q3_ARCH arm64)
+elseif(_q3_proc MATCHES "^(i[3-6]86|x86)$")
+    set(Q3_ARCH x86)
+else()
+    message(FATAL_ERROR "Unsupported CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+if(WIN32)
+    set(Q3_OS win)
+    set(Q3_DLL_EXT ".dll")
+elseif(APPLE)
+    set(Q3_OS macos)
+    set(Q3_DLL_EXT ".dylib")
+else()
+    set(Q3_OS linux)
+    set(Q3_DLL_EXT ".so")
+endif()
+
+add_compile_definitions(
+    _GNU_SOURCE
+    ARCH_STRING="${Q3_ARCH}"
+    OS_STRING="${Q3_OS}"
+    DLL_EXT="${Q3_DLL_EXT}"
+)
+
+# Packages and dependencies (A3.5, A6.1, A6.2)
+find_package(Threads REQUIRED)
+
+if(Q3_FETCH_DEPS)
+    set(Q3_FETCH_LUAJIT ON CACHE BOOL "" FORCE)
+    set(SDL_TEST OFF CACHE BOOL "" FORCE)
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    include(FetchContent)
+    FetchContent_Declare(SDL2
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+        GIT_TAG release-2.32.8
+    )
+    FetchContent_MakeAvailable(SDL2)
+    if(TARGET SDL2::SDL2-static)
+        add_library(SDL2::SDL2 ALIAS SDL2::SDL2-static)
+    endif()
+else()
+    find_package(SDL2 REQUIRED)
+endif()
+
+if(NOT TARGET SDL2::SDL2)
+    add_library(SDL2::SDL2 INTERFACE IMPORTED)
+    set_target_properties(SDL2::SDL2 PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${SDL2_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES "${SDL2_LIBRARIES}"
     )
 endif()
 
-# Global definitions
-add_definitions(
-    -D_GNU_SOURCE
-    -DARCH_STRING="x86_64"
-)
-
-# Packages
-find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
+if(NOT TARGET OpenGL::GL)
+    add_library(OpenGL::GL INTERFACE IMPORTED)
+    set_target_properties(OpenGL::GL PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${OPENGL_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "${OPENGL_LIBRARIES}"
+    )
+endif()
+
+# LuaJIT lookup and fallback (A6.1)
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
-    pkg_check_modules(LUAJIT QUIET luajit)
+    pkg_check_modules(LUAJIT IMPORTED_TARGET luajit)
+endif()
+
+if(TARGET PkgConfig::LUAJIT)
+    add_library(luajit::luajit ALIAS PkgConfig::LUAJIT)
+elseif(Q3_FETCH_LUAJIT)
+    include(FetchContent)
+    FetchContent_Declare(luajit
+        GIT_REPOSITORY https://github.com/zhaozg/luajit-cmake
+        GIT_TAG 94444a6c9bde77a768822f5cd00139161c9de412
+        GIT_SUBMODULES_RECURSE ON
+    )
+    set(LUAJIT_DIR ${luajit_SOURCE_DIR}/LuaJIT CACHE PATH "" FORCE)
+    FetchContent_MakeAvailable(luajit)
+    if(TARGET luajit::lib)
+        add_library(luajit::luajit ALIAS luajit::lib)
+    elseif(TARGET libluajit)
+        add_library(luajit::luajit ALIAS libluajit)
+    elseif(TARGET luajit)
+        add_library(luajit::luajit ALIAS luajit)
+    endif()
+else()
+    message(FATAL_ERROR
+        "LuaJIT not found. Install it (brew install luajit | apt install libluajit-5.1-dev | vcpkg install luajit) "
+        "or configure with -DQ3_FETCH_LUAJIT=ON.")
 endif()
 
 # Include directories
@@ -50,9 +161,6 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/code/ui
     ${CMAKE_CURRENT_SOURCE_DIR}/code/q3_ui
     ${CMAKE_CURRENT_SOURCE_DIR}/code/jpeg-6
-    ${CMAKE_CURRENT_SOURCE_DIR}/code/unix
-    ${SDL2_INCLUDE_DIRS}
-    ${OPENGL_INCLUDE_DIR}
 )
 
 # ---------------------------------------------------------------------------
@@ -88,7 +196,7 @@ set(BOTLIB_SOURCES
     code/botlib/l_script.c
     code/botlib/l_struct.c
 )
-add_library(botlib STATIC ${BOTLIB_SOURCES})
+add_library(botlib OBJECT ${BOTLIB_SOURCES})
 target_compile_definitions(botlib PRIVATE BOTLIB)
 
 # ---------------------------------------------------------------------------
@@ -130,7 +238,7 @@ set(JPEG_SOURCES
     code/jpeg-6/jmemnobs.c
     code/jpeg-6/jutils.c
 )
-add_library(q3jpeg STATIC ${JPEG_SOURCES})
+add_library(q3jpeg OBJECT ${JPEG_SOURCES})
 
 # ---------------------------------------------------------------------------
 # QCommon Library
@@ -152,10 +260,11 @@ set(QCOMMON_SOURCES
     code/qcommon/unzip.c
     code/qcommon/vm.c
     code/qcommon/vm_interpreted.c
+    code/qcommon/vm_none.c
     code/game/q_math.c
     code/game/q_shared.c
 )
-add_library(qcommon STATIC ${QCOMMON_SOURCES})
+add_library(qcommon OBJECT ${QCOMMON_SOURCES})
 target_compile_definitions(qcommon PUBLIC C_ONLY)
 
 # ---------------------------------------------------------------------------
@@ -169,17 +278,21 @@ set(SYS_SOURCES
     code/sys/scripting/script_engine.cpp
     code/sys/fs/vfs.cpp
     code/sys/multiplayer/session.cpp
-    code/sys/sys_sdl.cpp
     code/sys/sys_api.cpp
 )
-add_library(q3sys STATIC ${SYS_SOURCES})
+add_library(q3sys OBJECT ${SYS_SOURCES})
 target_include_directories(q3sys PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/code/sys
     ${CMAKE_CURRENT_SOURCE_DIR}/code/game
     ${CMAKE_CURRENT_SOURCE_DIR}/code/qcommon
-    ${LUAJIT_INCLUDE_DIRS}
 )
-target_link_libraries(q3sys PUBLIC qcommon ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES} ${LUAJIT_LIBRARIES})
+target_link_libraries(q3sys PUBLIC
+    luajit::luajit
+    SDL2::SDL2
+    OpenGL::GL
+    Threads::Threads
+    ${CMAKE_DL_LIBS}
+)
 
 # ---------------------------------------------------------------------------
 # Server Library
@@ -195,33 +308,39 @@ set(SERVER_SOURCES
     code/server/sv_snapshot.c
     code/server/sv_world.c
 )
-add_library(q3server STATIC ${SERVER_SOURCES})
-target_compile_definitions(q3server PUBLIC DEDICATED C_ONLY)
+add_library(q3server OBJECT ${SERVER_SOURCES})
+target_compile_definitions(q3server PUBLIC C_ONLY)
+
+# ---------------------------------------------------------------------------
+# Platform Sources
+# ---------------------------------------------------------------------------
+set(SYS_PLATFORM_SOURCES
+    code/sys/sys_main.cpp
+    code/sys/sys_dll.cpp
+    code/sys/net/sys_net.cpp
+    $<IF:$<PLATFORM_ID:Windows>,code/sys/sys_win32.cpp;code/sys/sys_files_win32.cpp,code/sys/sys_unix.cpp;code/sys/sys_files_unix.cpp>
+)
 
 # ---------------------------------------------------------------------------
 # Dedicated Server Executable (q3ded)
 # ---------------------------------------------------------------------------
-set(DED_PLATFORM_SOURCES
-    code/unix/linux_signals.c
-    code/unix/unix_main.c
-    code/unix/unix_net.c
-    code/unix/unix_shared.c
+add_executable(q3ded
+    ${SYS_PLATFORM_SOURCES}
     code/null/null_client.c
     code/null/null_input.c
     code/null/null_snddma.c
 )
-add_executable(q3ded ${DED_PLATFORM_SOURCES})
-target_compile_definitions(q3ded PRIVATE DEDICATED C_ONLY)
+target_compile_definitions(q3ded PRIVATE C_ONLY SDL_MAIN_HANDLED)
 target_link_libraries(q3ded PRIVATE
-    -Wl,--start-group
     q3server
     q3sys
     qcommon
     botlib
-    -Wl,--end-group
-    m
-    dl
-    pthread
+    $<$<NOT:$<PLATFORM_ID:Windows>>:m>
+    $<$<PLATFORM_ID:Windows>:ws2_32 winmm shell32>
+)
+set_target_properties(q3ded PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # ---------------------------------------------------------------------------
@@ -243,8 +362,10 @@ set(CLIENT_SOURCES
     code/client/snd_mem.c
     code/client/snd_mix.c
     code/client/snd_wavelet.c
+    code/sys/sys_sdl.cpp
 )
-add_library(q3client STATIC ${CLIENT_SOURCES})
+add_library(q3client OBJECT ${CLIENT_SOURCES})
+target_link_libraries(q3client PUBLIC SDL2::SDL2 OpenGL::GL)
 
 # ---------------------------------------------------------------------------
 # Renderer Library
@@ -275,34 +396,26 @@ set(RENDERER_SOURCES
     code/renderer/tr_surface.c
     code/renderer/tr_world.c
 )
-add_library(q3renderer STATIC ${RENDERER_SOURCES})
+add_library(q3renderer OBJECT ${RENDERER_SOURCES})
 
 # ---------------------------------------------------------------------------
 # Modern Client Executable (quake3_modern)
 # ---------------------------------------------------------------------------
-set(CLIENT_PLATFORM_SOURCES
-    code/unix/linux_signals.c
-    code/unix/linux_qgl.c
-    code/unix/unix_main.c
-    code/unix/unix_net.c
-    code/unix/unix_shared.c
-)
-add_executable(quake3_modern ${CLIENT_PLATFORM_SOURCES})
+add_executable(quake3_modern ${SYS_PLATFORM_SOURCES})
+target_compile_definitions(quake3_modern PRIVATE SDL_MAIN_HANDLED)
 target_link_libraries(quake3_modern PRIVATE
-    -Wl,--start-group
-    q3sys
     q3client
     q3renderer
     q3server
+    q3sys
     qcommon
     botlib
     q3jpeg
-    -Wl,--end-group
-    ${SDL2_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-    m
-    dl
-    pthread
+    $<$<NOT:$<PLATFORM_ID:Windows>>:m>
+    $<$<PLATFORM_ID:Windows>:ws2_32 winmm shell32>
+)
+set_target_properties(quake3_modern PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # ---------------------------------------------------------------------------
@@ -345,8 +458,13 @@ set(GAME_SOURCES
 )
 add_library(qagame SHARED ${GAME_SOURCES})
 target_compile_definitions(qagame PRIVATE GAME_DLL)
-target_link_libraries(qagame PRIVATE m)
-set_target_properties(qagame PROPERTIES PREFIX "" OUTPUT_NAME "qagamex86_64")
+target_link_libraries(qagame PRIVATE $<$<NOT:$<PLATFORM_ID:Windows>>:m>)
+set_target_properties(qagame PROPERTIES
+    PREFIX "" OUTPUT_NAME "qagame${Q3_ARCH}" SUFFIX "${Q3_DLL_EXT}"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden
+)
 
 # ---------------------------------------------------------------------------
 # Client Game Module (cgame)
@@ -379,8 +497,13 @@ set(CGAME_SOURCES
 )
 add_library(cgame SHARED ${CGAME_SOURCES})
 target_compile_definitions(cgame PRIVATE CGAME_DLL)
-target_link_libraries(cgame PRIVATE m)
-set_target_properties(cgame PROPERTIES PREFIX "" OUTPUT_NAME "cgamex86_64")
+target_link_libraries(cgame PRIVATE $<$<NOT:$<PLATFORM_ID:Windows>>:m>)
+set_target_properties(cgame PROPERTIES
+    PREFIX "" OUTPUT_NAME "cgame${Q3_ARCH}" SUFFIX "${Q3_DLL_EXT}"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden
+)
 
 # ---------------------------------------------------------------------------
 # UI Module (q3_ui)
@@ -433,29 +556,39 @@ set(UI_SOURCES
 )
 add_library(ui SHARED ${UI_SOURCES})
 target_compile_definitions(ui PRIVATE UI_DLL)
-target_link_libraries(ui PRIVATE m)
-set_target_properties(ui PROPERTIES PREFIX "" OUTPUT_NAME "uix86_64")
+target_link_libraries(ui PRIVATE $<$<NOT:$<PLATFORM_ID:Windows>>:m>)
+set_target_properties(ui PROPERTIES
+    PREFIX "" OUTPUT_NAME "ui${Q3_ARCH}" SUFFIX "${Q3_DLL_EXT}"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden
+)
 
 # ---------------------------------------------------------------------------
 # Unit Testing with GoogleTest
 # ---------------------------------------------------------------------------
-enable_testing()
+include(CTest)
 
-find_package(GTest QUIET)
-if(NOT GTest_FOUND)
-    include(FetchContent)
-    FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
-    )
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
+if(BUILD_TESTING)
+    find_package(GTest QUIET)
+    if(NOT GTest_FOUND)
+        include(FetchContent)
+        FetchContent_Declare(
+            googletest
+            URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+            URL_HASH SHA256=1f357c27ca988c3f7c6b4bf68a9395005ac6761f034046e9dde0896e3aba00e4
+            FIND_PACKAGE_ARGS 1.14.0
+        )
+        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(googletest)
+    endif()
+
+    add_subdirectory(tests)
 endif()
 
-add_subdirectory(tests)
-
 # ---------------------------------------------------------------------------
-# Installation & Standalone Packaging Targets
+# Installation & Standalone Packaging Targets (A3.9)
 # ---------------------------------------------------------------------------
 include(GNUInstallDirs)
 
@@ -464,10 +597,8 @@ install(TARGETS quake3_modern q3ded
 )
 
 install(TARGETS qagame cgame ui
-    LIBRARY DESTINATION ${CMAKE_INSTALL_DATADIR}/quake3/baseq3
+    LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR}/baseq3
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/baseq3
 )
 
-install(DIRECTORY baseq3/
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/quake3/baseq3
-    FILES_MATCHING PATTERN "*.pk3"
-)
+message(STATUS "Copy pak0.pk3 to pak8.pk3 into ${CMAKE_BINARY_DIR}/baseq3 to run from the build tree")

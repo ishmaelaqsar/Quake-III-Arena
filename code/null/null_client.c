@@ -95,3 +95,10 @@ void CL_ShutdownUI( void ) {}
 void CIN_CloseAllVideos( void ) {}
 qboolean UI_usesUniqueCDKey( void ) { return qfalse; }
 
+qboolean Sys_IsDedicatedBuild( void ) {
+	return qtrue;
+}
+
+void Sys_ReleaseDisplay( void ) {
+}
+

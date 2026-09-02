@@ -2230,11 +2230,7 @@ static void Com_Crash_f( void ) {
 // TTimo: centralizing the cl_cdkey stuff after I discovered a buffer overflow problem with the dedicated server version
 //   not sure it's necessary to have different defaults for regular and dedicated, but I don't want to risk it
 //   https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=470
-#ifndef DEDICATED
 char	cl_cdkey[34] = "                                ";
-#else
-char	cl_cdkey[34] = "123456789";
-#endif
 
 /*
 =================
@@ -2396,12 +2392,9 @@ void Com_Init( char *commandLine ) {
 	// override anything from the config files with command line args
 	Com_StartupVariable( NULL );
 
-  // get dedicated here for proper hunk megs initialization
-#ifdef DEDICATED
-	com_dedicated = Cvar_Get ("dedicated", "1", CVAR_ROM);
-#else
-	com_dedicated = Cvar_Get ("dedicated", "0", CVAR_LATCH);
-#endif
+	// get dedicated here for proper hunk megs initialization
+	com_dedicated = Cvar_Get("dedicated", Sys_IsDedicatedBuild() ? "1" : "0",
+	                         Sys_IsDedicatedBuild() ? CVAR_ROM : CVAR_LATCH);
 	// allocate the stack based hunk allocator
 	Com_InitHunkMemory();
 

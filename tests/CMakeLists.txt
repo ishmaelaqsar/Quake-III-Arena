@@ -1,5 +1,12 @@
+set(TEST_PLATFORM_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../code/sys/sys_dll.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../code/sys/net/sys_net.cpp
+    $<IF:$<PLATFORM_ID:Windows>,${CMAKE_CURRENT_SOURCE_DIR}/../code/sys/sys_files_win32.cpp,${CMAKE_CURRENT_SOURCE_DIR}/../code/sys/sys_files_unix.cpp>
+)
+
 set(TEST_SOURCES
     test_platform_stubs.cpp
+    ${TEST_PLATFORM_SOURCES}
     test_math.cpp
     test_strings.cpp
     test_msg.cpp
@@ -17,13 +24,16 @@ set(TEST_SOURCES
     test_modern_fs.cpp
     test_modern_multiplayer.cpp
     test_modern_logger.cpp
+    test_module_symbols.cpp
+    test_sys_paths.cpp
+    test_sys_net.cpp
 )
 
 add_executable(quake3_tests ${TEST_SOURCES})
 
 target_compile_definitions(quake3_tests PRIVATE
-    DEDICATED
     C_ONLY
+    Q3_TEST_BUILD_DIR="${CMAKE_BINARY_DIR}"
 )
 
 target_include_directories(quake3_tests PRIVATE
@@ -36,34 +46,24 @@ target_include_directories(quake3_tests PRIVATE
 
 # Link against GoogleTest and engine components
 if(TARGET GTest::gtest_main)
-    target_link_libraries(quake3_tests PRIVATE
-        -Wl,--start-group
-        q3sys
-        q3renderer
-        q3server
-        qcommon
-        botlib
-        -Wl,--end-group
-        GTest::gtest_main
-        m
-        dl
-        pthread
-    )
+    set(GTEST_TARGET GTest::gtest_main)
 else()
-    target_link_libraries(quake3_tests PRIVATE
-        -Wl,--start-group
-        q3sys
-        q3renderer
-        q3server
-        qcommon
-        botlib
-        -Wl,--end-group
-        gtest_main
-        m
-        dl
-        pthread
-    )
+    set(GTEST_TARGET gtest_main)
 endif()
+
+target_link_libraries(quake3_tests PRIVATE
+    q3sys
+    q3renderer
+    q3server
+    qcommon
+    botlib
+    q3jpeg
+    ${GTEST_TARGET}
+    SDL2::SDL2
+    OpenGL::GL
+    $<$<NOT:$<PLATFORM_ID:Windows>>:m>
+    $<$<PLATFORM_ID:Windows>:ws2_32 winmm shell32>
+)
 
 include(GoogleTest)
 gtest_discover_tests(quake3_tests)

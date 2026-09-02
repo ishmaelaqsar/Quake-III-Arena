@@ -3,9 +3,6 @@
 extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-
-void Com_InitSmallZoneMemory(void);
-void Com_InitZoneMemory(void);
 }
 
 class CvarCmdFixture : public ::testing::Test {
@@ -38,4 +35,13 @@ TEST_F(CvarCmdFixture, CommandTokenization) {
     EXPECT_STREQ(Cmd_Argv(1), "test_var");
     EXPECT_STREQ(Cmd_Argv(2), "hello world");
     EXPECT_STREQ(Cmd_Argv(3), "123");
+}
+
+TEST_F(CvarCmdFixture, DefaultFollowsBuildKind) {
+    cvar_t *cv = Cvar_Get("test_dedicated_var", Sys_IsDedicatedBuild() ? "1" : "0",
+                          Sys_IsDedicatedBuild() ? CVAR_ROM : CVAR_LATCH);
+    ASSERT_NE(cv, nullptr);
+    EXPECT_STREQ(cv->string, "1");
+    EXPECT_EQ(cv->integer, 1);
+    EXPECT_TRUE(cv->flags & CVAR_ROM);
 }

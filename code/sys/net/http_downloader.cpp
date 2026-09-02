@@ -1,4 +1,5 @@
 #include "http_downloader.hpp"
+#include "net_compat.h"
 #include "../logger/logger.hpp"
 
 #include <iostream>
@@ -6,21 +7,33 @@
 #include <sstream>
 #include <cstring>
 #include <cstdint>
+#include <mutex>
 
-#if defined(_WIN32)
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <arpa/inet.h>
+#ifdef _WIN32
+static std::once_flag s_wsa_flag;
+static void init_wsa_downloader() {
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2, 2), &wsa);
+}
 #endif
 
 namespace q3::net {
 
+static void close_socket(socket_t s) {
+    if (s != Q3_INVALID_SOCKET) {
+#ifdef _WIN32
+        shutdown(s, SD_BOTH);
+#else
+        shutdown(s, SHUT_RDWR);
+#endif
+        q3_closesocket(s);
+    }
+}
+
 bool HttpDownloader::start_download(std::string_view url, std::string_view output_path, ProgressCallback on_progress) {
+#ifdef _WIN32
+    std::call_once(s_wsa_flag, init_wsa_downloader);
+#endif
     if (status_.load() == DownloadStatus::Downloading) {
         LOG_WARN("HttpDownloader: Download already in progress");
         return false;
@@ -88,8 +101,8 @@ void HttpDownloader::download_thread(std::string url, std::string output_path, P
         return;
     }
 
-    int sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (sock < 0) {
+    socket_t sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (sock == Q3_INVALID_SOCKET) {
         freeaddrinfo(res);
         error_ = "Failed to create socket";
         LOG_ERROR("HttpDownloader: ", error_);
@@ -97,8 +110,18 @@ void HttpDownloader::download_thread(std::string url, std::string output_path, P
         return;
     }
 
+#ifdef _WIN32
+    DWORD timeout_ms = 5000;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+#else
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
+#endif
+
     if (connect(sock, res->ai_addr, res->ai_addrlen) < 0) {
-        close(sock);
+        close_socket(sock);
         freeaddrinfo(res);
         error_ = "Failed to connect to " + host;
         LOG_ERROR("HttpDownloader: ", error_);
@@ -118,7 +141,7 @@ void HttpDownloader::download_thread(std::string url, std::string output_path, P
 
     std::ofstream out_file(output_path, std::ios::binary);
     if (!out_file.is_open()) {
-        close(sock);
+        close_socket(sock);
         error_ = "Failed to open output file " + output_path;
         LOG_ERROR("HttpDownloader: ", error_);
         status_ = DownloadStatus::Failed;
@@ -162,7 +185,7 @@ void HttpDownloader::download_thread(std::string url, std::string output_path, P
         }
     }
 
-    close(sock);
+    close_socket(sock);
     out_file.close();
 
     if (cancel_requested_) {

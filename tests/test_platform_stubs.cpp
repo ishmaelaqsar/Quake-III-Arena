@@ -42,6 +42,23 @@ void Sys_SnapVector(float *v) {
 void Sys_ShowConsole(int level, qboolean quitOnClose) {
 }
 
+qboolean Sys_IsDedicatedBuild(void) {
+    return qtrue;
+}
+
+void Sys_ReleaseDisplay(void) {
+}
+
+qboolean Sys_LowPhysicalMemory(void) {
+    return qfalse;
+}
+
+void Sys_BeginProfiling(void) {
+}
+
+void Sys_EndProfiling(void) {
+}
+
 void Sys_Init(void) {
 }
 
@@ -49,29 +66,6 @@ sysEvent_t Sys_GetEvent(void) {
     sysEvent_t ev;
     Com_Memset(&ev, 0, sizeof(ev));
     return ev;
-}
-
-void Sys_Mkdir(const char *path) {
-}
-
-char **Sys_ListFiles(const char *directory, const char *extension, char *filter, int *numfiles, qboolean wantsubs) {
-    if (numfiles) *numfiles = 0;
-    return nullptr;
-}
-
-void Sys_FreeFileList(char **list) {
-}
-
-char *Sys_DefaultCDPath(void) {
-    return (char*)"";
-}
-
-char *Sys_DefaultInstallPath(void) {
-    return (char*)"";
-}
-
-char *Sys_DefaultHomePath(void) {
-    return (char*)"";
 }
 
 void Sys_BeginStreamedFile(fileHandle_t f, int readAhead) {
@@ -87,31 +81,21 @@ int Sys_StreamedRead(void *buffer, int size, int count, fileHandle_t f) {
 void Sys_StreamSeek(fileHandle_t f, int offset, int origin) {
 }
 
-void Sys_SendPacket(int length, const void *data, netadr_t to) {
-}
-
-qboolean Sys_StringToAdr(const char *s, netadr_t *a) {
-    return qfalse;
-}
-
-qboolean Sys_IsLANAddress(netadr_t adr) {
-    return qtrue;
-}
-
 qboolean Sys_CheckCD(void) {
     return qtrue;
 }
 
-void *Sys_LoadDll(const char *name, char *fqpath, int (QDECL **entryPoint)(int, ...),
-                  int (QDECL *systemcalls)(int, ...)) {
-    return nullptr;
-}
+qboolean stdin_active = qfalse;
 
-void Sys_UnloadDll(void *dllHandle) {
-}
-
-void NET_Sleep(int msec) {
-}
+void GLimp_LogComment(char *comment) {}
+void GLimp_EndFrame(void) {}
+void GLimp_RendererSleep(void) {}
+qboolean GLimp_SpawnRenderThread(void (*function)(void)) { return qfalse; }
+void GLimp_WakeRenderer(void *data) {}
+void GLimp_FrontEndSleep(void) {}
+void GLimp_SetGamma(unsigned char red[256], unsigned char green[256], unsigned char blue[256]) {}
+void GLimp_Shutdown(void) {}
+int GLimp_Init(void) { return 0; }
 
 // Client dummies
 cvar_t *cl_shownet = nullptr;

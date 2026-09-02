@@ -80,6 +80,10 @@ refexport_t	re;
 
 ping_t	cl_pinglist[MAX_PINGREQUESTS];
 
+qboolean Sys_IsDedicatedBuild( void ) {
+	return qfalse;
+}
+
 typedef struct serverStatus_s
 {
 	char string[BIG_INFO_STRING];

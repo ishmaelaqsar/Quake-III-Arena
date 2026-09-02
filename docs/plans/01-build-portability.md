@@ -8,7 +8,7 @@ project. Replace the Linux-only platform layer under `code/unix/` with a portabl
 before this checklist lands, because the tree does not compile on the owner's macOS machine
 today.
 
-**Status:** In progress. Phases A1 and A2 complete on 2 September 2026 (stray files removed, .gitignore extended, platform macro layer rewritten).
+**Status:** In progress. Phases A1 through A6.2 complete on 2 September 2026 (hygiene, platform macros, CMake restructure, sys platform layer, runtime DEDICATED, LuaJIT/fetch options). Open: A6.3, A7, A8.
 
 ## Prerequisites
 
@@ -136,7 +136,7 @@ numbers drift.
 
 ### Phase A3: CMake restructure
 
-- [ ] **A3.1 Derive architecture and platform strings.** Replace `CMakeLists.txt:29` with:
+- [x] **A3.1 Derive architecture and platform strings.** Done on 2 September 2026. Replace `CMakeLists.txt:29` with:
   ```cmake
   string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _q3_proc)
   if(_q3_proc MATCHES "^(x86_64|amd64)$")
@@ -183,7 +183,7 @@ numbers drift.
     ```
     lists `qagamex86_64.so`, `cgamex86_64.so`, and `uix86_64.so` in the container. The macOS
     CI artifact contains `qagamearm64.dylib`, `cgamearm64.dylib`, and `uiarm64.dylib`.
-- [ ] **A3.2 Default the build type.** Add before `project()` effects apply:
+- [x] **A3.2 Default the build type.** Done on 2 September 2026. Add before `project()` effects apply:
   ```cmake
   if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
@@ -193,7 +193,7 @@ numbers drift.
   - **Tests:** none, because this is configuration.
   - **Verify:** `grep CMAKE_BUILD_TYPE build/CMakeCache.txt` shows `RelWithDebInfo` after a fresh
     configure with no `-D` flag.
-- [ ] **A3.3 Convert static libraries to OBJECT libraries and delete `--start-group`.** Change
+- [x] **A3.3 Convert static libraries to OBJECT libraries and delete `--start-group`.** Done on 2 September 2026. Change
   `botlib`, `q3jpeg`, `qcommon`, `q3sys`, `q3server`, `q3client`, and `q3renderer` to
   `add_library(<name> OBJECT ...)`. Link them directly:
   ```cmake
@@ -209,12 +209,12 @@ numbers drift.
   - **Tests:** none, because the linker is the test. The link of `quake3_tests` covers it.
   - **Verify:** `grep -rn 'start-group' CMakeLists.txt tests/CMakeLists.txt` prints nothing, and
     the macOS CI leg links both executables.
-- [ ] **A3.4 Remove `DEDICATED` from every target.** Delete it from `CMakeLists.txt:199`,
+- [x] **A3.4 Remove `DEDICATED` from every target.** Done on 2 September 2026. Delete it from `CMakeLists.txt:199`,
   `:214`, and `tests/CMakeLists.txt:25`. Step A5 replaces it with a runtime query. Keep
   `C_ONLY`; it is consulted only at `q_shared.h:111` for PPC and is harmless.
   - **Tests:** covered by A5.
   - **Verify:** `grep -rn 'DEDICATED' CMakeLists.txt tests/CMakeLists.txt` prints nothing.
-- [ ] **A3.5 Use imported targets for system libraries.** Add `find_package(Threads REQUIRED)`.
+- [x] **A3.5 Use imported targets for system libraries.** Done on 2 September 2026. Add `find_package(Threads REQUIRED)`.
   Prefer `SDL2::SDL2` (fall back to `${SDL2_LIBRARIES}` only if the target is absent) and
   `OpenGL::GL`. Replace raw `m dl pthread` with `$<$<NOT:$<PLATFORM_ID:Windows>>:m>`,
   `${CMAKE_DL_LIBS}`, and `Threads::Threads`. On Windows add `ws2_32 winmm shell32`. Define
@@ -222,7 +222,7 @@ numbers drift.
   (A4.2) so one `main` serves both binaries and no `SDL2main` link is needed.
   - **Tests:** none, because the linker is the test.
   - **Verify:** the Windows CI leg links both executables.
-- [ ] **A3.6 Fix the warning flags.** Delete `-Wno-implicit-function-declaration` and
+- [x] **A3.6 Fix the warning flags.** Done on 2 September 2026. Delete `-Wno-implicit-function-declaration` and
   `-Wno-int-conversion` from `CMakeLists.txt:20-21`. Gate C-only flags with
   `$<$<COMPILE_LANGUAGE:C>:...>` so gcc does not warn "valid for C but not C++" once files
   become `.cpp` (checklist 04). Add
@@ -232,7 +232,7 @@ numbers drift.
   and turn it on in CI for GNU and Clang.
   - **Tests:** none, because the compiler is the test. Checklist 02 B2 fixes the fallout.
   - **Verify:** `make build 2>&1 | grep -E 'implicit|int-conversion' | wc -l` prints `0`.
-- [ ] **A3.7 Add build options.** `set(Q3_SANITIZE "" CACHE STRING "Sanitizers: address,undefined
+- [x] **A3.7 Add build options.** Done on 2 September 2026. `set(Q3_SANITIZE "" CACHE STRING "Sanitizers: address,undefined
   or thread")`. When set and the compiler is GNU or Clang, add
   `-fsanitize=${Q3_SANITIZE} -fno-omit-frame-pointer -fno-sanitize-recover=undefined -g` to
   `add_compile_options` and `add_link_options`, and `add_compile_definitions(Q3_SANITIZE)` so
@@ -244,7 +244,7 @@ numbers drift.
     environment.
   - **Verify:** `cmake --preset asan` configures and `grep fsanitize build-asan/CMakeCache.txt` is
     non-empty.
-- [ ] **A3.8 Pin GoogleTest.** Keep `find_package(GTest)` first. Change the FetchContent block
+- [x] **A3.8 Pin GoogleTest.** Done on 2 September 2026. Keep `find_package(GTest)` first. Change the FetchContent block
   at `CMakeLists.txt:445-452` to include `URL_HASH SHA256=<hash of v1.14.0.zip>` and
   `FIND_PACKAGE_ARGS` (CMake 3.24 and later) so the system package wins when present. Set
   `set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)`. Compute the hash inside the container with
@@ -252,7 +252,7 @@ numbers drift.
   - **Tests:** none, because this is configuration.
   - **Verify:** a configure with the system GTest removed from the image downloads the pinned zip
     and a tampered hash fails the configure.
-- [ ] **A3.9 Fix the install layout.** Install executables to `${CMAKE_INSTALL_BINDIR}` and
+- [x] **A3.9 Fix the install layout.** Done on 2 September 2026. Install executables to `${CMAKE_INSTALL_BINDIR}` and
   modules to `${CMAKE_INSTALL_BINDIR}/baseq3` to match the runtime layout. Delete
   `install(DIRECTORY baseq3/ ...)` at `CMakeLists.txt:469`; pak files are owner supplied. Add a
   configure-time `message(STATUS "Copy pak0.pk3 to pak8.pk3 into ${CMAKE_BINARY_DIR}/baseq3
@@ -260,7 +260,7 @@ numbers drift.
   - **Tests:** none, because this is configuration.
   - **Verify:** `make shell -c 'cmake --install build --prefix /tmp/q3'` succeeds and
     `ls /tmp/q3/bin/baseq3` lists the three modules.
-- [ ] **A3.10 Add `CMakePresets.json`.** Configure presets: `dev` (Ninja, RelWithDebInfo,
+- [x] **A3.10 Add `CMakePresets.json`.** Done on 2 September 2026. Configure presets: `dev` (Ninja, RelWithDebInfo,
   `BUILD_TESTING=ON`, binary dir `build`), `debug`, `release`, `asan`
   (`Q3_SANITIZE=address,undefined`, binary dir `build-asan`), `tsan` (`Q3_SANITIZE=thread`,
   binary dir `build-tsan`, used by checklist 05), `msvc` (Visual Studio 17 2022 or Ninja plus
@@ -277,13 +277,13 @@ Author every new file as `.cpp`. Wrap the `Sys_*`, `IN_*`, `NET_*`, and `main` s
 and then removes the wrappers in its header close-out. Move code verbatim where the audit
 found it correct, and change only what each step names.
 
-- [ ] **A4.1 Add `code/sys/sys_local.h`.** Internal prototypes shared by the platform files:
+- [x] **A4.1 Add `code/sys/sys_local.h`.** Done on 2 September 2026. Internal prototypes shared by the platform files:
   `Sys_PlatformInit`, `Sys_PlatformExit`, `Sys_InitSignals`, `Sys_ConsoleInputInit`,
   `Sys_ConsoleInputShutdown`, `Sys_ConsoleInput`, `Sys_QueEvent`, `Sys_SendKeyEvents`,
   `Sys_GetPacket`, `IN_*`, and `Sys_ListFilteredFiles`. This replaces `code/unix/linux_local.h`.
   - **Tests:** none, because it is a header.
   - **Verify:** no file outside `code/sys/` includes `sys_local.h`.
-- [ ] **A4.2 Add `code/sys/sys_main.cpp`.** Portable entry point and services. `main()` calls
+- [x] **A4.2 Add `code/sys/sys_main.cpp`.** Done on 2 September 2026. Portable entry point and services. `main()` calls
   `SDL_SetMainReady()`, merges `argv`, runs `Sys_ParseArgs` (`--version`, `-v`, and a new
   `--help` that prints usage and the `+set` convention), `Sys_PlatformInit`, `Com_Init`,
   `NET_Init`, `Sys_ConsoleInputInit`, `Sys_InitSignals`, then loops on `Com_Frame`. `Sys_Exit`
@@ -310,7 +310,7 @@ found it correct, and change only what each step names.
     make shell -c './build/quake3_modern --help; ./build/quake3_modern --version'
     ```
     prints usage and a banner that names `linux-x86_64`.
-- [ ] **A4.3 Add `code/sys/sys_dll.cpp`.** `Sys_LoadDll` and `Sys_UnloadDll` through
+- [x] **A4.3 Add `code/sys/sys_dll.cpp`.** Done on 2 September 2026. `Sys_LoadDll` and `Sys_UnloadDll` through
   `SDL_LoadObject`, `SDL_LoadFunction`, and `SDL_UnloadObject`. Add the pure helper
   `void Sys_ModuleFileName(const char *name, char *buf, int bufSize)` that produces
   `"%s" ARCH_STRING DLL_EXT`. Search order: current directory, `fs_homepath`, `fs_basepath`,
@@ -320,7 +320,7 @@ found it correct, and change only what each step names.
   - **Tests:** `tests/test_module_symbols.cpp` (A3.1) covers the name scheme and the exports.
   - **Verify:** `make shell -c 'cd /tmp && /src/build/q3ded +set fs_basepath /paks +map q3dm1 +quit'`
     loads `qagame` from the build tree while the working directory is elsewhere.
-- [ ] **A4.4 Add `code/sys/sys_files_unix.cpp`.** Move `Sys_ListFiles`, `Sys_ListFilteredFiles`,
+- [x] **A4.4 Add `code/sys/sys_files_unix.cpp`.** Done on 2 September 2026. Move `Sys_ListFiles`, `Sys_ListFilteredFiles`,
   `Sys_FreeFileList`, `Sys_Cwd`, `Sys_GetCurrentUser`, and `Sys_SetDefault*Path` verbatim from
   `code/unix/unix_shared.c`, with `MACOS_X` replaced by `__APPLE__`. Change `Sys_Mkdir` to
   `mkdir(path, 0755)`. `Sys_DefaultInstallPath` returns `SDL_GetBasePath()` with the trailing
@@ -337,14 +337,14 @@ found it correct, and change only what each step names.
     test binary; `SysPaths.ListFilesFiltersByExtension` creates three files in a `TempDir` and
     asserts `Sys_ListFiles(dir, ".cfg", ...)` returns the matching one.
   - **Verify:** `ctest --preset dev -R SysPaths` passes in the container.
-- [ ] **A4.5 Add `code/sys/sys_files_win32.cpp`.** Same API with `FindFirstFileA` and
+- [x] **A4.5 Add `code/sys/sys_files_win32.cpp`.** Done on 2 September 2026. Same API with `FindFirstFileA` and
   `FindNextFileA` (mirror the loop structure of `Sys_ListFilteredFiles`), `_mkdir`, `_getcwd`,
   `GetUserNameA`, `SDL_GetPrefPath("", "Quake3")` for the home path (yields
   `%APPDATA%\Quake3\`), and `SDL_GetBasePath` for the install path.
   - **Tests:** `tests/test_sys_paths.cpp` runs on the Windows CI leg with the same cases; the mode
     assertion is skipped on Windows.
   - **Verify:** the Windows CI leg passes `ctest -R SysPaths`.
-- [ ] **A4.6 Add `code/sys/sys_unix.cpp`.** The tty console (`tty_*`, `Hist_*`,
+- [x] **A4.6 Add `code/sys/sys_unix.cpp`.** Done on 2 September 2026. The tty console (`tty_*`, `Hist_*`,
   `Sys_ConsoleInputInit`, `Sys_ConsoleInputShutdown`, `Sys_ConsoleInput`) verbatim from
   `code/unix/unix_main.c:157-665`. `Sys_PlatformInit` does `seteuid(getuid())` and ignores
   `SIGTTIN`, `SIGTTOU`, and `SIGPIPE`. `Sys_InitSignals` is written in checklist 02 B3; add a
@@ -356,7 +356,7 @@ found it correct, and change only what each step names.
     make shell -c 'printf "status\nquit\n" | ./build/q3ded +set fs_basepath /paks +map q3dm1'
     ```
     prints a player table and exits `0`.
-- [ ] **A4.7 Add `code/sys/sys_win32.cpp`.** `Sys_ConsoleInput` through `_kbhit()` and
+- [x] **A4.7 Add `code/sys/sys_win32.cpp`.** Done on 2 September 2026. `Sys_ConsoleInput` through `_kbhit()` and
   `_getch()` with a line buffer (dedicated only). `Sys_PlatformInit` calls
   `SetConsoleOutputCP(CP_UTF8)` and `timeBeginPeriod(1)`. `Sys_InitSignals` installs
   `SetUnhandledExceptionFilter` (body in checklist 02 B3). `Sys_ConsoleInputInit` and
@@ -364,7 +364,7 @@ found it correct, and change only what each step names.
   - **Tests:** none, because there is no runner with a console session. The gate is the Windows
     CI compile and `ctest`.
   - **Verify:** the Windows CI leg builds `q3ded.exe` and `quake3_modern.exe`.
-- [ ] **A4.8 Add `code/sys/net/sys_net.cpp` and `code/sys/net/net_compat.h`.** Move
+- [x] **A4.8 Add `code/sys/net/sys_net.cpp` and `code/sys/net/net_compat.h`.** Done on 2 September 2026. Move
   `code/unix/unix_net.c` and make it portable. `net_compat.h` defines on `_WIN32`:
   `typedef SOCKET socket_t;`, `#define Q3_INVALID_SOCKET INVALID_SOCKET`,
   `#define q3_closesocket closesocket`, `#define q3_sockerrno() WSAGetLastError()`, and
@@ -382,12 +382,12 @@ found it correct, and change only what each step names.
     `NET_GetLoopPacket`; `SysNet.InvalidSocketSentinelIsNotZero` asserts
     `Q3_INVALID_SOCKET != 0`; `SysNet.ErrorStringIsNonEmpty` after a forced `connect` failure.
   - **Verify:** `ctest --preset dev -R SysNet` passes in the container and on the Windows leg.
-- [ ] **A4.9 Add `code/qcommon/vm_none.c`.** `VM_Compile` is a no-op and `VM_CallCompiled`
+- [x] **A4.9 Add `code/qcommon/vm_none.c`.** Done on 2 September 2026. `VM_Compile` is a no-op and `VM_CallCompiled`
   calls `Com_Error(ERR_FATAL, "VM_CallCompiled: no JIT on this platform")` and returns `0`.
   Add it to `QCOMMON_SOURCES`. Delete `code/unix/vm_x86.c` and `code/unix/qasm.h`.
   - **Tests:** none, because the path is unreachable (`vm->compiled` is never set).
   - **Verify:** `qcommon` links without undefined `VM_Compile` or `VM_CallCompiled`.
-- [ ] **A4.10 Export module entry points and switch the CMake sources.** Add `Q_EXPORT` to
+- [x] **A4.10 Export module entry points and switch the CMake sources.** Done on 2 September 2026. Add `Q_EXPORT` to
   `vmMain` in `code/game/g_main.c:203`, `code/cgame/cg_main.c:46`, `code/q3_ui/ui_main.c:43`,
   and `code/ui/ui_main.c:168`, and to `dllEntry` in `code/game/g_syscalls.c:34`,
   `code/cgame/cg_syscalls.c:34`, and `code/ui/ui_syscalls.c:33`. Checklist 02 B1 changes the
@@ -410,7 +410,7 @@ found it correct, and change only what each step names.
     prints `0`. In the container, `./build/quake3_modern +set fs_basepath /paks +set r_fullscreen 0 +map q3dm1`
     renders under `xvfb-run` (checklist 00 smoke). On the macOS artifact,
     `nm -gU baseq3/qagamearm64.dylib | grep -E 'vmMain|dllEntry'` shows both exported.
-- [ ] **A4.11 Fix `http_downloader.cpp` platform code until checklist 06 replaces it.** Use
+- [x] **A4.11 Fix `http_downloader.cpp` platform code until checklist 06 replaces it.** Done on 2 September 2026. Use
   `socket_t` and a `close_socket()` helper from `net_compat.h`, call `WSAStartup` once through
   `std::once_flag` on Windows, `shutdown(SHUT_RDWR)` before close, and set `SO_RCVTIMEO` so a
   hung worker cannot block exit. Skip this step if checklist 06 N1.4 has already landed.
@@ -419,7 +419,7 @@ found it correct, and change only what each step names.
 
 ### Phase A5: `DEDICATED` at runtime
 
-- [ ] **A5.1 Add `Sys_IsDedicatedBuild`.** In `code/null/null_client.c` add
+- [x] **A5.1 Add `Sys_IsDedicatedBuild`.** Done on 2 September 2026. In `code/null/null_client.c` add
   `qboolean Sys_IsDedicatedBuild(void) { return qtrue; }` and
   `void Sys_ReleaseDisplay(void) {}`. In `code/client/cl_main.c` add
   `qboolean Sys_IsDedicatedBuild(void) { return qfalse; }`. `Sys_ReleaseDisplay` for the client
@@ -427,7 +427,7 @@ found it correct, and change only what each step names.
   (`Sys_IsDedicatedBuild` returns `qtrue`).
   - **Tests:** none, because the function is a constant per binary. Covered by A5.2.
   - **Verify:** both executables link.
-- [ ] **A5.2 Use it for the `dedicated` default.** Change `code/qcommon/common.c:2409-2413` to
+- [x] **A5.2 Use it for the `dedicated` default.** Done on 2 September 2026. Change `code/qcommon/common.c:2409-2413` to
   `com_dedicated = Cvar_Get("dedicated", Sys_IsDedicatedBuild() ? "1" : "0",
   Sys_IsDedicatedBuild() ? CVAR_ROM : CVAR_LATCH);`. Leave the other `#ifndef DEDICATED`
   blocks unconditional; they already compile that way because qcommon never had the define,
@@ -445,7 +445,7 @@ found it correct, and change only what each step names.
 
 ### Phase A6: LuaJIT acquisition
 
-- [ ] **A6.1 Replace the LuaJIT lookup.** Replace `CMakeLists.txt:35-38` and the uses at
+- [x] **A6.1 Replace the LuaJIT lookup.** Done on 2 September 2026. Replace `CMakeLists.txt:35-38` and the uses at
   `:180,182` with:
   ```cmake
   option(Q3_FETCH_LUAJIT "Build LuaJIT from source when no system package is found" ON)
@@ -478,7 +478,7 @@ found it correct, and change only what each step names.
     through FetchContent and `ctest --preset dev -R ModernScripting` passes. With
     `-DQ3_FETCH_LUAJIT=OFF` and no system package, configure fails with the hint text.
 
-- [ ] **A6.2 Add `Q3_FETCH_DEPS` for hosts with no packages (macOS native build).** Add
+- [x] **A6.2 Add `Q3_FETCH_DEPS` for hosts with no packages (macOS native build).** Done on 2 September 2026. Add
   `option(Q3_FETCH_DEPS "Fetch SDL2, LuaJIT, and GoogleTest into the build tree" OFF)`. When it
   is ON: skip `find_package(SDL2)` and `FetchContent_Declare(SDL2 GIT_REPOSITORY
   https://github.com/libsdl-org/SDL.git GIT_TAG release-2.32.8)` with `SDL_TEST OFF`,

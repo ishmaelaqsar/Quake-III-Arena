@@ -825,12 +825,3 @@ void VM_LogSyscalls( int *args ) {
 		args[0], args[1], args[2], args[3], args[4] );
 }
 
-
-
-#if defined(C_ONLY) || defined(DLL_ONLY) || !defined(__i386__)
-int	VM_CallCompiled( vm_t *vm, int *args ) {
-  return(0); 
-}
-
-void VM_Compile( vm_t *vm, vmHeader_t *header ) {}
-#endif

@@ -21,7 +21,9 @@ typedef struct {
 
 glwstate_t glw_state;
 
-qboolean QGL_Init( const char *dllname );
+qboolean QGL_Init( const char *dllname ) {
+    return qtrue;
+}
 
 static SDL_Window*   s_window = nullptr;
 static SDL_GLContext s_glContext = nullptr;
@@ -482,6 +484,13 @@ void Sys_SendKeyEvents( void ) {
 void Snd_Memset (void* dest, const int val, const size_t count)
 {
 	std::memset(dest, val, count);
+}
+
+void Sys_ReleaseDisplay(void) {
+	if (s_window) {
+		SDL_SetWindowGrab(s_window, SDL_FALSE);
+		SDL_ShowCursor(SDL_ENABLE);
+	}
 }
 
 } // extern "C"
