@@ -1,2 +1,7 @@
 build/
 *.pk3
+build-*/
+.cache/
+compile_commands.json
+CMakeUserPresets.json
+ci/smoke/out/

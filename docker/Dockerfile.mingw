@@ -1,0 +1,88 @@
+# Windows x64 cross-compile and test image for the Quake III Arena modern fork.
+#
+# Windows containers only run on a Windows host, so this image cross-compiles Windows binaries
+# from Linux with the MinGW-w64 toolchain and runs the test executables under Wine. It is the
+# local Windows leg; the MSVC build stays a continuous integration leg because Microsoft's
+# toolchain cannot ship in an image.
+#
+# The image is linux/amd64 so that Wine runs x86_64 Windows binaries without CPU emulation.
+# On a Linux x86_64 host it runs natively. On an Apple Silicon host Docker Desktop runs it
+# under Rosetta or QEMU, which works but is slow.
+#
+# Dependencies are built from pinned git tags into /opt/mingw-deps:
+#   SDL2    release-2.32.8
+#   curl    curl-8_19_0 (Schannel, no OpenSSL)
+#   LuaJIT  v2.1 at commit 1ee778a4e37122d8ca7d5733c590a47dafd6b15c
+# GoogleTest comes from CMake FetchContent at configure time and builds with the same
+# toolchain file.
+
+FROM --platform=linux/amd64 ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential cmake ninja-build git ca-certificates pkg-config python3 file \
+        mingw-w64 mingw-w64-tools gcc-mingw-w64-x86-64-posix g++-mingw-w64-x86-64-posix \
+        binutils-mingw-w64-x86-64 \
+        wine wine64 \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG MINGW_PREFIX=/opt/mingw-deps
+ENV MINGW_PREFIX=${MINGW_PREFIX}
+
+COPY cmake/toolchain-mingw-w64.cmake /opt/toolchain-mingw-w64.cmake
+
+# SDL2: shared and static libraries plus the sdl2-config.cmake package that find_package uses.
+RUN git clone --depth 1 --branch release-2.32.8 https://github.com/libsdl-org/SDL.git /tmp/sdl \
+    && cmake -S /tmp/sdl -B /tmp/sdl/build -G Ninja \
+        -DCMAKE_TOOLCHAIN_FILE=/opt/toolchain-mingw-w64.cmake \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+        -DSDL_SHARED=ON -DSDL_STATIC=ON -DSDL_TEST=OFF \
+    && cmake --build /tmp/sdl/build \
+    && cmake --install /tmp/sdl/build \
+    && rm -rf /tmp/sdl
+
+# curl with Schannel so that no TLS library needs to ship next to the executable.
+RUN git clone --depth 1 --branch curl-8_19_0 https://github.com/curl/curl.git /tmp/curl \
+    && cmake -S /tmp/curl -B /tmp/curl/build -G Ninja \
+        -DCMAKE_TOOLCHAIN_FILE=/opt/toolchain-mingw-w64.cmake \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+        -DCURL_USE_SCHANNEL=ON -DCURL_USE_LIBPSL=OFF -DUSE_LIBIDN2=OFF -DCURL_ZLIB=OFF \
+        -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DUSE_NGHTTP2=OFF -DCURL_USE_LIBSSH2=OFF \
+        -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON \
+    && cmake --build /tmp/curl/build \
+    && cmake --install /tmp/curl/build \
+    && rm -rf /tmp/curl
+
+# LuaJIT: static library, cross-built as the upstream README describes for Windows targets.
+# A luajit.pc file lets the project's pkg_check_modules(LUAJIT luajit) find it.
+RUN git clone https://github.com/LuaJIT/LuaJIT.git /tmp/luajit \
+    && git -C /tmp/luajit checkout 1ee778a4e37122d8ca7d5733c590a47dafd6b15c \
+    && make -C /tmp/luajit -j"$(nproc)" HOST_CC="gcc -m64" CROSS=x86_64-w64-mingw32- \
+        TARGET_SYS=Windows BUILDMODE=static \
+    && mkdir -p ${MINGW_PREFIX}/include/luajit-2.1 ${MINGW_PREFIX}/lib/pkgconfig \
+    && cp /tmp/luajit/src/lua.h /tmp/luajit/src/luaconf.h /tmp/luajit/src/lualib.h \
+          /tmp/luajit/src/lauxlib.h /tmp/luajit/src/luajit.h /tmp/luajit/src/lua.hpp \
+          ${MINGW_PREFIX}/include/luajit-2.1/ \
+    && cp /tmp/luajit/src/libluajit.a ${MINGW_PREFIX}/lib/libluajit-5.1.a \
+    && printf 'prefix=%s\nlibdir=${prefix}/lib\nincludedir=${prefix}/include\n\nName: LuaJIT\nDescription: Just-in-time compiler for Lua (MinGW-w64 static)\nVersion: 2.1\nLibs: -L${libdir} -lluajit-5.1\nCflags: -I${includedir}/luajit-2.1\n' \
+          "${MINGW_PREFIX}" > ${MINGW_PREFIX}/lib/pkgconfig/luajit.pc \
+    && rm -rf /tmp/luajit
+
+# Non-root runtime: the compose file runs the container as the host user.
+RUN mkdir -p /tmp/q3home /ccache /tmp/wineprefix \
+    && chmod 1777 /tmp/q3home /ccache /tmp/wineprefix \
+    && printf '[safe]\n\tdirectory = /src\n' > /tmp/q3home/.gitconfig \
+    && chmod 644 /tmp/q3home/.gitconfig
+
+# PKG_CONFIG_LIBDIR restricts pkg-config to the cross prefix so that host libraries never leak
+# into a Windows build. WINEPATH lets Wine find SDL2.dll, libcurl.dll, and the MinGW runtime
+# DLLs next to the test executables without copying them.
+ENV HOME=/tmp/q3home \
+    CCACHE_DIR=/ccache \
+    PKG_CONFIG_LIBDIR=${MINGW_PREFIX}/lib/pkgconfig \
+    WINEPREFIX=/tmp/wineprefix \
+    WINEDEBUG=-all \
+    WINEPATH="${MINGW_PREFIX}/bin;/usr/lib/gcc/x86_64-w64-mingw32/13-posix;/usr/x86_64-w64-mingw32/lib"
+
+WORKDIR /src

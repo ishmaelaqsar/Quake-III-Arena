@@ -1,0 +1,65 @@
+# Development containers for the Quake III Arena modern fork.
+#
+# Use the Makefile targets instead of calling compose directly. The Makefile exports Q3_UID and
+# Q3_GID so that files the containers write on the bind mount belong to you.
+#
+#   dev  Linux build, test, and headless render (docker/Dockerfile). Multi-arch.
+#   win  Windows x64 cross-compile with MinGW-w64 and test under Wine (docker/Dockerfile.mingw).
+#        Always linux/amd64; on an Apple Silicon host it runs under emulation.
+#
+# macOS cannot run in a container. Build it natively with `make native-build` on a Mac (the
+# CMake option Q3_FETCH_DEPS fetches SDL2, LuaJIT, and GoogleTest into the build tree, so
+# nothing is installed on the host) or rely on the macOS continuous integration leg.
+#
+# Game data: put pak0.pk3 to pak8.pk3 in docker/paks/ (ignored by git), or point Q3_PAKS at a
+# directory that holds them. The containers see them read-only at /paks.
+
+x-common: &common
+  user: "${Q3_UID:-1000}:${Q3_GID:-1000}"
+  working_dir: /src
+  stdin_open: true
+  tty: true
+  # Sanitizers, gdb, and Wine need ptrace.
+  cap_add:
+    - SYS_PTRACE
+  security_opt:
+    - seccomp=unconfined
+
+services:
+  dev:
+    <<: *common
+    build:
+      context: docker
+    image: q3-dev
+    environment:
+      Q3_PAKS: /paks
+      CCACHE_DIR: /ccache
+      HOME: /tmp/q3home
+    volumes:
+      - .:/src
+      - ${Q3_PAKS:-./docker/paks}:/paks:ro
+      - q3-ccache:/ccache
+
+  win:
+    <<: *common
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mingw
+    image: q3-dev-mingw
+    platform: linux/amd64
+    environment:
+      Q3_PAKS: /paks
+      CCACHE_DIR: /ccache
+      HOME: /tmp/q3home
+      WINEPREFIX: /tmp/wineprefix
+      WINEDEBUG: "-all"
+    volumes:
+      - .:/src
+      - ${Q3_PAKS:-./docker/paks}:/paks:ro
+      - q3-ccache-win:/ccache
+      - q3-wineprefix:/tmp/wineprefix
+
+volumes:
+  q3-ccache:
+  q3-ccache-win:
+  q3-wineprefix:
