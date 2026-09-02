@@ -8,7 +8,7 @@ project. Replace the Linux-only platform layer under `code/unix/` with a portabl
 before this checklist lands, because the tree does not compile on the owner's macOS machine
 today.
 
-**Status:** In progress. Phases A1 through A6.2 complete on 2 September 2026 (hygiene, platform macros, CMake restructure, sys platform layer, runtime DEDICATED, LuaJIT/fetch options). Open: A6.3, A7, A8.
+**Status:** In progress. Phases A1 through A8 complete on 2 September 2026 (hygiene, platform macros, CMake restructure, sys platform layer, runtime DEDICATED, LuaJIT/fetch, CI workflow, build docs). Open: A6.3 MinGW verification.
 
 ## Prerequisites
 
@@ -509,7 +509,7 @@ found it correct, and change only what each step names.
 
 ### Phase A7: continuous integration
 
-- [ ] **A7.1 Add `.github/workflows/ci.yml`.** Add a `linux-mingw` job that builds `docker/Dockerfile.mingw` and runs `make win-test` with `CI=1`, so the Windows cross build and Wine tests run on every push next to the MSVC leg. Jobs: `linux` on `ubuntu-24.04` runs inside the
+- [x] **A7.1 Add `.github/workflows/ci.yml`.** Done on 2 September 2026. Add a `linux-mingw` job that builds `docker/Dockerfile.mingw` and runs `make win-test` with `CI=1`, so the Windows cross build and Wine tests run on every push next to the MSVC leg. Jobs: `linux` on `ubuntu-24.04` runs inside the
   image from checklist 00 with presets `dev` and `asan`, `Q3_WERROR=ON`, `ctest` with
   `--gtest_shuffle` through `EXTRA_ARGS`, and the headless smoke script; `macos` on `macos-15`
   (arm64) runs `brew install ninja sdl2 luajit`, preset `dev`, and `ctest`; `windows` on
@@ -523,7 +523,7 @@ found it correct, and change only what each step names.
 
 ### Phase A8: build documentation
 
-- [ ] **A8.1 Write `docs/building.md`.** Sections: prerequisites per platform (container for
+- [x] **A8.1 Write `docs/building.md`.** Done on 2 September 2026. Sections: prerequisites per platform (container for
   Linux, `brew` list for macOS, vcpkg list for Windows), presets and what each does, where to
   put pak files (`build/baseq3/` or `+set fs_basepath`), home paths per platform, module
   naming (`qagame<arch><ext>`), the sanitizer presets, and the pinned `luajit-cmake` SHA.

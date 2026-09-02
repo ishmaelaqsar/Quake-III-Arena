@@ -41,6 +41,7 @@ jobs:
             -w /src \
             q3-dev cmake -S . -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DQ3_WERROR=ON \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Build
@@ -99,10 +100,8 @@ jobs:
             -w /src \
             q3-dev cmake -S . -B build-asan -G Ninja \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize=alignment" \
-              -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize=alignment" \
-              -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" \
-              -DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=address,undefined"
+              -DQ3_SANITIZE=address,undefined \
+              -DQ3_WERROR=ON
 
       - name: Build
         run: |
@@ -116,7 +115,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/src \
             -w /src \
-            -e ASAN_OPTIONS="detect_leaks=0:strict_string_checks=1" \
+            -e ASAN_OPTIONS="detect_leaks=1:strict_string_checks=1" \
             -e UBSAN_OPTIONS="print_stacktrace=1" \
             -e EXTRA_ARGS="--gtest_shuffle" \
             q3-dev ctest --test-dir build-asan --output-on-failure --timeout 120
@@ -203,22 +202,76 @@ jobs:
           path: ci/smoke/out/*
           if-no-files-found: ignore
 
-  macos-arm64:
-    name: macOS arm64 (macOS 15)
-    runs-on: macos-15
-    if: false # enabled by checklist 01 step 7
+  linux-mingw:
+    name: Windows Cross MinGW (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Cache Docker image
+        id: cache-docker-mingw
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image-mingw.tar
+          key: docker-mingw-${{ hashFiles('docker/Dockerfile.mingw') }}
+
+      - name: Load or build MinGW Docker image
+        run: |
+          if [ -f /tmp/docker-image-mingw.tar ]; then
+            docker load -i /tmp/docker-image-mingw.tar
+          else
+            docker build -t q3-dev-mingw -f docker/Dockerfile.mingw .
+            docker save q3-dev-mingw -o /tmp/docker-image-mingw.tar
+          fi
+
+      - name: Configure and build Windows binaries
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev-mingw cmake -S . -B build-win64 -G Ninja \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw-w64.cmake
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev-mingw cmake --build build-win64
+
+      - name: Run Windows unit tests under Wine
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev-mingw ctest --test-dir build-win64 --output-on-failure --timeout 120
+
+      - name: Upload Windows cross artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-mingw-binaries
+          path: |
+            build-win64/quake3_modern.exe
+            build-win64/q3ded.exe
+            build-win64/baseq3/*
+          if-no-files-found: ignore
+
+  macos-arm64:
+    name: macOS arm64 (macOS 15)
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install ninja sdl2 luajit
+
       - name: Configure CMake
         run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DQ3_FETCH_DEPS=ON
+          cmake --preset dev
 
       - name: Build
-        run: cmake --build build
+        run: cmake --build --preset dev
 
       - name: Run unit tests
         run: |
@@ -238,22 +291,26 @@ jobs:
   windows-x64:
     name: Windows x64 (Windows 2022)
     runs-on: windows-2022
-    if: false # enabled by checklist 01 step 7
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Install dependencies via vcpkg
+        run: |
+          vcpkg install sdl2 luajit gtest curl:x64-windows
+
       - name: Configure CMake
         run: |
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64 \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build
-        run: cmake --build build --config RelWithDebInfo
+        run: cmake --build build-msvc --config RelWithDebInfo
 
       - name: Run unit tests
         run: |
-          ctest --test-dir build -C RelWithDebInfo --output-on-failure --timeout 120 --gtest_shuffle
+          ctest --test-dir build-msvc -C RelWithDebInfo --output-on-failure --timeout 120 --gtest_shuffle
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -261,7 +318,7 @@ jobs:
         with:
           name: windows-x64-binaries
           path: |
-            build/RelWithDebInfo/quake3_modern.exe
-            build/RelWithDebInfo/q3ded.exe
-            build/baseq3/*
+            build-msvc/RelWithDebInfo/quake3_modern.exe
+            build-msvc/RelWithDebInfo/q3ded.exe
+            build-msvc/baseq3/*
           if-no-files-found: ignore
