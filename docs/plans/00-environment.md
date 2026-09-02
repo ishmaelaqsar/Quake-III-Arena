@@ -7,7 +7,7 @@ every other checklist uses. After this checklist, an agent builds, tests, and re
 headless on the owner's machine without installing anything on the host, and the same image runs
 the Linux legs in CI.
 
-**Status:** In progress. Steps 1, 2, and 3 done on 2 September 2026 (image, compose file, Makefile, smoke scripts). Steps 7 and 8 (MinGW cross image, native macOS targets) added on 2 September 2026; 8 done, 7 needs verification on the Linux machine. Open: 3b golden image, 4, 5, 6, 7.
+**Status:** In progress. Steps 1, 2, 3, 4, 5, and 6 done on 2 September 2026 (image, compose file, Makefile, smoke scripts, pixel gate, CI workflow, building doc). Steps 7 and 8 (MinGW cross image, native macOS targets) added on 2 September 2026; 8 done, 7 needs verification on the Linux machine with Docker. Open: 3b golden image, 7.
 
 ## Prerequisites
 
@@ -155,7 +155,7 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
   **Verify:** `ci/smoke/golden/smoke.tga` and `smoke.png` are committed and `make smoke`
   passes.
 
-- [ ] **4. Write `ci/smp_pixel_gate.sh` (skeleton).**
+- [x] **4. Write `ci/smp_pixel_gate.sh` (skeleton).** Done on 2 September 2026.
   Two runs of the same smoke command differ by one cvar pair given as arguments (for example
   `r_smp 0` and `r_smp 1`, or `r_vbo 0` and `r_vbo 1`), with `+set cl_avidemo 10` so every
   tenth frame is written as a TGA. The script compares every frame pair with `compare -metric
@@ -168,7 +168,7 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
 
 ### Continuous integration
 
-- [ ] **5. Write `.github/workflows/ci.yml` (skeleton).**
+- [x] **5. Write `.github/workflows/ci.yml` (skeleton).** Done on 2 September 2026.
   Jobs:
   - `linux-dev`, `linux-asan`, `linux-smoke`: run on `ubuntu-24.04` inside the image built from
     `docker/Dockerfile` (use `docker build` in the job, cache with `actions/cache` keyed on the
@@ -187,7 +187,7 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
   **Verify:** `act -l` or a push to a branch lists the jobs; the Linux jobs reach the build
   step and fail only where checklist 01 has not landed yet.
 
-- [ ] **6. Write `docs/building.md` (stub).**
+- [x] **6. Write `docs/building.md` (stub).** Done on 2 September 2026.
   Two sections: "Build in the container" with the `make` targets and the `Q3_PAKS`
   variable, and "Native builds" with the sentence "Checklist `01-build-portability.md` completes
   this section." Link it from the root `README.md` once checklist 10 creates that file.

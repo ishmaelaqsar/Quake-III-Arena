@@ -34,15 +34,6 @@ what you found, and add a replacement step. The checklist is the record of decis
 
 ## Shared conventions
 
-- **Install nothing on the host.** The owner does most of the work on a Linux machine (assumed
-  x86_64) and sometimes on a macOS arm64 laptop. Neither gets SDL2, LuaJIT, or GoogleTest
-  installed. Every Linux build, test, and screenshot gate runs inside the `dev` container
-  through the Makefile targets, and the Windows x64 leg cross-compiles in the `win` container
-  with MinGW-w64 and runs its tests under Wine (`make win-test`). macOS cannot run in a
-  container: the macOS CI leg is the primary check, and `make native-build` builds on a Mac
-  with the host Xcode, CMake, and Ninja while `Q3_FETCH_DEPS` fetches every library into the
-  build tree. MSVC stays a CI leg. When a checklist says "on the Mac", it means the macOS CI
-  leg, a downloaded CI artifact, or the native build on the laptop.
 - **Surgical commits.** Touch only what the step needs. Do not reformat or refactor adjacent
   code. Match the existing style of the file you edit: the legacy C tree uses tabs and id
   Software style, `code/sys/` uses four spaces and `snake_case` in namespace `q3::`.
@@ -112,7 +103,7 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 
 | File | Covers | Status |
 |---|---|---|
-| `00-environment.md` | Docker image, the Makefile targets, gate G1 harness, continuous integration skeleton | In progress (Linux image, compose, Makefile, smoke scripts, native targets done; MinGW image verification, golden image, and CI skeleton open) |
+| `00-environment.md` | Docker image, the Makefile targets, gate G1 harness, continuous integration skeleton | In progress (Linux image, compose, Makefile, smoke scripts, pixel gate, CI skeleton, building doc, native targets done; MinGW image verification and golden image open) |
 | `01-build-portability.md` | Stray files, platform macros, CMake object libraries, platform layer under `code/sys/`, `DEDICATED` at runtime, LuaJIT, CI legs, `docs/building.md` | Not started |
 | `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | Not started |
 | `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, replacement of vacuous tests, sanitizer CI | Not started |

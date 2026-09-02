@@ -1,0 +1,267 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-dev:
+    name: Linux Dev (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Cache Docker image
+        id: cache-docker
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image-dev.tar
+          key: docker-dev-${{ hashFiles('docker/Dockerfile') }}
+
+      - name: Load or build Docker image
+        run: |
+          if [ -f /tmp/docker-image-dev.tar ]; then
+            docker load -i /tmp/docker-image-dev.tar
+          else
+            docker build -t q3-dev -f docker/Dockerfile docker/
+            docker save q3-dev -o /tmp/docker-image-dev.tar
+          fi
+
+      - name: Configure CMake
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev cmake -S . -B build -G Ninja \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev cmake --build build
+
+      - name: Run unit tests
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            -e EXTRA_ARGS="--gtest_shuffle" \
+            q3-dev ctest --test-dir build --output-on-failure --timeout 120
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-dev-binaries
+          path: |
+            build/quake3_modern
+            build/q3ded
+            build/baseq3/*
+          if-no-files-found: ignore
+
+  linux-asan:
+    name: Linux ASan/UBSan (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Cache Docker image
+        id: cache-docker
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image-dev.tar
+          key: docker-dev-${{ hashFiles('docker/Dockerfile') }}
+
+      - name: Load or build Docker image
+        run: |
+          if [ -f /tmp/docker-image-dev.tar ]; then
+            docker load -i /tmp/docker-image-dev.tar
+          else
+            docker build -t q3-dev -f docker/Dockerfile docker/
+            docker save q3-dev -o /tmp/docker-image-dev.tar
+          fi
+
+      - name: Configure CMake with ASan
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev cmake -S . -B build-asan -G Ninja \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize=alignment" \
+              -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize=alignment" \
+              -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" \
+              -DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev cmake --build build-asan
+
+      - name: Run unit tests under ASan
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            -e ASAN_OPTIONS="detect_leaks=0:strict_string_checks=1" \
+            -e UBSAN_OPTIONS="print_stacktrace=1" \
+            -e EXTRA_ARGS="--gtest_shuffle" \
+            q3-dev ctest --test-dir build-asan --output-on-failure --timeout 120
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-asan-binaries
+          path: |
+            build-asan/quake3_modern
+            build-asan/q3ded
+            build-asan/baseq3/*
+          if-no-files-found: ignore
+
+  linux-smoke:
+    name: Linux Smoke Gate (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Cache Docker image
+        id: cache-docker
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image-dev.tar
+          key: docker-dev-${{ hashFiles('docker/Dockerfile') }}
+
+      - name: Load or build Docker image
+        run: |
+          if [ -f /tmp/docker-image-dev.tar ]; then
+            docker load -i /tmp/docker-image-dev.tar
+          else
+            docker build -t q3-dev -f docker/Dockerfile docker/
+            docker save q3-dev -o /tmp/docker-image-dev.tar
+          fi
+
+      - name: Configure CMake
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev cmake -S . -B build -G Ninja \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+      - name: Build
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            q3-dev cmake --build build
+
+      - name: Download game pak files
+        id: fetch-paks
+        env:
+          Q3_PAKS_URL: ${{ secrets.Q3_PAKS_URL }}
+        run: |
+          if [ -z "$Q3_PAKS_URL" ]; then
+            echo "Secret Q3_PAKS_URL is absent. Skip smoke tests on this branch or fork."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p /tmp/paks
+          curl -sSL "$Q3_PAKS_URL" -o /tmp/paks.tar.gz
+          tar -xzf /tmp/paks.tar.gz -C /tmp/paks
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Run gate G1 smoke test
+        if: steps.fetch-paks.outputs.skip == 'false'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -v /tmp/paks:/paks \
+            -e Q3_PAKS=/paks \
+            -w /src \
+            q3-dev ci/smoke/run_smoke.sh build
+
+      - name: Upload smoke test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-output
+          path: ci/smoke/out/*
+          if-no-files-found: ignore
+
+  macos-arm64:
+    name: macOS arm64 (macOS 15)
+    runs-on: macos-15
+    if: false # enabled by checklist 01 step 7
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DQ3_FETCH_DEPS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run unit tests
+        run: |
+          ctest --test-dir build --output-on-failure --timeout 120 --gtest_shuffle
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-arm64-binaries
+          path: |
+            build/quake3_modern
+            build/q3ded
+            build/baseq3/*
+          if-no-files-found: ignore
+
+  windows-x64:
+    name: Windows x64 (Windows 2022)
+    runs-on: windows-2022
+    if: false # enabled by checklist 01 step 7
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+      - name: Build
+        run: cmake --build build --config RelWithDebInfo
+
+      - name: Run unit tests
+        run: |
+          ctest --test-dir build -C RelWithDebInfo --output-on-failure --timeout 120 --gtest_shuffle
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-x64-binaries
+          path: |
+            build/RelWithDebInfo/quake3_modern.exe
+            build/RelWithDebInfo/q3ded.exe
+            build/baseq3/*
+          if-no-files-found: ignore
