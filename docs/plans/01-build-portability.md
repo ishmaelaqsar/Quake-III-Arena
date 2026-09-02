@@ -8,7 +8,7 @@ project. Replace the Linux-only platform layer under `code/unix/` with a portabl
 before this checklist lands, because the tree does not compile on the owner's macOS machine
 today.
 
-**Status:** Not started
+**Status:** In progress. Phase A1 complete on 2 September 2026 (stray files removed, .gitignore extended).
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ numbers drift.
 
 ### Phase A1: repository hygiene
 
-- [ ] **A1.1 Remove stray build files and tracked binaries.** Run `git rm` on:
+- [x] **A1.1 Remove stray build files and tracked binaries.** Done on 2 September 2026. Run `git rm` on:
   `Screenshot From 2026-09-01 09-17-54.png` (deleted in the working tree, still tracked),
   `code/quake3.sln`, `code/quake3.vcproj`, `code/*.lnt`, `code/*.bat`, `code/Construct`,
   `code/Makefile`, `code/botlib/botlib.vcproj`, `code/botlib/*.mak`, `code/bspc/Conscript`,
@@ -74,7 +74,7 @@ numbers drift.
     git ls-files | grep -Ei '\.(sln|vcproj|bat|lnt|mak|exe)$|Conscript|pcons|code/unix/cons$|code/macosx' | wc -l
     ```
     prints `0`.
-- [ ] **A1.2 Extend `.gitignore`.** Add `build*/`, `.cache/`, `compile_commands.json`, and
+- [x] **A1.2 Extend `.gitignore`.** Done on 2 September 2026. Add `build*/`, `.cache/`, `compile_commands.json`, and
   `CMakeUserPresets.json`. `*.pk3` and `build/` are already present.
   - **Tests:** none, because there is no behaviour.
   - **Verify:** `git status --short` after a container build shows no untracked build output.

@@ -66,7 +66,7 @@ Documentation state at the audit:
 
 ### Hygiene first
 
-- [ ] **9. Remove stray build files and tracked binaries.**
+- [x] **9. Remove stray build files and tracked binaries.** Done on 2 September 2026.
   (Numbered 9 to match the approved plan; it lands first.) Run `git rm` on:
 
   ```text
