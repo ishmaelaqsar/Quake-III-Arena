@@ -105,7 +105,7 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 |---|---|---|
 | `00-environment.md` | Docker image, the Makefile targets, gate G1 harness, continuous integration skeleton | In progress (Linux image, compose, Makefile, smoke scripts, pixel gate, CI skeleton, building doc, native targets done; MinGW image verification and golden image open) |
 | `01-build-portability.md` | Stray files, platform macros, CMake object libraries, platform layer under `code/sys/`, `DEDICATED` at runtime, LuaJIT, CI legs, `docs/building.md` | In progress (Phases A1-A8 complete: platform layer, CMake restructure, CI legs, build docs; MinGW cross-check open) |
-| `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | Not started |
+| `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | In progress (Phases B1 and B2 complete: 64-bit VM ABI, prototype fixes) |
 | `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, replacement of vacuous tests, sanitizer CI | Not started |
 | `04-cxx-migration.md` | Compile every directory as C++17, JPEG library swap, header close-out, idiomatic rewrites with `Com_Error` as an exception first | Not started |
 | `05-threading.md` | Main-thread ownership, main-thread queue, job system, render backend thread, image precache, sound handoff, shutdown, ThreadSanitizer CI | Not started |

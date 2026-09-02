@@ -8,7 +8,7 @@ the `sys_api` boundary, the VFS hook that bypasses the file system, the busy-wai
 the hostile first-run message, and the CD key and authorize server gates that no longer serve
 a purpose in a GPL build.
 
-**Status:** Not started
+**Status:** In progress. Phases B1 and B2 complete on 2 September 2026 (64-bit VM ABI, prototype fallout).
 
 ## Prerequisites
 
@@ -55,30 +55,30 @@ Use the ioquake3 model. Modules export `intptr_t vmMain(int command, int arg0, .
 and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall handlers are
 `intptr_t handler(intptr_t *args)`.
 
-- [ ] **B1.1 Change the VM types.** In `code/qcommon/vm_local.h:130` change `systemCall` to
+- [x] **B1.1 Change the VM types.** Done on 2 September 2026. In `code/qcommon/vm_local.h:130` change `systemCall` to
   `intptr_t (*systemCall)(intptr_t *parms)`. At `:138` change `entryPoint` to
   `intptr_t (QDECL *entryPoint)(int callNum, ...)`. Keep `VM_CallInterpreted` and
   `VM_CallCompiled` at `:171,174` returning `int` with `int *args`.
-- [ ] **B1.2 Change the public prototypes.** In `code/qcommon/qcommon.h:318-331` change
+- [x] **B1.2 Change the public prototypes.** Done on 2 September 2026. In `code/qcommon/qcommon.h:318-331` change
   `VM_Create` to take `intptr_t (*systemCalls)(intptr_t *)`, and `VM_Call` to return
   `intptr_t`. At `:944` change `Sys_LoadDll` to
   `void *Sys_LoadDll(const char *name, char *fqpath, intptr_t (QDECL **entryPoint)(int, ...),
   intptr_t (QDECL *systemcalls)(intptr_t, ...))`.
-- [ ] **B1.3 Fix `vm.c`.** At `code/qcommon/vm.c:333-346` make `VM_DllSyscall` return
+- [x] **B1.3 Fix `vm.c`.** Done on 2 September 2026. At `code/qcommon/vm.c:333-346` make `VM_DllSyscall` return
   `intptr_t`, take `intptr_t arg, ...`, read the varargs as `intptr_t`, and call
   `currentVM->systemCall(args)` without the `(int*)` cast. At `:673-700` declare `intptr_t r;
   int args[12];`, read 12 `int` varargs, and call `vm->entryPoint(callnum, args[0], ...,
   args[11])`. Today the call passes 16 arguments to a 12-parameter function. At `:485` match
   the new `Sys_LoadDll` signature. Leave the interpreter pointer arithmetic at `:824` as it is.
-- [ ] **B1.4 Widen the interpreter's syscall arguments.** At `code/qcommon/vm_interpreted.c:521`
+- [x] **B1.4 Widen the interpreter's syscall arguments.** Done on 2 September 2026. At `code/qcommon/vm_interpreted.c:521`
   copy the VM's 32-bit argument block into `intptr_t args[16]` before calling
   `vm->systemCall(args)`. ioquake3 does this under a word-size check; do it unconditionally.
-- [ ] **B1.5 Change the three engine handlers.** `code/server/sv_game.c:312-313` becomes
+- [x] **B1.5 Change the three engine handlers.** Done on 2 September 2026. `code/server/sv_game.c:312-313` becomes
   `intptr_t SV_GameSystemCalls(intptr_t *args)` with the cast line removed. Same at
   `code/client/cl_cgame.c:417` and `code/client/cl_ui.c:772`. Change the `VMA(x)`, `VMI(x)`,
   and `VMF(x)` macros to take `intptr_t`. `cl_ui.c:1047` `return (intptr_t)strncpy(...)` is now
   correct. Audit every handler that returns a pointer and confirm it returns `intptr_t`.
-- [ ] **B1.6 Change the modules.** `code/game/g_main.c:203`, `code/cgame/cg_main.c:46`,
+- [x] **B1.6 Change the modules.** Done on 2 September 2026. `code/game/g_main.c:203`, `code/cgame/cg_main.c:46`,
   `code/q3_ui/ui_main.c:43`, and `code/ui/ui_main.c:168` become
   `Q_EXPORT intptr_t vmMain(int command, int arg0, ..., int arg11)`. In
   `code/game/g_syscalls.c:31-35`, `code/cgame/cg_syscalls.c:31-35`, and
@@ -87,7 +87,7 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
   `Q_EXPORT void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t arg, ...))`. Trap wrappers that
   return `int` are unchanged; values fit, and the one pointer return (`trap_strncpy`) is
   discarded by its callers.
-- [ ] **B1.7 Update `sys_dll.cpp` and the test stubs.** Match the new `Sys_LoadDll` signature in
+- [x] **B1.7 Update `sys_dll.cpp` and the test stubs.** Done on 2 September 2026. Match the new `Sys_LoadDll` signature in
   `code/sys/sys_dll.cpp` (checklist 01 A4.3) and in `tests/test_platform_stubs.cpp`. Update the
   VM ABI paragraph in `docs/architecture.md:14-17`.
   - **Tests (for all of B1):** `tests/test_vm.cpp` (binary `quake3_tests`) plus
@@ -109,7 +109,7 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
 
 ### Phase B2: prototype fallout
 
-- [ ] **B2.1 Fix every implicit declaration.** With `-Werror=implicit-function-declaration`
+- [x] **B2.1 Fix every implicit declaration.** Done on 2 September 2026. With `-Werror=implicit-function-declaration`
   (checklist 01 A3.6) active, build and fix each error. Expected sites: add
   `#include "../sys/sys_api.h"` at `code/server/sv_init.c:362` (`Sys_ScriptEvent`) and
   `code/client/cl_main.c:1379` (`Sys_SanitizeDownloadFilename`); remove hand-written externs at

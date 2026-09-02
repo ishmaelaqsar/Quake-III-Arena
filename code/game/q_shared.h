@@ -92,6 +92,7 @@ extern "C" {
 #include <ctype.h>
 #include <limits.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #endif
 

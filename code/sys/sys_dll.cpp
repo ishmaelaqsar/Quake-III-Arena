@@ -11,10 +11,10 @@ void Sys_ModuleFileName(const char *name, char *buf, int bufSize) {
 }
 
 void *Sys_LoadDll(const char *name, char *fqpath,
-                  int (**entryPoint)(int, ...),
-                  int (*systemcalls)(int, ...)) {
+                  intptr_t (QDECL **entryPoint)(int, ...),
+                  intptr_t (QDECL *systemcalls)(intptr_t, ...)) {
     void *libHandle = NULL;
-    void (*dllEntry)(int (*syscallptr)(int, ...));
+    void (*dllEntry)(intptr_t (QDECL *syscallptr)(intptr_t, ...));
     char fname[MAX_OSPATH];
     char *basepath;
     char *homepath;
@@ -63,8 +63,8 @@ void *Sys_LoadDll(const char *name, char *fqpath,
         return NULL;
     }
 
-    dllEntry = (void (*)(int (*)(int, ...)))SDL_LoadFunction(libHandle, "dllEntry");
-    *entryPoint = (int (*)(int, ...))SDL_LoadFunction(libHandle, "vmMain");
+    dllEntry = (void (*)(intptr_t (QDECL *)(intptr_t, ...)))SDL_LoadFunction(libHandle, "dllEntry");
+    *entryPoint = (intptr_t (QDECL *)(int, ...))SDL_LoadFunction(libHandle, "vmMain");
 
     if (!*entryPoint || !dllEntry) {
         Com_Printf("Sys_LoadDll(%s) failed finding vmMain/dllEntry: %s\n", name, SDL_GetError());

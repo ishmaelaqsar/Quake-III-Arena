@@ -330,7 +330,7 @@ Dlls will call this directly
  
 ============
 */
-int QDECL VM_DllSyscall( int arg, ... ) {
+intptr_t QDECL VM_DllSyscall( intptr_t arg, ... ) {
   intptr_t args[16];
   int i;
   va_list ap;
@@ -342,7 +342,7 @@ int QDECL VM_DllSyscall( int arg, ... ) {
     args[i] = va_arg(ap, intptr_t);
   va_end(ap);
   
-  return currentVM->systemCall( (int*)args );
+  return currentVM->systemCall( args );
 }
 
 /*
@@ -363,7 +363,7 @@ vm_t *VM_Restart( vm_t *vm ) {
 	// DLL's can't be restarted in place
 	if ( vm->dllHandle ) {
 		char	name[MAX_QPATH];
-	    int			(*systemCall)( int *parms );
+	    intptr_t	(*systemCall)( intptr_t *parms );
 		
 		systemCall = vm->systemCall;	
 		Q_strncpyz( name, vm->name, sizeof( name ) );
@@ -433,8 +433,8 @@ it will attempt to load as a system dll
 
 #define	STACK_SIZE	0x20000
 
-vm_t *VM_Create( const char *module, int (*systemCalls)(int *), 
-				vmInterpret_t interpret ) {
+vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *), 
+				   vmInterpret_t interpret ) {
 	vm_t		*vm;
 	vmHeader_t	*header;
 	int			length;
@@ -666,11 +666,11 @@ locals from sp
 #define	MAX_STACK	256
 #define	STACK_MASK	(MAX_STACK-1)
 
-int	QDECL VM_Call( vm_t *vm, int callnum, ... ) {
+intptr_t	QDECL VM_Call( vm_t *vm, int callnum, ... ) {
 	vm_t	*oldVM;
-	int		r;
+	intptr_t	r;
 	int i;
-	int args[16];
+	int args[12];
 	va_list ap;
 
 
@@ -697,8 +697,7 @@ int	QDECL VM_Call( vm_t *vm, int callnum, ... ) {
 
 		r = vm->entryPoint( callnum,  args[0],  args[1],  args[2], args[3],
                             args[4],  args[5],  args[6], args[7],
-                            args[8],  args[9], args[10], args[11],
-                            args[12], args[13], args[14], args[15]);
+                            args[8],  args[9], args[10], args[11] );
 	} else if ( vm->compiled ) {
 		r = VM_CallCompiled( vm, &callnum );
 	} else {
