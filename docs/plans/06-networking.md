@@ -7,7 +7,7 @@ make the HTTP transport secure and correct, replace the Discord Rich Presence st
 IPC client, make the bitstream and transport classes exercise the real wire format, and turn
 the multiplayer session manager into a controller slot registry with an honest status.
 
-**Status:** Not started
+**Status:** In progress. Step N1.1 done on 2 September 2026 (UDP download restored).
 
 ## Prerequisites
 
@@ -128,7 +128,7 @@ handshake. This file does not touch them.
   **Tests:** none, because this is a decision.
   **Verify:** the option appears in `cmake -LH` output.
 
-- [ ] **N1.1 Restore the UDP download path.**
+- [x] **N1.1 Restore the UDP download path.** Done on 2 September 2026.
   Files: `code/client/cl_main.c`.
   In `CL_BeginDownload` (`cl_main.c:1378-1426`) reinstate
   `CL_AddReliableCommand( va("download %s", remoteName) );` as the default action after the

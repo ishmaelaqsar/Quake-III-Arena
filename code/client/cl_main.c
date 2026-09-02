@@ -1403,29 +1403,7 @@ void CL_BeginDownload( const char *localName, const char *remoteName ) {
 	clc.downloadBlock = 0; // Starting new file
 	clc.downloadCount = 0;
 
-	// Check FastDL URLs (sv_dlURL or cl_cURL_URL or ws.q3df.org fallback)
-	cvar_t *sv_dlURL = Cvar_Get( "sv_dlURL", "", CVAR_SYSTEMINFO );
-	cvar_t *cl_cURL_URL = Cvar_Get( "cl_cURL_URL", "", CVAR_ARCHIVE );
-
-	char downloadURL[1024];
-	if ( sv_dlURL && *sv_dlURL->string ) {
-		Com_sprintf( downloadURL, sizeof(downloadURL), "%s/%s", sv_dlURL->string, remoteName );
-	} else if ( cl_cURL_URL && *cl_cURL_URL->string ) {
-		Com_sprintf( downloadURL, sizeof(downloadURL), "%s/%s", cl_cURL_URL->string, remoteName );
-	} else {
-		// Fallback to Worldspawn / DeFRaG ws.q3df.org repository
-		const char *mapname = remoteName;
-		const char *slash = strrchr( remoteName, '/' );
-		if ( slash ) mapname = slash + 1;
-		Com_sprintf( downloadURL, sizeof(downloadURL), "https://ws.q3df.org/maps/downloads/%s", mapname );
-	}
-
-	Com_Printf( "FastDL: Downloading '%s' via FastDL (%s)...\n", remoteName, downloadURL );
-
-	char targetPath[1024];
-	Com_sprintf( targetPath, sizeof(targetPath), "baseq3/%s", localName );
-
-	Sys_StartHttpDownload( downloadURL, targetPath );
+	CL_AddReliableCommand( va("download %s", remoteName) );
 }
 
 /*
