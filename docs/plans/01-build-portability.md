@@ -8,7 +8,7 @@ project. Replace the Linux-only platform layer under `code/unix/` with a portabl
 before this checklist lands, because the tree does not compile on the owner's macOS machine
 today.
 
-**Status:** In progress. Phase A1 complete on 2 September 2026 (stray files removed, .gitignore extended).
+**Status:** In progress. Phases A1 and A2 complete on 2 September 2026 (stray files removed, .gitignore extended, platform macro layer rewritten).
 
 ## Prerequisites
 
@@ -81,7 +81,7 @@ numbers drift.
 
 ### Phase A2: platform macro layer
 
-- [ ] **A2.1 Rewrite the OS chain in `q_shared.h`.** Replace the five blocks at
+- [x] **A2.1 Rewrite the OS chain in `q_shared.h`.** Done on 2 September 2026. Replace the five blocks at
   `code/game/q_shared.h:133-310` with one ordered chain:
   ```c
   #if defined(_WIN32)
@@ -110,12 +110,12 @@ numbers drift.
     all three CI legs.
   - **Verify:** in the container, `make configure && make build --target qcommon`
     succeeds. On the macOS CI leg the same target compiles.
-- [ ] **A2.2 Fix `common.c` includes and hunk defaults.** Change `code/qcommon/common.c:28-36`
+- [x] **A2.2 Fix `common.c` includes and hunk defaults.** Done on 2 September 2026. Change `code/qcommon/common.c:28-36`
   to `#ifdef _WIN32 #include <winsock2.h> #else #include <netinet/in.h> #endif`. Unify the
   `MACOS_X` hunk megabytes at `common.c:45-50` to one default (64 and 24 work everywhere).
   - **Tests:** none, because there is no observable behaviour change.
   - **Verify:** `qcommon` compiles on the macOS leg.
-- [ ] **A2.3 Add missing public prototypes to `qcommon.h`.** Add `char *FS_BuildOSPath(const
+- [x] **A2.3 Add missing public prototypes to `qcommon.h`.** Done on 2 September 2026. Add `char *FS_BuildOSPath(const
   char *base, const char *game, const char *qpath)` (defined at `code/qcommon/files.c:468`),
   `void Com_InitSmallZoneMemory(void)`, `void Com_InitZoneMemory(void)` (defined at
   `common.c:1376` and `:1388`), `void Sys_Sleep(int msec)`, `qboolean Sys_IsDedicatedBuild(void)`
@@ -125,7 +125,7 @@ numbers drift.
   - **Tests:** none, because the compiler enforces this once A3.6 enables
     `-Werror=implicit-function-declaration`.
   - **Verify:** `make build 2>&1 | grep -c 'implicit'` prints `0` after A3.6.
-- [ ] **A2.4 Remove Linux-only behaviour switches that now change macOS.** At
+- [x] **A2.4 Remove Linux-only behaviour switches that now change macOS.** Done on 2 September 2026. At
   `code/renderer/tr_init.c:868-872` make the `r_ext_texture_env_add` default `"1"` everywhere.
   At `tr_init.c:882-886` make `r_stencilbits` default `"8"` everywhere. At
   `code/client/cl_keys.c:1043` drop the platform gate around the Alt+Enter fullscreen toggle,

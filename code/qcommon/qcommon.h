@@ -571,6 +571,7 @@ void	FS_FCloseFile( fileHandle_t f );
 // note: you can't just fclose from another DLL, due to MS libc issues
 
 int		FS_ReadFile( const char *qpath, void **buffer );
+char	*FS_BuildOSPath( const char *base, const char *game, const char *qpath );
 // returns the length of the file
 // a null buffer will just return the file length without loading
 // as a quick check for existance. -1 length == not present
@@ -797,6 +798,8 @@ void Z_Free( void *ptr );
 void Z_FreeTags( int tag );
 int Z_AvailableMemory( void );
 void Z_LogHeap( void );
+void Com_InitSmallZoneMemory( void );
+void Com_InitZoneMemory( void );
 
 void Hunk_Clear( void );
 void Hunk_ClearToMark( void );
@@ -962,6 +965,9 @@ char	*Sys_GetCurrentUser( void );
 
 void	QDECL Sys_Error( const char *error, ...);
 void	Sys_Quit (void);
+void	Sys_Sleep( int msec );
+qboolean	Sys_IsDedicatedBuild( void );
+void	Sys_ReleaseDisplay( void );
 char	*Sys_GetClipboardData( void );	// note that this isn't journaled...
 
 void	Sys_Print( const char *msg );
