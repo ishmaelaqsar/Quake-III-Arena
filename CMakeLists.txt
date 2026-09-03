@@ -39,6 +39,15 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU
     if(Q3_WERROR)
         add_compile_options(-Werror)
     endif()
+    # A shipped Release build carries no verbose logging at all: LOG_DEBUG and LOG_INFO compile
+    # to nothing. Debug and RelWithDebInfo keep them, filtered at run time by com_logLevel, so a
+    # developer gets them with one cvar and CI keeps the diagnostics. Warnings and errors are
+    # always compiled, in every build type: a release binary that reports nothing is worse than
+    # a slightly larger one.
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        add_compile_definitions(Q3_LOG_STRIP_VERBOSE)
+    endif()
+
     if(Q3_SANITIZE)
         # -fno-sanitize=alignment: the zone allocator hands out four-byte-aligned blocks and
         # reads memblock_t through them (code/qcommon/common.cpp:957), and the netcode misaligns
