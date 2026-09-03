@@ -240,6 +240,33 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
   **Verify:** after checklist 01, `make native-test` on the Mac configures (with network for the
   fetch), builds, and passes `ctest` with no Homebrew library installed.
 
+## Continuous integration defects found on 3 September 2026
+
+Every run of the workflow has failed so far. The Linux and macOS legs failed at their `Build`
+step on the link errors that checklist 04 step P1.1 fixed on 3 September 2026. The remaining
+failures are defects in `.github/workflows/ci.yml` itself, and each one needs a fix before that
+leg can pass:
+
+- [ ] **`--gtest_shuffle` is passed to `ctest`** at `.github/workflows/ci.yml:278` (macOS) and
+  `:313` (Windows). It is a GoogleTest flag, not a `ctest` flag, so `ctest` exits with an
+  unknown-argument error even when every test would pass. Use `ctest --schedule-random`, or put
+  `EXTRA_ARGS --gtest_shuffle` on `gtest_discover_tests` in `tests/CMakeLists.txt` and drop the
+  flag here.
+- [ ] **Backslash line continuations inside a PowerShell step** at `:304-305`. The
+  `windows-2022` runner defaults to `pwsh`, which continues lines with a backtick, so the
+  `cmake` configure command is malformed and the step fails. Either add `shell: bash` to that
+  step or use backticks.
+- [ ] **The vcpkg triplet applies to one port only** at `:301`:
+  `vcpkg install sdl2 luajit gtest curl:x64-windows` gives only `curl` the `x64-windows`
+  triplet. Pass `--triplet x64-windows` for all of them.
+- [ ] **`EXTRA_ARGS` is inert** at `:59` and `:120`. The variable is exported into the
+  container, but nothing reads it: the `Makefile` uses `CTEST_ARGS`, and these steps call
+  `docker run` directly rather than going through the `Makefile`. The shuffle silently never
+  happens on the Linux legs. Prefer calling the `Makefile` targets so that local and
+  continuous integration runs stay identical.
+- [ ] **The MinGW leg** fails at `Configure and build Windows binaries`, which is the same
+  cross image that step 7 has not verified yet.
+
 ## Test map
 
 | File | Binary or runner | Cases | Added by step |
