@@ -356,7 +356,6 @@ char *NET_ErrorString(void) {
 void NET_Sleep(int msec) {
     struct timeval timeout;
     fd_set fdset;
-    extern qboolean stdin_active;
 
     if (ip_socket == Q3_INVALID_SOCKET || !com_dedicated || !com_dedicated->integer) {
         return;

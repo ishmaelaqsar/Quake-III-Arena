@@ -522,7 +522,7 @@ delta functions
 =============================================================================
 */
 
-extern cvar_t *cl_shownet;
+extern "C" cvar_t *cl_shownet;   // client.h gives it C linkage where it is defined
 
 #define	LOG(x) if( cl_shownet->integer == 4 ) { Com_Printf("%s ", x ); };
 
@@ -973,7 +973,7 @@ If the delta removes the entity, entityState_t->number will be set to MAX_GENTIT
 Can go from either a baseline or a previous packet_entity
 ==================
 */
-extern	cvar_t	*cl_shownet;
+extern "C" cvar_t *cl_shownet;   // client.h gives it C linkage where it is defined
 
 void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to, 
 						 int number) {

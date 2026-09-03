@@ -1591,6 +1591,14 @@ qboolean Hunk_CheckMark( void ) {
 }
 
 // Defined in the client and the server, which are still C. Keep C linkage.
+// Defined in cm_load.cpp, which declares them through cm_local.h inside extern "C". The
+// linkage has to match: MSVC decorates C++ variable names, so a plain extern would reference a
+// symbol that nothing defines and only the Windows link would fail.
+extern "C" {
+extern int c_traces, c_brush_traces, c_patch_traces;
+extern int c_pointcontents;
+}
+
 extern "C" {
 void CL_ShutdownCGame( void );
 void CL_ShutdownUI( void );
@@ -2797,9 +2805,6 @@ void Com_Frame( void ) {
 	//
 	if ( com_showtrace->integer ) {
 	
-		extern	int c_traces, c_brush_traces, c_patch_traces;
-		extern	int	c_pointcontents;
-
 		Com_Printf ("%4i traces  (%ib %ip) %4i points\n", c_traces,
 			c_brush_traces, c_patch_traces, c_pointcontents);
 		c_traces = 0;

@@ -212,11 +212,14 @@ extern void ( APIENTRY * qglUniform1i )(GLint location, GLint v0);
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*
-#if !defined( _WIN32 )
-
+// Core GL is called directly on every platform. The Windows branch below used to declare a
+// function pointer per call, for the minidriver loading that code/unix/linux_qgl.c implemented,
+// and that file went away with the portable platform layer in checklist 01 phase A4. Nothing
+// defines those pointers now, so the Windows link failed on about fifty of them. SDL provides
+// the context, and the renderer rewrite in checklist 08 replaces this header outright.
 #include "qgl_linked.h"
 
-#else
+#if 0   // retained for reference until checklist 08 replaces this header
 
 // windows systems use a function pointer for each call so we can load minidrivers
 

@@ -558,6 +558,26 @@ found it correct, and change only what each step names.
   - **Verify:** a reader who follows only `docs/building.md` reaches a green `ctest` in the
     container.
 
+## Windows link gaps closed on 3 September 2026
+
+With LuaJIT resolving, the Windows leg compiled every file and failed at link. Three causes, all
+now fixed:
+
+- **About fifty `qgl*` function pointers were declared and never defined.** `code/renderer/qgl.h`
+  took direct GL calls through `qgl_linked.h` on every platform except Windows, where it declared
+  a pointer per call for the minidriver loading that `code/unix/linux_qgl.c` implemented. Phase A4
+  deleted that file, so the Windows branch referenced symbols nothing defined. Every platform now
+  includes `qgl_linked.h`; the extension pointers that `code/sys/sys_sdl.cpp` resolves are
+  declared separately and are unaffected. Checklist 08 replaces this header outright.
+- **Seven variables whose declaration and definition disagreed about linkage.** Recorded as
+  catalogue row 25 in `04-cxx-migration.md`, because it is a C++ migration hazard rather than a
+  Windows one: MSVC decorates C++ variable names and the Itanium ABI does not, so GCC and Clang
+  linked happily.
+- **`stdin_active` had no Windows definition.** It lived only in `sys_unix.cpp` while
+  `net/sys_net.cpp` referenced it through a block-scope `extern`. It is now declared once in
+  `sys_local.h` inside `extern "C"` and defined per platform, false on Windows because there is
+  no tty console there.
+
 ## Correction on 3 September 2026
 
 `tests/test_module_symbols.cpp` was rewritten. As first written it held two cases with identical

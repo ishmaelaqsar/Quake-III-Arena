@@ -5,6 +5,9 @@
 #include <conio.h>
 #include <string.h>
 
+// No tty console on Windows, so NET_Sleep never waits on standard input.
+qboolean stdin_active = qfalse;
+
 extern "C" {
 
 static char consoleInputBuffer[256];

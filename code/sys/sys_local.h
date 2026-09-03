@@ -14,6 +14,10 @@ void Sys_PlatformInit(void);
 void Sys_PlatformExit(void);
 void Sys_InitSignals(void);
 
+// True while the tty console is usable, so that NET_Sleep can also wait on standard input.
+// Defined per platform: sys_unix.cpp starts it true, sys_win32.cpp leaves it false.
+extern qboolean stdin_active;
+
 void Sys_ConsoleInputInit(void);
 void Sys_ConsoleInputShutdown(void);
 char *Sys_ConsoleInput(void);
