@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** In progress. Phase P0 complete and phase P1 steps P1.1, P1.2, and P1.3 complete on 3 September 2026 (qcommon, server, renderer, shared game files, and null stubs build and link as C++). Next: P1.4 client. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.4-P1.10), P2.
+**Status:** In progress. Phase P0 complete and phase P1 steps P1.1, P1.2, P1.3, and P1.4 complete on 3 September 2026 (qcommon, server, renderer, client, shared game files, and null stubs build and link as C++). Next: P1.5 botlib. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.5-P1.10), P2.
 
 ## Prerequisites
 
@@ -325,12 +325,15 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
   - Removed deprecated `register` storage class specifier from `tr_surface.cpp` to prevent Clang C++17 errors.
   - Cast pointer comparisons to `intptr_t` in `tr_init.cpp` to avoid 64-bit truncation errors.
 
-- [ ] **P1.4 client.** `git mv code/client/*.c` (15 files, including `snd_adpcm.c`). Expected
-  classes: rows 1 (5 casts), 2 (70 in `cl_cgame.cpp`, 58 in `cl_ui.cpp`; `cl_ui.c:1047`
-  `return (intptr_t)strncpy(...)` is correct after checklist 02 B1), 5 (`connstate_t`,
-  `netsrc_t`), 20 (`snd_mix.c` assembly). This PR unblocks checklist 05 T1.
+- [x] **P1.4 client.** Done on 3 September 2026. `git mv code/client/*.c` (15 files, including `snd_adpcm.c`). Expected classes: rows 1 (allocator casts), 2 (`VmArg` proxy in `cl_cgame.cpp` and `cl_ui.cpp`), 5 (`fsMode_t`, `vmInterpret_t`), 20 (`snd_mix.cpp` portable C path kept, dead 32-bit x86 `__asm` block removed). This PR unblocks checklist 05 T1.
   **Tests:** none, because renames; gate G1 is the test.
-  **Verify:** the shared verify block.
+  **Verify:** the shared verify block: GCC and Clang builds clean, all 77 tests pass.
+
+  Notes from the landing:
+  - `snd_local.h` opened `extern "C"` before including `qcommon.h`, which broke C++ templates in `qcommon.h`. Moved `#include` statements above the `extern "C"` block.
+  - Cast `byte*` in `cl_net_chan.cpp` for `clc.reliableCommands`.
+  - Cast `NET_OutOfBandData` buffer to `(byte *)` in `cl_main.cpp`.
+  - Disambiguated `abs` call on unsigned frame difference in `cl_cin.cpp`.
 
 - [ ] **P1.5 botlib.** `git mv code/botlib/*.c` (28 files). Expected classes: rows 1 (17 casts),
   5, 6 (`be_ai_weap.c` tables). `operator` is already renamed. Botlib is compiled-as-C++ legacy

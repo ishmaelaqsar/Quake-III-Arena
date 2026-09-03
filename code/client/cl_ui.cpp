@@ -757,7 +757,7 @@ static int FloatAsInt( float f ) {
 	return temp;
 }
 
-#define	VMA(x) VM_ArgPtr(args[x])
+#define	VMA(x)	VmArg{args[x]}
 #define	VMF(x)	(*((float*)&args[x]))
 #define VMI(x)	(args[x])
 
@@ -771,11 +771,11 @@ The ui module is making a system call
 intptr_t CL_UISystemCalls( intptr_t *args ) {
 	switch( VMI(0) ) {
 	case UI_ERROR:
-		Com_Error( ERR_DROP, "%s", VMA(1) );
+		Com_Error( ERR_DROP, "%s", (const char *)VMA(1) );
 		return 0;
 
 	case UI_PRINT:
-		Com_Printf( "%s", VMA(1) );
+		Com_Printf( "%s", (const char *)VMA(1) );
 		return 0;
 
 	case UI_MILLISECONDS:
@@ -828,7 +828,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_FS_FOPENFILE:
-		return FS_FOpenFileByMode( VMA(1), VMA(2), VMI(3) );
+		return FS_FOpenFileByMode( VMA(1), VMA(2), (fsMode_t)VMI(3) );
 
 	case UI_FS_READ:
 		FS_Read2( VMA(1), VMI(2), VMI(3) );
@@ -1043,7 +1043,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_STRNCPY:
-		return (intptr_t)strncpy( VMA(1), VMA(2), VMI(3) );
+		return (intptr_t)strncpy( (char *)VMA(1), (const char *)VMA(2), VMI(3) );
 
 	case UI_SIN:
 		return FloatAsInt( sin( VMF(1) ) );
@@ -1147,7 +1147,7 @@ void CL_InitUI( void ) {
 	vmInterpret_t		interpret;
 
 	// load the dll or bytecode
-	interpret = Cvar_VariableValue( "vm_ui" );
+	interpret = (vmInterpret_t)(int)Cvar_VariableValue( "vm_ui" );
 	if ( cl_connectedToPureServer != 0 && interpret != VMI_NATIVE ) {
 		// if sv_pure is set we only allow qvms to be loaded
 		interpret = VMI_COMPILED;

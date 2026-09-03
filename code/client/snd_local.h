@@ -21,16 +21,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // snd_local.h -- private sound definations
-
 
 #include "../game/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "snd_public.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define	PAINTBUFFER_SIZE		4096					// this is in samples
 
