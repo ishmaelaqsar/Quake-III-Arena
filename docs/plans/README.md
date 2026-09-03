@@ -155,8 +155,16 @@ Fixed today beyond the checklist steps, because the platform legs exposed them:
 All are recorded in `00-environment.md`, and the two C++ migration classes are catalogue rows 23
 and 24 in `04-cxx-migration.md`.
 
-One blocker remains: gate G1 has no golden image, because no machine used so far has game data.
-Produce it with `make smoke-update-golden` on the Linux machine before the next rename.
+Continuous integration state: Linux, Linux with sanitizers, and macOS are green. Windows builds,
+links, and runs the suite at 73 of 76; the three failures are `ModernScriptingTest` cases that
+throw a structured exception out of LuaJIT, recorded in `07-scripting.md` and left for step S1.1.
+
+Two blockers remain:
+
+- Gate G1 has no golden image, because no machine used so far has game data. Produce it with
+  `make smoke-update-golden` on the Linux machine before the next rename.
+- The Sol2 and LuaJIT exception bridge is missing on Windows, which keeps that leg red. It is
+  step S1.1's to fix, not a separate task.
 
 ## Dependency order
 
