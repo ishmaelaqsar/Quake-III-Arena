@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_sample.h
@@ -67,3 +73,7 @@ int AAS_PointReachabilityAreaIndex( vec3_t point );
 //returns the plane the given face is in
 void AAS_FacePlane(int facenum, vec3_t normal, float *dist);
 
+
+#ifdef __cplusplus
+}
+#endif

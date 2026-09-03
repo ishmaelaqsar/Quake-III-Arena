@@ -9,6 +9,8 @@
  * that are shared between the sequential encoder (jchuff.c) and the
  * progressive encoder (jcphuff.c).  No other modules need to see these.
  */
+#pragma once
+
 
 /* Derived data constructed for each Huffman table */
 

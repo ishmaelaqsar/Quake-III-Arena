@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 #ifndef __UI_LOCAL_H__
 #define __UI_LOCAL_H__
@@ -237,8 +243,8 @@ typedef struct
 typedef struct
 {
 	menucommon_s	generic;
-	char*			focuspic;	
-	char*			errorpic;
+	const char*		focuspic;	
+	const char*		errorpic;
 	qhandle_t		shader;
 	qhandle_t		focusshader;
 	int				width;
@@ -249,7 +255,7 @@ typedef struct
 typedef struct
 {
 	menucommon_s	generic;
-	char*			string;
+	const char*		string;
 	int				style;
 	float*			color;
 } menutext_s;
@@ -797,4 +803,8 @@ void UI_SignupMenu( void );
 void RankStatus_Cache( void );
 void UI_RankStatusMenu( void );
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

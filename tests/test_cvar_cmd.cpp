@@ -1,9 +1,8 @@
 #include <gtest/gtest.h>
 
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-}
+
 
 class CvarCmdFixture : public ::testing::Test {
 protected:

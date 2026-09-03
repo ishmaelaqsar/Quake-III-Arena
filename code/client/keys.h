@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "../ui/keycodes.h"
 
 #define	MAX_KEYS		256
@@ -55,3 +61,7 @@ qboolean Key_GetOverstrikeMode( void );
 void Key_SetOverstrikeMode( qboolean state );
 void Key_ClearStates( void );
 int Key_GetKey(const char *binding);
+
+#ifdef __cplusplus
+}
+#endif

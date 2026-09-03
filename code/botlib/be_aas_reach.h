@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_reach.h
@@ -66,3 +72,7 @@ int AAS_AreaLadder(int areanum);
 int AAS_AreaJumpPad(int areanum);
 //returns true if the area is donotenter
 int AAS_AreaDoNotEnter(int areanum);
+
+#ifdef __cplusplus
+}
+#endif

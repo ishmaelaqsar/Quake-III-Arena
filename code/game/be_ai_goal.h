@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 /*****************************************************************************
  * name:		be_ai_goal.h
@@ -116,3 +122,7 @@ void BotFreeGoalState(int handle);
 int BotSetupGoalAI(void);
 //shut down the goal AI
 void BotShutdownGoalAI(void);
+
+#ifdef __cplusplus
+}
+#endif

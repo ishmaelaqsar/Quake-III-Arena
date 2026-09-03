@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_debug.h
@@ -60,3 +66,7 @@ void AAS_ShowReachability(struct aas_reachability_s *reach);
 //show the reachable areas from the given area
 void AAS_ShowReachableAreas(int areanum);
 
+
+#ifdef __cplusplus
+}
+#endif

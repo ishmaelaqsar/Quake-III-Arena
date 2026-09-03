@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 
 // g_public.h -- game module information visible to server
@@ -427,3 +433,7 @@ typedef enum {
 	BOTAI_START_FRAME				// ( int time );
 } gameExport_t;
 
+
+#ifdef __cplusplus
+}
+#endif

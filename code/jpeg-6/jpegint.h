@@ -9,6 +9,8 @@
  * These declarations are considered internal to the JPEG library; most
  * applications using the library shouldn't need to include this file.
  */
+#pragma once
+
 
 
 /* Declarations for both compression & decompression */

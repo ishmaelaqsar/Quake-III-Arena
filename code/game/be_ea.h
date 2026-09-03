@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 
 /*****************************************************************************
@@ -64,3 +70,7 @@ void EA_ResetInput(int client);
 //setup and shutdown routines
 int EA_Setup(void);
 void EA_Shutdown(void);
+
+#ifdef __cplusplus
+}
+#endif

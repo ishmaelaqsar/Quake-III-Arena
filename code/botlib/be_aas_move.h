@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_move.h
@@ -69,3 +75,7 @@ void AAS_SetMovedir(vec3_t angles, vec3_t movedir);
 int AAS_DropToFloor(vec3_t origin, vec3_t mins, vec3_t maxs);
 //
 void AAS_InitSettings(void);
+
+#ifdef __cplusplus
+}
+#endif

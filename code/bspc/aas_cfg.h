@@ -19,6 +19,8 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
 
 #define BBOXFL_GROUNDED			1	//bounding box only valid when on ground
 #define BBOXFL_NOTGROUNDED		2	//bounding box only valid when NOT on ground

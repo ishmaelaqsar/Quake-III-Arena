@@ -11,6 +11,8 @@
  * The individual DCT algorithms are kept in separate files to ease 
  * machine-dependent tuning (e.g., assembly coding).
  */
+#pragma once
+
 
 
 /*

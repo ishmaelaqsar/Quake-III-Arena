@@ -19,6 +19,8 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
 
 // make sure this is the same character as we use in chats in g_cmd.c
 #define EC	"\x19"

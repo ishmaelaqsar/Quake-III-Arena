@@ -1,14 +1,13 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include "q_shared.h"
+#include "qcommon.h"
+#include "client.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "q_shared.h"
-#include "qcommon.h"
-#include "client.h"
 
 // System and platform prototypes for SDL2 backend
 void Sys_QueEvent( int time, sysEventType_t type, int value, int value2, int ptrLength, void *ptr );

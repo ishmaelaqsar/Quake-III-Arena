@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef __TR_PUBLIC_H
 #define __TR_PUBLIC_H
 
@@ -116,7 +122,7 @@ typedef struct {
 	// stack based memory allocation for per-level things that
 	// won't be freed
 #ifdef HUNK_DEBUG
-	void	*(*Hunk_AllocDebug)( int size, ha_pref pref, char *label, char *file, int line );
+	void	*(*Hunk_AllocDebug)( int size, ha_pref pref, const char *label, const char *file, int line );
 #else
 	void	*(*Hunk_Alloc)( int size, ha_pref pref );
 #endif
@@ -165,3 +171,7 @@ typedef struct {
 refexport_t*GetRefAPI( int apiVersion, refimport_t *rimp );
 
 #endif	// __TR_PUBLIC_H
+
+#ifdef __cplusplus
+}
+#endif

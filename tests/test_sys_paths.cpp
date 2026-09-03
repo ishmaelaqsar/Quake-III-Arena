@@ -4,16 +4,8 @@
 #include <fstream>
 #include <sys/stat.h>
 #include <unistd.h>
-
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-
-char *Sys_DefaultHomePath(void);
-char *Sys_DefaultInstallPath(void);
-char **Sys_ListFiles(const char *directory, const char *extension, char *filter, int *numfiles, qboolean wantsubs);
-void Sys_FreeFileList(char **list);
-}
 
 class TempDir {
 public:

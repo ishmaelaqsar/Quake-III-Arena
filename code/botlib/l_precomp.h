@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		l_precomp.h
@@ -178,3 +184,7 @@ int PC_FreeSourceHandle(int handle);
 int PC_ReadTokenHandle(int handle, pc_token_t *pc_token);
 int PC_SourceFileAndLine(int handle, char *filename, int *line);
 void PC_CheckOpenSourceHandles(void);
+
+#ifdef __cplusplus
+}
+#endif

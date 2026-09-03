@@ -2,10 +2,9 @@
 #include <cstdint>
 #include <cstring>
 
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-}
+
 
 TEST(LegacyVmSyscallTest, IntptrArrayParameterIndexing) {
     // Simulate VM_DllSyscall parameter array passed as 64-bit intptr_t array

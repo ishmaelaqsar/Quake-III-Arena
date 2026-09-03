@@ -9,6 +9,8 @@
  * that are shared between the sequential decoder (jdhuff.c) and the
  * progressive decoder (jdphuff.c).  No other modules need to see these.
  */
+#pragma once
+
 
 /* Short forms of external names for systems with brain-damaged linkers. */
 

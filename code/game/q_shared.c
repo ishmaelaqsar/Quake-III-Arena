@@ -259,7 +259,7 @@ char *COM_Parse( char **data_p )
 	return COM_ParseExt( data_p, qtrue );
 }
 
-void COM_ParseError( char *format, ... )
+void COM_ParseError( const char *format, ... )
 {
 	va_list argptr;
 	static char string[4096];
@@ -271,7 +271,7 @@ void COM_ParseError( char *format, ... )
 	Com_Printf("ERROR: %s, line %d: %s\n", com_parsename, com_lines, string);
 }
 
-void COM_ParseWarning( char *format, ... )
+void COM_ParseWarning( const char *format, ... )
 {
 	va_list argptr;
 	static char string[4096];
@@ -548,7 +548,7 @@ int COM_ParseInfos( char *buf, int max, char infos[][MAX_INFO_STRING] ) {
 COM_MatchToken
 ==================
 */
-void COM_MatchToken( char **buf_p, char *match ) {
+void COM_MatchToken( char **buf_p, const char *match ) {
 	char	*token;
 
 	token = COM_Parse( buf_p );
@@ -899,7 +899,7 @@ varargs versions of all text functions.
 FIXME: make this buffer size safe someday
 ============
 */
-char	* QDECL va( char *format, ... ) {
+char	* QDECL va( const char *format, ... ) {
 	va_list		argptr;
 	static char		string[2][32000];	// in case va is called by nested functions
 	static int		index = 0;

@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** Not started
+**Status:** In progress. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1, P2.
 
 ## Prerequisites
 
@@ -137,7 +137,7 @@ narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_share
 
 ### C-P0 prep PR (tree stays 100% C, about 4 days)
 
-- [ ] **P0.1 Gate the C-only flags and add `-fno-strict-aliasing`.** In `CMakeLists.txt`, move
+- [x] **P0.1 Gate the C-only flags and add `-fno-strict-aliasing`.** Done on 2 September 2026. In `CMakeLists.txt`, move
   `-Wno-implicit-function-declaration -Wno-int-conversion` (and the `-Werror=` versions that
   checklist 01 adds) behind `$<$<COMPILE_LANGUAGE:C>:...>`. Add `-fno-strict-aliasing` to every
   legacy target.
@@ -145,7 +145,7 @@ narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_share
   **Verify:** `make build` succeeds with GCC and clang; `ninja -v` shows the C flags
   only on `.c` compile lines.
 
-- [ ] **P0.2 Self-guarding headers.** Add `#pragma once` to the 60 unguarded headers. Add
+- [x] **P0.2 Self-guarding headers.** Done on 2 September 2026. Add `#pragma once` to the 60 unguarded headers. Add
   `#ifdef __cplusplus extern "C" {` and the closing `}` to every legacy header that declares
   functions and is consumed by a C++ translation unit now or during landing: `client.h`,
   `server.h`, `snd_local.h`, `snd_public.h`, `keys.h`, `tr_public.h`, `tr_local.h`, `qgl.h`,
@@ -159,7 +159,7 @@ narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_share
   **Verify:** `make build && make test` green; the tests binary links without
   the wrappers.
 
-- [ ] **P0.3 Keyword renames.** Pure C, zero behaviour change. In `code/renderer/tr_local.h`
+- [x] **P0.3 Keyword renames.** Done on 2 September 2026. Pure C, zero behaviour change. In `code/renderer/tr_local.h`
   rename the `orientationr_t or` field and parameters to `orient`, then `sed` `\.or\b` to
   `.orient` and `&backEnd.or` to `&backEnd.orient` across `code/renderer`. In
   `code/qcommon/common.c:913-969` rename `new` to `newblock`. In `code/botlib/l_precomp.c` rename
@@ -181,7 +181,7 @@ narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_share
   **Verify:** the loop prints nothing outside deleted blocks; `nm --defined-only` of
   `libq3renderer.a` shows no symbol change (fields are not symbols).
 
-- [ ] **P0.4 Const sweep (decision C3).** Change signatures: `va(const char *format, ...)`
+- [x] **P0.4 Const sweep (decision C3).** Done on 2 September 2026. Change signatures: `va(const char *format, ...)`
   (`q_shared.h:907` and `q_shared.c`), `COM_ParseError(const char*, ...)`,
   `COM_ParseWarning(const char*, ...)`, `COM_MatchToken(char**, const char*)`,
   `CL_ConsolePrint(const char*)` (`code/client/cl_console.c:370`; drop the `const_cast` in
@@ -199,7 +199,7 @@ narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_share
   the enforcement.
   **Verify:** all-C build still green on GCC and clang; the MSVC CI leg compiles.
 
-- [ ] **P0.5 `qboolean` as `int` (decision C4).** In `code/game/q_shared.h:335` replace the enum
+- [x] **P0.5 `qboolean` as `int` (decision C4).** Done on 2 September 2026. In `code/game/q_shared.h:335` replace the enum
   typedef with:
 
   ```c
@@ -211,7 +211,7 @@ narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_share
   `static_assert(sizeof(qboolean) == 4)` and a runtime check that `qtrue == 1`.
   **Verify:** build green; `nm` symbol lists unchanged.
 
-- [ ] **P0.6 `Q_EXPORT extern "C"` on module entry points.** Coordinate with checklist 02 B1.
+- [x] **P0.6 `Q_EXPORT extern "C"` on module entry points.** Done on 2 September 2026. Coordinate with checklist 02 B1.
   Mark `vmMain` and `dllEntry` in `code/game/g_main.c:203`, `code/game/g_syscalls.c:34`,
   `code/cgame/cg_main.c:46`, `code/cgame/cg_syscalls.c:34`, `code/q3_ui/ui_main.c:43`, and
   `code/ui/ui_syscalls.c:33` with `extern "C"` (under `#ifdef __cplusplus`) and `Q_EXPORT`.

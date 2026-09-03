@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 
 void S_Init( void );
@@ -70,3 +76,7 @@ void S_ClearSoundBuffer( void );
 void SNDDMA_Activate( void );
 
 void S_UpdateBackgroundTrack( void );
+
+#ifdef __cplusplus
+}
+#endif

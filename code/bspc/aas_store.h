@@ -19,6 +19,8 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
 
 #define AAS_MAX_BBOXES						5
 #define AAS_MAX_VERTEXES					512000

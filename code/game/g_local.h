@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 // g_local.h -- local definitions for game module
 
@@ -79,7 +85,7 @@ struct gentity_s {
 
 	qboolean	inuse;
 
-	char		*classname;			// set in QuakeEd
+	const char	*classname;			// set in QuakeEd
 	int			spawnflags;			// set in QuakeEd
 
 	qboolean	neverFree;			// if true, FreeEntity will only unlink
@@ -87,8 +93,8 @@ struct gentity_s {
 
 	int			flags;				// FL_* variables
 
-	char		*model;
-	char		*model2;
+	const char	*model;
+	const char	*model2;
 	int			freetime;			// level.time when the object was freed
 	
 	int			eventTime;			// events will be cleared EVENT_VALID_MSEC after set
@@ -114,12 +120,12 @@ struct gentity_s {
 	gentity_t	*prevTrain;
 	vec3_t		pos1, pos2;
 
-	char		*message;
+	const char	*message;
 
 	int			timestamp;		// body queue sinking, etc
 
 	float		angle;			// set in editor, -1 = up, -2 = down
-	char		*target;
+	const char	*target;
 	char		*targetname;
 	char		*team;
 	char		*targetShaderName;
@@ -970,3 +976,7 @@ int		trap_GeneticParentsAndChildSelection(int numranks, float *ranks, int *paren
 
 void	trap_SnapVector( float *v );
 
+
+#ifdef __cplusplus
+}
+#endif

@@ -7,6 +7,8 @@
  *
  * This file contains software version identification.
  */
+#pragma once
+
 
 
 #define JVERSION	"6  2-Aug-95"

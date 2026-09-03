@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_ai_weight.h
@@ -81,3 +87,7 @@ void EvolveWeightConfig(weightconfig_t *config);
 void InterbreedWeightConfigs(weightconfig_t *config1, weightconfig_t *config2, weightconfig_t *configout);
 //frees cached weight configurations
 void BotShutdownWeights(void);
+
+#ifdef __cplusplus
+}
+#endif

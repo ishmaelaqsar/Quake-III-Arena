@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-}
+
 
 TEST(StringTest, StrncpyzSafety) {
     char dest[8];
@@ -74,4 +73,10 @@ TEST(StringTest, InfoStrings) {
     Info_RemoveKey(info, "model");
     EXPECT_STREQ(Info_ValueForKey(info, "model"), "");
     EXPECT_STREQ(Info_ValueForKey(info, "name"), "Ranger");
+}
+
+TEST(QShared, QbooleanIsFourBytes) {
+    static_assert(sizeof(qboolean) == 4, "qboolean must be 4 bytes");
+    EXPECT_EQ(qfalse, 0);
+    EXPECT_EQ(qtrue, 1);
 }

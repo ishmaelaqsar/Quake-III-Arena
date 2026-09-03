@@ -113,7 +113,7 @@ qboolean CL_GameCommand(void) { return qfalse; }
 void CL_KeyEvent(int key, qboolean down, unsigned time) {}
 qboolean UI_GameCommand(void) { return qfalse; }
 void CL_ForwardCommandToServer(const char *string) {}
-void CL_ConsolePrint(char *txt) {}
+void CL_ConsolePrint(const char *txt) {}
 void CL_JoystickEvent(int axis, int value, int time) {}
 void CL_InitKeyCommands(void) {}
 void CL_CDDialog(void) {}

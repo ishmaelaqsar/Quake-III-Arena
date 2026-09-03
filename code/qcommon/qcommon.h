@@ -19,6 +19,8 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
 // qcommon.h -- definitions common between client and server, but not game.or ref modules
 #ifndef _QCOMMON_H_
 #define _QCOMMON_H_
@@ -169,6 +171,7 @@ const char	*NET_AdrToString (netadr_t a);
 qboolean	NET_StringToAdr ( const char *s, netadr_t *a);
 qboolean	NET_GetLoopPacket (netsrc_t sock, netadr_t *net_from, msg_t *net_message);
 void		NET_Sleep(int msec);
+char		*NET_ErrorString( void );
 
 
 #define	MAX_MSGLEN				16384		// max length of a message, which may
@@ -786,9 +789,9 @@ temp file loading
 #define Z_TagMalloc(size, tag)			Z_TagMallocDebug(size, tag, #size, __FILE__, __LINE__)
 #define Z_Malloc(size)					Z_MallocDebug(size, #size, __FILE__, __LINE__)
 #define S_Malloc(size)					S_MallocDebug(size, #size, __FILE__, __LINE__)
-void *Z_TagMallocDebug( int size, int tag, char *label, char *file, int line );	// NOT 0 filled memory
-void *Z_MallocDebug( int size, char *label, char *file, int line );			// returns 0 filled memory
-void *S_MallocDebug( int size, char *label, char *file, int line );			// returns 0 filled memory
+void *Z_TagMallocDebug( int size, int tag, const char *label, const char *file, int line );	// NOT 0 filled memory
+void *Z_MallocDebug( int size, const char *label, const char *file, int line );			// returns 0 filled memory
+void *S_MallocDebug( int size, const char *label, const char *file, int line );			// returns 0 filled memory
 #else
 void *Z_TagMalloc( int size, int tag );	// NOT 0 filled memory
 void *Z_Malloc( int size );			// returns 0 filled memory
@@ -851,7 +854,7 @@ void CL_JoystickEvent( int axis, int value, int time );
 
 void CL_PacketEvent( netadr_t from, msg_t *msg );
 
-void CL_ConsolePrint( char *text );
+void CL_ConsolePrint( const char *text );
 
 void CL_MapLoading( void );
 // do a screen update before starting to load a map

@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 
 #ifndef TR_LOCAL_H
@@ -490,7 +496,7 @@ typedef struct {
 } fog_t;
 
 typedef struct {
-	orientationr_t	or;
+	orientationr_t orient;
 	orientationr_t	world;
 	vec3_t		pvsOrigin;			// may be different than or.origin for portals
 	qboolean	isPortal;			// true if this view is through a portal
@@ -851,7 +857,7 @@ typedef struct {
 	int			smpFrame;
 	trRefdef_t	refdef;
 	viewParms_t	viewParms;
-	orientationr_t	or;
+	orientationr_t orient;
 	backEndCounters_t	pc;
 	qboolean	isHyperspace;
 	trRefEntity_t	*currentEntity;
@@ -919,7 +925,7 @@ typedef struct {
 	int						identityLightByte;	// identityLight * 255
 	int						overbrightBits;		// r_overbrightBits->integer, but set to 0 if no hw gamma
 
-	orientationr_t			or;					// for current entity
+	orientationr_t orient;					// for current entity
 
 	trRefdef_t				refdef;
 
@@ -1117,7 +1123,7 @@ int R_CullLocalBox (vec3_t bounds[2]);
 int R_CullPointAndRadius( vec3_t origin, float radius );
 int R_CullLocalPointAndRadius( vec3_t origin, float radius );
 
-void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms, orientationr_t *or );
+void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms, orientationr_t *orient );
 
 /*
 ** GL wrapper/helper functions
@@ -1346,7 +1352,7 @@ LIGHTS
 
 void R_DlightBmodel( bmodel_t *bmodel );
 void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent );
-void R_TransformDlights( int count, dlight_t *dl, orientationr_t *or );
+void R_TransformDlights( int count, dlight_t *dl, orientationr_t *orient );
 int R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 
 
@@ -1598,7 +1604,7 @@ void RE_StretchPic ( float x, float y, float w, float h,
 					  float s1, float t1, float s2, float t2, qhandle_t hShader );
 void RE_BeginFrame( stereoFrame_t stereoFrame );
 void RE_EndFrame( int *frontEndMsec, int *backEndMsec );
-void SaveJPG(char * filename, int quality, int image_width, int image_height, unsigned char *image_buffer);
+void SaveJPG(const char * filename, int quality, int image_width, int image_height, unsigned char *image_buffer);
 
 // font stuff
 void R_InitFreeType();
@@ -1607,3 +1613,7 @@ void RE_RegisterFont(const char *fontName, int pointSize, fontInfo_t *font);
 
 
 #endif //TR_LOCAL_H
+
+#ifdef __cplusplus
+}
+#endif

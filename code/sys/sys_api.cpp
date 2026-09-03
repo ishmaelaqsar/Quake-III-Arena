@@ -11,7 +11,7 @@ static q3::net::HttpDownloader g_httpDownloader;
 
 static void ConsolePrintSink(const char* msg) {
     if (msg) {
-        CL_ConsolePrint(const_cast<char*>(msg));
+        CL_ConsolePrint(msg);
     }
 }
 

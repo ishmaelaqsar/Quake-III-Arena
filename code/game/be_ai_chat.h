@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 /*****************************************************************************
  * name:		be_ai_chat.h
@@ -111,3 +117,7 @@ void BotSetChatGender(int chatstate, int gender);
 //store the bot name in the chat state
 void BotSetChatName(int chatstate, char *name, int client);
 
+
+#ifdef __cplusplus
+}
+#endif

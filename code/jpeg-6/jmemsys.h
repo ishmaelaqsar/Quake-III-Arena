@@ -16,6 +16,8 @@
  * this file, the best method is to #ifdef them based on a configuration
  * symbol supplied in jconfig.h, as we have done with USE_MSDOS_MEMMGR.
  */
+#pragma once
+
 
 
 /* Short forms of external names for systems with brain-damaged linkers. */

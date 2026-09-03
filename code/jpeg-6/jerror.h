@@ -12,6 +12,8 @@
  * the JPEG library may wish to include this file to get the error codes
  * and/or the macros.
  */
+#pragma once
+
 
 /*
  * To define the enum list of message codes, include this file without

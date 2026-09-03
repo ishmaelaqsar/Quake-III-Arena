@@ -1,10 +1,7 @@
 #include <gtest/gtest.h>
 #include "../code/sys/cvar/cvar_manager.hpp"
-
-extern "C" {
-void Com_InitSmallZoneMemory(void);
-void Com_InitZoneMemory(void);
-}
+#include "q_shared.h"
+#include "qcommon.h"
 
 class ModernCvarFixture : public ::testing::Test {
 protected:

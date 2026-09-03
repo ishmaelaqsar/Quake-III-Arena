@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 #include "qfiles.h"
 
@@ -74,3 +80,7 @@ int	CM_MarkFragments( int numPoints, const vec3_t *points, const vec3_t projecti
 
 // cm_patch.c
 void CM_DrawDebugSurface( void (*drawPoly)(int color, int numPoints, float *points) );
+
+#ifdef __cplusplus
+}
+#endif

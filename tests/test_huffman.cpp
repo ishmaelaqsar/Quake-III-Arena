@@ -2,10 +2,9 @@
 #include <cstring>
 #include <vector>
 
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-}
+
 
 TEST(HuffmanTest, CompressAndDecompress) {
     const char *testText = "Quake III Arena modernization with C++17 and GoogleTest. "

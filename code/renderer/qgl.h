@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
 ** QGL.H
 */
@@ -614,4 +620,8 @@ extern void (*qglXSwapBuffers)( Display *dpy, GLXDrawable drawable );
 
 #endif	// _WIN32 && __linux__
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

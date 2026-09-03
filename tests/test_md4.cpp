@@ -2,11 +2,10 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
-
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
 
+extern "C" {
 typedef struct {
     unsigned int state[4];
     unsigned int count[2];

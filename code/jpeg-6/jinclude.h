@@ -13,6 +13,8 @@
  * NOTE: this file is NOT intended to be included by applications using the
  * JPEG library.  Most applications need only include jpeglib.h.
  */
+#pragma once
+
 
 
 #ifdef _WIN32

@@ -1,9 +1,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-extern "C" {
 #include "q_shared.h"
-}
+
 
 TEST(MathTest, VectorOperations) {
     vec3_t a = {1.0f, 2.0f, 3.0f};

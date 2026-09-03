@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 #include "../game/q_shared.h"
 #include "tr_types.h"
@@ -1667,3 +1673,7 @@ extern qboolean		initparticles;
 int CG_NewParticleArea ( int num );
 
 
+
+#ifdef __cplusplus
+}
+#endif

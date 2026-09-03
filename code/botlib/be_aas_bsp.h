@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_bsp.h
@@ -87,3 +93,7 @@ int AAS_FloatForBSPEpairKey(int ent, char *key, float *value);
 //get an integer for the BSP epair key
 int AAS_IntForBSPEpairKey(int ent, char *key, int *value);
 
+
+#ifdef __cplusplus
+}
+#endif

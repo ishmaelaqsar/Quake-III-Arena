@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-}
+
 
 TEST(MsgTest, BasicByteShortLongFloat) {
     byte buffer[1024];

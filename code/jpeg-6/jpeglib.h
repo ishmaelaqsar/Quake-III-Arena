@@ -9,6 +9,8 @@
  * Most applications using the library need only include this file,
  * and perhaps jerror.h if they want to know the exact error codes.
  */
+#pragma once
+
 
 #ifndef JPEGLIB_H
 #define JPEGLIB_H

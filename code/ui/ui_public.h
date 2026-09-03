@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 #ifndef __UI_PUBLIC_H__
 #define __UI_PUBLIC_H__
@@ -188,4 +194,8 @@ typedef enum {
 // a GetClientState syscall will be made to get the current strings
 } uiExport_t;
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

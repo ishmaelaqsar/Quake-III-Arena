@@ -1,12 +1,7 @@
 #include <gtest/gtest.h>
 #include "../code/sys/net/net_compat.h"
-
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-
-char *NET_ErrorString(void);
-}
 
 class SysNet : public ::testing::Test {
 protected:

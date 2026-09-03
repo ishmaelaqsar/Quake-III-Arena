@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_funcs.h
@@ -31,6 +37,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #ifndef BSPCINCLUDE
 
+#include "be_aas_def.h"
 #include "be_aas_main.h"
 #include "be_aas_entity.h"
 #include "be_aas_sample.h"
@@ -45,3 +52,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "be_aas_move.h"
 
 #endif //BSPCINCLUDE
+
+#ifdef __cplusplus
+}
+#endif

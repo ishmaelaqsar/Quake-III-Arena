@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef SYS_LOCAL_H
 #define SYS_LOCAL_H
 

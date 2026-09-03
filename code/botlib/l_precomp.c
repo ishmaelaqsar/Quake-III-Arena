@@ -1606,7 +1606,7 @@ int PC_Directive_endif(source_t *source)
 //============================================================================
 typedef struct operator_s
 {
-	int operator;
+	int op;
 	int priority;
 	int parentheses;
 	struct operator_s *prev, *next;
@@ -1914,7 +1914,7 @@ int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intval
 				{
 					//o = (operator_t *) GetClearedMemory(sizeof(operator_t));
 					AllocOperator(o);
-					o->operator = t->subtype;
+					o->op = t->subtype;
 					o->priority = PC_OperatorPriority(t->subtype);
 					o->parentheses = parentheses;
 					o->next = NULL;
@@ -1969,8 +1969,8 @@ int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intval
 				if (o->priority >= o->next->priority) break;
 			} //end if
 			//if the arity of the operator isn't equal to 1
-			if (o->operator != P_LOGIC_NOT
-					&& o->operator != P_BIN_NOT) v = v->next;
+			if (o->op != P_LOGIC_NOT
+					&& o->op != P_BIN_NOT) v = v->next;
 			//if there's no value or no next value
 			if (!v)
 			{
@@ -1985,16 +1985,16 @@ int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intval
 #ifdef DEBUG_EVAL
 		if (integer)
 		{
-			Log_Write("operator %s, value1 = %d", PunctuationFromNum(source->scriptstack, o->operator), v1->intvalue);
+			Log_Write("operator %s, value1 = %d", PunctuationFromNum(source->scriptstack, o->op), v1->intvalue);
 			if (v2) Log_Write("value2 = %d", v2->intvalue);
 		} //end if
 		else
 		{
-			Log_Write("operator %s, value1 = %f", PunctuationFromNum(source->scriptstack, o->operator), v1->floatvalue);
+			Log_Write("operator %s, value1 = %f", PunctuationFromNum(source->scriptstack, o->op), v1->floatvalue);
 			if (v2) Log_Write("value2 = %f", v2->floatvalue);
 		} //end else
 #endif //DEBUG_EVAL
-		switch(o->operator)
+		switch(o->op)
 		{
 			case P_LOGIC_NOT:		v1->intvalue = !v1->intvalue;
 									v1->floatvalue = !v1->floatvalue; break;
@@ -2085,13 +2085,13 @@ int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intval
 		else Log_Write("result value = %f", v1->floatvalue);
 #endif //DEBUG_EVAL
 		if (error) break;
-		lastoperatortype = o->operator;
+		lastoperatortype = o->op;
 		//if not an operator with arity 1
-		if (o->operator != P_LOGIC_NOT
-				&& o->operator != P_BIN_NOT)
+		if (o->op != P_LOGIC_NOT
+				&& o->op != P_BIN_NOT)
 		{
 			//remove the second value if not question mark operator
-			if (o->operator != P_QUESTIONMARK) v = v->next;
+			if (o->op != P_QUESTIONMARK) v = v->next;
 			//
 			if (v->prev) v->prev->next = v->next;
 			else firstvalue = v->next;

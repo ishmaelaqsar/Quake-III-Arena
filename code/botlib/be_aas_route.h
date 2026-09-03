@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_route.h
@@ -65,3 +71,7 @@ int AAS_PredictRoute(struct aas_predictroute_s *route, int areanum, vec3_t origi
 							int stopevent, int stopcontents, int stoptfl, int stopareanum);
 
 
+
+#ifdef __cplusplus
+}
+#endif

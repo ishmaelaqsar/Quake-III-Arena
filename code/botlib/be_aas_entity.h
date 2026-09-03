@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_entity.h
@@ -61,3 +67,7 @@ int AAS_EntityType(int entnum);
 //returns the model index of the entity
 int AAS_EntityModelindex(int entnum);
 
+
+#ifdef __cplusplus
+}
+#endif

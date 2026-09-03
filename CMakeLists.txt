@@ -26,6 +26,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU
     add_compile_options(
         -pipe
         -Wall
+        -fno-strict-aliasing
         -Wno-unused-function
         -Wno-unused-variable
         -Wno-unused-but-set-variable

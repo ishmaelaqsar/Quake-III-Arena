@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 
 /*****************************************************************************
@@ -219,3 +225,7 @@ typedef struct aas_predictroute_s
 	int numareas;			//number of areas predicted ahead
 	int time;				//time predicted ahead (in hundreth of a sec)
 } aas_predictroute_t;
+
+#ifdef __cplusplus
+}
+#endif

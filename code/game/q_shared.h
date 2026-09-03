@@ -19,6 +19,8 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
 //
 #ifndef __Q_SHARED_H
 #define __Q_SHARED_H
@@ -204,7 +206,8 @@ inline static float BigFloat(const float *l) { return FloatSwap(l); }
 
 typedef unsigned char 		byte;
 
-typedef enum {qfalse, qtrue}	qboolean;
+typedef int qboolean;
+enum { qfalse = 0, qtrue = 1 };
 
 typedef int		qhandle_t;
 typedef int		sfxHandle_t;
@@ -323,7 +326,7 @@ typedef enum {
 
 #ifdef HUNK_DEBUG
 #define Hunk_Alloc( size, preference )				Hunk_AllocDebug(size, preference, #size, __FILE__, __LINE__)
-void *Hunk_AllocDebug( int size, ha_pref preference, char *label, char *file, int line );
+void *Hunk_AllocDebug( int size, ha_pref preference, const char *label, const char *file, int line );
 #else
 void *Hunk_Alloc( int size, ha_pref preference );
 #endif
@@ -671,8 +674,8 @@ int		COM_GetCurrentParseLine( void );
 char	*COM_Parse( char **data_p );
 char	*COM_ParseExt( char **data_p, qboolean allowLineBreak );
 int		COM_Compress( char *data_p );
-void	COM_ParseError( char *format, ... );
-void	COM_ParseWarning( char *format, ... );
+void	COM_ParseError( const char *format, ... );
+void	COM_ParseWarning( const char *format, ... );
 //int		COM_ParseInfos( char *buf, int max, char infos[][MAX_INFO_STRING] );
 
 #define MAX_TOKENLENGTH		1024
@@ -697,7 +700,7 @@ typedef struct pc_token_s
 
 // data is an in/out parm, returns a parsed out token
 
-void	COM_MatchToken( char**buf_p, char *match );
+void	COM_MatchToken( char**buf_p, const char *match );
 
 void SkipBracedSection (char **program);
 void SkipRestOfLine ( char **data );
@@ -776,7 +779,7 @@ float	LittleFloat (const float *l);
 
 void	Swap_Init (void);
 */
-char	* QDECL va(char *format, ...);
+char	* QDECL va(const char *format, ...);
 
 //=============================================
 

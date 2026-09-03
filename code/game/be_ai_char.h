@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 
 /*****************************************************************************
@@ -46,3 +52,7 @@ int Characteristic_BInteger(int character, int index, int min, int max);
 void Characteristic_String(int character, int index, char *buf, int size);
 //free cached bot characters
 void BotShutdownCharacters(void);
+
+#ifdef __cplusplus
+}
+#endif

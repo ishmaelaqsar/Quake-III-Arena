@@ -1,4 +1,6 @@
 /* jconfig.wat --- jconfig.h for Watcom C/C++ on MS-DOS or OS/2. */
+#pragma once
+
 /* see jconfig.doc for explanations */
 
 #define HAVE_PROTOTYPES

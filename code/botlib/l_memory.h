@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		l_memory.h
@@ -74,3 +80,7 @@ void PrintMemoryLabels(void);
 int MemoryByteSize(void *ptr);
 //free all allocated memory
 void DumpMemory(void);
+
+#ifdef __cplusplus
+}
+#endif

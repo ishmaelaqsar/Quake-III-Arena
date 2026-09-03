@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_aas_def.h
@@ -304,3 +310,7 @@ typedef struct aas_s
 #include "be_aas_move.h"
 
 #endif //BSPCINCLUDE
+
+#ifdef __cplusplus
+}
+#endif

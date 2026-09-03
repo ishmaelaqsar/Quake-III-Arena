@@ -19,6 +19,12 @@ along with Foobar; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*****************************************************************************
  * name:		be_interface.h
@@ -55,3 +61,7 @@ extern int bot_developer;					//true if developer is on
 //
 int Sys_MilliSeconds(void);
 
+
+#ifdef __cplusplus
+}
+#endif
