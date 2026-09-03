@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #pragma once
 
 #include <stdint.h>
+#include <signal.h>
 #include "../qcommon/cm_public.h"
 
 // qcommon.h -- definitions common between client and server, but not game.or ref modules
@@ -31,6 +32,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern volatile sig_atomic_t sys_quitRequested;
 //#define	PRE_RELEASE_DEMO
 
 //============================================================================

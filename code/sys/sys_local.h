@@ -3,6 +3,7 @@
 #ifndef SYS_LOCAL_H
 #define SYS_LOCAL_H
 
+#include <signal.h>
 #include "../game/q_shared.h"
 #include "../qcommon/qcommon.h"
 
@@ -10,9 +11,12 @@
 extern "C" {
 #endif
 
+extern volatile sig_atomic_t sys_quitRequested;
+
 void Sys_PlatformInit(void);
 void Sys_PlatformExit(void);
 void Sys_InitSignals(void);
+void Sys_ReleaseDisplay(void);
 
 // True while the tty console is usable, so that NET_Sleep can also wait on standard input.
 // Defined per platform: sys_unix.cpp starts it true, sys_win32.cpp leaves it false.

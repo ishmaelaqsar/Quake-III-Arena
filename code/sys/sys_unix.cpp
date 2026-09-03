@@ -9,8 +9,48 @@
 #include <sys/time.h>
 #include <string.h>
 #include <assert.h>
+#include <execinfo.h>
 
 extern "C" {
+
+volatile sig_atomic_t sys_quitRequested = 0;
+static volatile sig_atomic_t crash_in_progress = 0;
+
+static void Sys_CrashHandler(int sig, siginfo_t *info, void *ucontext) {
+    (void)info;
+    (void)ucontext;
+    if (crash_in_progress) {
+        raise(sig);
+        return;
+    }
+    crash_in_progress = 1;
+
+    const char banner[] = "\n*** FATAL SIGNAL RECEIVED: ";
+    if (write(2, banner, sizeof(banner) - 1)) {}
+
+    char sigbuf[16];
+    int siglen = 0;
+    int s = sig;
+    if (s >= 10) {
+        sigbuf[siglen++] = (char)('0' + (s / 10));
+        s %= 10;
+    }
+    sigbuf[siglen++] = (char)('0' + s);
+    sigbuf[siglen++] = '\n';
+    if (write(2, sigbuf, siglen)) {}
+
+    void *buf[64];
+    int n = backtrace(buf, 64);
+    backtrace_symbols_fd(buf, n, 2);
+
+    Sys_ReleaseDisplay();
+    raise(sig);
+}
+
+static void Sys_QuitSignalHandler(int sig) {
+    (void)sig;
+    sys_quitRequested = 1;
+}
 
 #define TTY_HISTORY 32
 
@@ -259,15 +299,40 @@ char *Sys_ConsoleInput(void) {
 
 void Sys_PlatformInit(void) {
     if (seteuid(getuid())) {}
-    signal(SIGTTIN, SIG_IGN);
-    signal(SIGTTOU, SIG_IGN);
-    signal(SIGPIPE, SIG_IGN);
+    struct sigaction sa_ign;
+    memset(&sa_ign, 0, sizeof(sa_ign));
+    sa_ign.sa_handler = SIG_IGN;
+    sigemptyset(&sa_ign.sa_mask);
+    sigaction(SIGTTIN, &sa_ign, NULL);
+    sigaction(SIGTTOU, &sa_ign, NULL);
+    sigaction(SIGPIPE, &sa_ign, NULL);
 }
 
 void Sys_PlatformExit(void) {
 }
 
 void Sys_InitSignals(void) {
+    struct sigaction sa_crash;
+    memset(&sa_crash, 0, sizeof(sa_crash));
+    sa_crash.sa_sigaction = Sys_CrashHandler;
+    sa_crash.sa_flags = SA_RESETHAND | SA_NODEFER | SA_SIGINFO;
+    sigemptyset(&sa_crash.sa_mask);
+
+    sigaction(SIGSEGV, &sa_crash, NULL);
+    sigaction(SIGBUS, &sa_crash, NULL);
+    sigaction(SIGILL, &sa_crash, NULL);
+    sigaction(SIGFPE, &sa_crash, NULL);
+    sigaction(SIGABRT, &sa_crash, NULL);
+    sigaction(SIGTRAP, &sa_crash, NULL);
+
+    struct sigaction sa_quit;
+    memset(&sa_quit, 0, sizeof(sa_quit));
+    sa_quit.sa_handler = Sys_QuitSignalHandler;
+    sigemptyset(&sa_quit.sa_mask);
+
+    sigaction(SIGINT, &sa_quit, NULL);
+    sigaction(SIGTERM, &sa_quit, NULL);
+    sigaction(SIGHUP, &sa_quit, NULL);
 }
 
 } // extern "C"

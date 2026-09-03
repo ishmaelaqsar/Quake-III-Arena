@@ -493,8 +493,10 @@ void Snd_Memset (void* dest, const int val, const size_t count)
 
 void Sys_ReleaseDisplay(void) {
 	if (s_window) {
-		SDL_SetWindowGrab(s_window, SDL_FALSE);
+		SDL_SetRelativeMouseMode(SDL_FALSE);
+		SDL_SetWindowFullscreen(s_window, 0);
 		SDL_ShowCursor(SDL_ENABLE);
+		SDL_SetWindowGrab(s_window, SDL_FALSE);
 	}
 }
 

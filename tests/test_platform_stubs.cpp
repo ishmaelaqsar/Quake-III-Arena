@@ -87,6 +87,7 @@ qboolean Sys_CheckCD(void) {
 }
 
 qboolean stdin_active = qfalse;
+volatile sig_atomic_t sys_quitRequested = 0;
 
 void GLimp_LogComment(char *comment) {}
 void GLimp_EndFrame(void) {}

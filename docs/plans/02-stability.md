@@ -8,7 +8,7 @@ the `sys_api` boundary, the VFS hook that bypasses the file system, the busy-wai
 the hostile first-run message, and the CD key and authorize server gates that no longer serve
 a purpose in a GPL build.
 
-**Status:** In progress. Phases B1, B2, and B4 complete as of 3 September 2026 (64-bit virtual machine ABI with tests, prototype fallout, logger). Next: B3 crash handling. B4 turned the whole test suite green.
+**Status:** In progress. Phases B1, B2, B3, and B4 complete as of 3 September 2026 (64-bit virtual machine ABI, prototype fallout, crash handling and signals, logger). Next: B5 sys_api boundary. B4 turned the whole test suite green.
 
 ## Prerequisites
 
@@ -145,7 +145,7 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
 
 ### Phase B3: crash handling and `Sys_Error`
 
-- [ ] **B3.1 Install real signal handlers on Unix.** In `code/sys/sys_unix.cpp` implement
+- [x] **B3.1 Install real signal handlers on Unix.** Done on 3 September 2026. In `code/sys/sys_unix.cpp` implement
   `Sys_InitSignals` with `sigaction` and `SA_RESETHAND | SA_NODEFER | SA_SIGINFO` for `SIGSEGV`,
   `SIGBUS`, `SIGILL`, `SIGFPE`, `SIGABRT`, and `SIGTRAP`. The handler writes a fixed banner and
   the signal number with `write(2, ...)` (never `printf`), calls `backtrace(buf, 64)` and
@@ -157,22 +157,22 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
   `code/qcommon/common.c` that calls `Com_Quit_f()` when the flag is set. Delete
   `floating_point_exception_handler` (`code/unix/unix_main.c:457-460`) and its `signal(SIGFPE,
   ...)` call. Delete `code/unix/linux_signals.c` if checklist 01 A4.10 has not already.
-- [ ] **B3.2 Install a Windows handler.** In `code/sys/sys_win32.cpp` `Sys_InitSignals` calls
+- [x] **B3.2 Install a Windows handler.** Done on 3 September 2026. In `code/sys/sys_win32.cpp` `Sys_InitSignals` calls
   `SetUnhandledExceptionFilter` with a filter that calls `Sys_ReleaseDisplay()`, shows
   `MessageBoxA` with the exception code and address, writes an optional minidump through
   `MiniDumpWriteDump` when `Q3_MINIDUMP` is defined (CMake option, default `OFF`), and returns
   `EXCEPTION_EXECUTE_HANDLER`. `SetConsoleCtrlHandler` sets `sys_quitRequested`.
-- [ ] **B3.3 Add `Sys_ReleaseDisplay`.** In `code/sys/sys_sdl.cpp` implement
+- [x] **B3.3 Add `Sys_ReleaseDisplay`.** Done on 3 September 2026. In `code/sys/sys_sdl.cpp` implement
   `void Sys_ReleaseDisplay(void)`: `SDL_SetRelativeMouseMode(SDL_FALSE)`,
   `SDL_SetWindowFullscreen(window, 0)`, `SDL_ShowCursor(SDL_ENABLE)`, and
   `SDL_SetWindowGrab(window, SDL_FALSE)`, each guarded by a null check on the window. The
   dedicated stub lives in `code/null/null_client.c` (checklist 01 A5.1).
-- [ ] **B3.4 Rewrite `Sys_Error`.** In `code/sys/sys_main.cpp`: format with `vsnprintf` into a
+- [x] **B3.4 Rewrite `Sys_Error`.** Done on 3 September 2026. In `code/sys/sys_main.cpp`: format with `vsnprintf` into a
   4096-byte buffer, call `Sys_ReleaseDisplay()`, call `CL_Shutdown()` only when
   `!Sys_IsDedicatedBuild()`, print to stderr, and when `SDL_WasInit(SDL_INIT_VIDEO)` is nonzero
   show `SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Quake III Arena", string, NULL)`. Then
   `Sys_Exit(1)`. Replace the `vsprintf` in `Sys_Warn` the same way.
-- [ ] **B3.5 Make `Sys_Exit` clean.** `Sys_ConsoleInputShutdown(); SDL_Quit(); exit(ex);` in all
+- [x] **B3.5 Make `Sys_Exit` clean.** Done on 3 September 2026. `Sys_ConsoleInputShutdown(); SDL_Quit(); exit(ex);` in all
   build types. Delete the `assert(ex == 0)`.
   - **Tests (for all of B3):** none, because signal delivery and message boxes are not unit
     testable in the container. The gates are in Verify. Checklist 05 T5 adds thread names to

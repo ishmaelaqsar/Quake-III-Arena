@@ -2661,6 +2661,10 @@ void Com_Frame( void ) {
 
 
 
+	if ( sys_quitRequested ) {
+		Com_Quit_f();
+	}
+
 	if ( setjmp (abortframe) ) {
 		return;			// an ERR_DROP was thrown
 	}

@@ -147,15 +147,20 @@ void Sys_Quit(void) {
 
 void QDECL Sys_Error(const char *error, ...) {
     va_list argptr;
-    char string[1024];
+    char string[4096];
 
     va_start(argptr, error);
-    Q_vsnprintf(string, sizeof(string), error, argptr);
+    vsnprintf(string, sizeof(string), error, argptr);
     va_end(argptr);
 
-    Sys_ConsoleInputShutdown();
     Sys_ReleaseDisplay();
+    if (!Sys_IsDedicatedBuild()) {
+        CL_Shutdown();
+    }
     fprintf(stderr, "Sys_Error: %s\n", string);
+    if (SDL_WasInit(SDL_INIT_VIDEO)) {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Quake III Arena", string, NULL);
+    }
     Sys_Exit(1);
 }
 
