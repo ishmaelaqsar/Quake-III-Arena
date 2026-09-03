@@ -155,9 +155,10 @@ Fixed today beyond the checklist steps, because the platform legs exposed them:
 All are recorded in `00-environment.md`, and the two C++ migration classes are catalogue rows 23
 and 24 in `04-cxx-migration.md`.
 
-Continuous integration state: Linux, Linux with sanitizers, and macOS are green, and Windows
-builds, links, and runs the suite. All four platform legs are expected green as of the last
-push.
+Continuous integration state: **all four platform legs green**, confirmed on run for commit
+`015c3d5`. Linux, Linux with sanitizers, and macOS pass 77 of 77; Windows passes 76 of 76, the
+difference being one home-path test that is compiled off Windows because `SDL_GetPrefPath` reads
+no variable a test can redirect. The MinGW cross leg runs nightly.
 
 One blocker remains: gate G1 has no golden image, because no machine used so far has game data.
 Produce it with `make smoke-update-golden` on the Linux machine before the next rename.
