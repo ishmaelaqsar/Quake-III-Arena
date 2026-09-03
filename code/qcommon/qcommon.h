@@ -945,8 +945,18 @@ sysEvent_t	Sys_GetEvent( void );
 void	Sys_Init (void);
 
 // general development dll loading for virtual machine testing
+// The module entry point, declared with its exact arity rather than as a variadic function.
+// vmMain is a fixed 13-parameter function, and calling it through a variadic pointer is
+// undefined. It breaks in practice on Apple arm64, where the variadic and fixed calling
+// conventions differ: the call returns garbage for every argument. The failure only appears
+// once the definition is in another shared object, because a compiler that can see the target
+// in the same translation unit calls it directly and hides the mismatch.
+typedef intptr_t ( QDECL *vmMainFunc_t )( int callNum, int arg0, int arg1, int arg2, int arg3,
+										  int arg4, int arg5, int arg6, int arg7, int arg8,
+										  int arg9, int arg10, int arg11 );
+
 // fqpath param added 7/20/02 by T.Ray - Sys_LoadDll is only called in vm.c at this time
-void	* QDECL Sys_LoadDll( const char *name, char *fqpath , intptr_t (QDECL **entryPoint)(int, ...),
+void	* QDECL Sys_LoadDll( const char *name, char *fqpath , vmMainFunc_t *entryPoint,
 				  intptr_t (QDECL *systemcalls)(intptr_t, ...) );
 void	Sys_UnloadDll( void *dllHandle );
 

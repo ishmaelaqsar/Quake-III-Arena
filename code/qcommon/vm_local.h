@@ -140,7 +140,7 @@ struct vm_s {
 
 	// for dynamic linked modules
 	void		*dllHandle;
-	intptr_t	(QDECL *entryPoint)( int callNum, ... );
+	vmMainFunc_t	entryPoint;			// fixed arity, see the typedef in qcommon.h
 
 	// for interpreted modules
 	qboolean	currentlyInterpreting;
