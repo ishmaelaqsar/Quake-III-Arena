@@ -26,8 +26,7 @@ TEST(ModernFSTest, VirtualFileSystemMountAndResolve) {
     auto temp_dir = std::filesystem::temp_directory_path() / "q3_vfs_test";
     std::filesystem::create_directories(temp_dir / "scripts");
 
-    auto& vfs = VirtualFileSystem::instance();
-    vfs.unmount_all();
+    VirtualFileSystem vfs;
     vfs.mount_search_path(temp_dir);
 
     EXPECT_TRUE(vfs.write_text("scripts/arena.cfg", "map q3dm1\nfraglimit 20"));
@@ -40,6 +39,44 @@ TEST(ModernFSTest, VirtualFileSystemMountAndResolve) {
     auto files = vfs.list_files("scripts", ".cfg");
     EXPECT_EQ(files.size(), 1u);
     EXPECT_EQ(files[0], "arena.cfg");
+
+    std::filesystem::remove_all(temp_dir);
+}
+
+TEST(ModernFSTest, VfsWriteRejectsParentTraversal) {
+    auto temp_dir = std::filesystem::temp_directory_path() / "q3_vfs_traversal_test";
+    std::filesystem::create_directories(temp_dir);
+
+    VirtualFileSystem vfs;
+    vfs.mount_search_path(temp_dir);
+
+    EXPECT_FALSE(vfs.write_text("../escaped.txt", "evil"));
+    EXPECT_FALSE(std::filesystem::exists(temp_dir.parent_path() / "escaped.txt"));
+
+    std::filesystem::remove_all(temp_dir);
+}
+
+TEST(ModernFSTest, VfsWriteRejectsAbsolutePath) {
+    auto temp_dir = std::filesystem::temp_directory_path() / "q3_vfs_abs_test";
+    std::filesystem::create_directories(temp_dir);
+
+    VirtualFileSystem vfs;
+    vfs.mount_search_path(temp_dir);
+
+    EXPECT_FALSE(vfs.write_text("/tmp/evil.txt", "evil"));
+
+    std::filesystem::remove_all(temp_dir);
+}
+
+TEST(ModernFSTest, VfsWriteInsideMountSucceeds) {
+    auto temp_dir = std::filesystem::temp_directory_path() / "q3_vfs_mount_test";
+    std::filesystem::create_directories(temp_dir);
+
+    VirtualFileSystem vfs;
+    vfs.mount_search_path(temp_dir);
+
+    EXPECT_TRUE(vfs.write_text("allowed.txt", "good"));
+    EXPECT_TRUE(std::filesystem::exists(temp_dir / "allowed.txt"));
 
     std::filesystem::remove_all(temp_dir);
 }

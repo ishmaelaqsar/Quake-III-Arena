@@ -3,17 +3,20 @@
 #include "q_shared.h"
 
 #ifdef __cplusplus
+#define Q3_NOEXCEPT_BOUNDARY(body) \
+    try { body } catch (const std::exception &e) { Com_Printf("^1%s: %s\n", __func__, e.what()); } \
+    catch (...) { Com_Printf("^1%s: unhandled C++ exception\n", __func__); }
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 void Sys_SubsystemInit(void);
+void Sys_SubsystemShutdown(void);
 void Sys_SubsystemFrame(int msec);
-void Sys_ScriptExecute(const char* script);
+qboolean Sys_ScriptExecute(const char* script);
 void Sys_ScriptEvent(const char* event_name, const char* arg);
-
-// Filesystem wrappers
-int Sys_VFS_ReadFile(const char *qpath, void **buffer);
-void Sys_VFS_WriteFile(const char *qpath, const void *buffer, int size);
 
 // HTTP FastDL wrappers
 qboolean Sys_SanitizeDownloadFilename(const char *filename);
@@ -37,22 +40,6 @@ void Sys_LogDebug(const char *msg);
 void Sys_LogInfo(const char *msg);
 void Sys_LogWarn(const char *msg);
 void Sys_LogError(const char *msg);
-
-// Compatibility aliases
-#define Modern_Init Sys_SubsystemInit
-#define Modern_Frame Sys_SubsystemFrame
-#define Modern_ScriptExecute Sys_ScriptExecute
-#define Modern_ScriptEvent Sys_ScriptEvent
-#define Modern_ReadFile Sys_VFS_ReadFile
-#define Modern_WriteFile Sys_VFS_WriteFile
-#define Modern_Cvar_NotifyChange Sys_Cvar_NotifyChange
-#define Modern_VectorNormalize Sys_VectorNormalize
-#define Modern_CrossProduct Sys_CrossProduct
-#define Modern_SetConsoleSink Sys_SetConsoleSink
-#define Modern_LogDebug Sys_LogDebug
-#define Modern_LogInfo Sys_LogInfo
-#define Modern_LogWarn Sys_LogWarn
-#define Modern_LogError Sys_LogError
 
 #ifdef __cplusplus
 }

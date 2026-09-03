@@ -40,6 +40,8 @@ private:
 
 class VirtualFileSystem {
 public:
+    VirtualFileSystem() = default;
+
     static VirtualFileSystem& instance() noexcept {
         static VirtualFileSystem vfs;
         return vfs;
@@ -60,7 +62,6 @@ public:
     std::vector<std::string> list_files(std::string_view relative_dir, std::string_view extension = "") const;
 
 private:
-    VirtualFileSystem() = default;
     std::vector<std::filesystem::path> search_paths_;
 };
 

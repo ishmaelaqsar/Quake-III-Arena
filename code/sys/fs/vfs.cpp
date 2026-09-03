@@ -107,6 +107,16 @@ std::optional<std::string> VirtualFileSystem::read_text(std::string_view relativ
 }
 
 bool VirtualFileSystem::write_binary(std::string_view relative_path, const uint8_t* data, std::size_t size, std::string_view base_dir) {
+    std::filesystem::path rel(relative_path);
+    if (rel.is_absolute()) {
+        return false;
+    }
+    for (const auto& part : rel) {
+        if (part == "..") {
+            return false;
+        }
+    }
+
     std::filesystem::path target_base;
     if (!base_dir.empty()) {
         target_base = base_dir;
@@ -116,7 +126,15 @@ bool VirtualFileSystem::write_binary(std::string_view relative_path, const uint8
         target_base = std::filesystem::current_path();
     }
 
-    auto full_path = target_base / relative_path;
+    auto full_path = target_base / rel;
+    auto canonical_base = std::filesystem::weakly_canonical(target_base).lexically_normal();
+    auto canonical_full = std::filesystem::weakly_canonical(full_path).lexically_normal();
+
+    auto [base_end, full_end] = std::mismatch(canonical_base.begin(), canonical_base.end(), canonical_full.begin(), canonical_full.end());
+    if (base_end != canonical_base.end()) {
+        return false;
+    }
+
     std::filesystem::create_directories(full_path.parent_path());
 
     ScopedFile file(full_path, std::ios::out | std::ios::binary | std::ios::trunc);

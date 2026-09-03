@@ -33,7 +33,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "qcommon.h"
 #include "../sys/logger/logger.hpp"
 #include "unzip.h"
-#include "../sys/sys_api.h"
 
 /*
 =============================================================================
@@ -1498,10 +1497,6 @@ a null buffer will just return the file length without loading
 ============
 */
 int FS_ReadFile( const char *qpath, void **buffer ) {
-	int ret = Sys_VFS_ReadFile(qpath, buffer);
-	if (ret >= 0) return ret;
-
-	// Fallback to legacy if modern doesn't find it (optional)
 	fileHandle_t	h;
 	byte*			buf;
 	qboolean		isConfig;
@@ -1641,7 +1636,6 @@ Filename are reletive to the quake search path
 */
 void FS_WriteFile( const char *qpath, const void *buffer, int size ) {
 	LOG_DEBUG("FS_WriteFile: ", qpath ? qpath : "(null)", ", ", size, " bytes");
-	Sys_VFS_WriteFile(qpath, buffer, size);
 
 	fileHandle_t f;
 

@@ -8,7 +8,7 @@ the `sys_api` boundary, the VFS hook that bypasses the file system, the busy-wai
 the hostile first-run message, and the CD key and authorize server gates that no longer serve
 a purpose in a GPL build.
 
-**Status:** In progress. Phases B1, B2, B3, and B4 complete as of 3 September 2026 (64-bit virtual machine ABI, prototype fallout, crash handling and signals, logger). Next: B5 sys_api boundary. B4 turned the whole test suite green.
+**Status:** In progress. Phases B1, B2, B3, B4, B5, and B6 complete as of 3 September 2026 (64-bit virtual machine ABI, prototype fallout, crash handling and signals, logger, sys_api hardening, VFS hooks removed). Next: B7 frame pacing. B4 turned the whole test suite green.
 
 ## Prerequisites
 
@@ -273,14 +273,14 @@ the failure behind an `if (stat(...) == 0)`.
 
 ### Phase B5: `sys_api` hardening
 
-- [ ] **B5.1 Own the script engine.** In `code/sys/sys_api.cpp` replace the raw pointer at `:9`
+- [x] **B5.1 Own the script engine.** Done on 3 September 2026. In `code/sys/sys_api.cpp` replace the raw pointer at `:9`
   with `static std::unique_ptr<q3::scripting::ScriptEngine> g_scriptEngine;` created inside
   `try { ... } catch (const std::exception &e) { Com_Printf("^1Scripting disabled: %s\n",
   e.what()); }` in `Sys_SubsystemInit`.
-- [ ] **B5.2 Add `Sys_SubsystemShutdown`.** Declare it in `code/sys/sys_api.h`; it cancels the
+- [x] **B5.2 Add `Sys_SubsystemShutdown`.** Done on 3 September 2026. Declare it in `code/sys/sys_api.h`; it cancels the
   downloader, resets the script engine, and flushes the logger queue. Call it from
   `Com_Shutdown` in `code/qcommon/common.c`. Checklist 05 T5 extends the order.
-- [ ] **B5.3 Add the exception boundary.** In `code/sys/sys_api.h` define:
+- [x] **B5.3 Add the exception boundary.** Done on 3 September 2026. In `code/sys/sys_api.h` define:
   ```c
   #define Q3_NOEXCEPT_BOUNDARY(body) \
       try { body } catch (const std::exception &e) { Com_Printf("^1%s: %s\n", __func__, e.what()); } \
@@ -289,7 +289,7 @@ the failure behind an `if (stat(...) == 0)`.
   Wrap the body of every `extern "C"` function in `sys_api.cpp` that can allocate or call into
   C++ code. `Sys_ScriptExecute` returns `qboolean` (`qfalse` on error). Checklist 04 C-P2 step 0
   changes the catch to rethrow as `Com_Error(ERR_DROP)` once that becomes an exception.
-- [ ] **B5.4 Remove the dead API.** Delete `Sys_VFS_ReadFile`, `Sys_VFS_WriteFile`, the
+- [x] **B5.4 Remove the dead API.** Done on 3 September 2026. Delete `Sys_VFS_ReadFile`, `Sys_VFS_WriteFile`, the
   `Modern_*` alias block in `sys_api.h`, and the `mount_search_path("baseq3")` call at
   `sys_api.cpp:31`. Step B6 removes the callers.
   - **Tests:** `tests/test_sys_api_boundary.cpp` (binary `quake3_tests`, because it links
@@ -308,10 +308,10 @@ Rationale: `files.c` already is the virtual file system. The hook in `FS_ReadFil
 the ordering and adding containment would still leave two file systems with different
 precedence rules. The C++ class stays as a helper for tests and future code.
 
-- [ ] **B6.1 Delete the hooks.** Remove the two lines at `code/qcommon/files.c:1500-1502` and the
+- [x] **B6.1 Delete the hooks.** Done on 3 September 2026. Remove the two lines at `code/qcommon/files.c:1500-1502` and the
   `Sys_VFS_WriteFile` call at `:1643`. Remove the `#include "../sys/sys_api.h"` from `files.c` if
   nothing else uses it.
-- [ ] **B6.2 Add containment to `vfs.cpp`.** At `code/sys/fs/vfs.cpp:108-124` reject absolute
+- [x] **B6.2 Add containment to `vfs.cpp`.** Done on 3 September 2026. At `code/sys/fs/vfs.cpp:108-124` reject absolute
   `relative_path` values and any `..` segment, and require
   `std::filesystem::weakly_canonical(full_path)` to start with
   `weakly_canonical(target_base)`. Make the constructor public so tests own an instance; keep
