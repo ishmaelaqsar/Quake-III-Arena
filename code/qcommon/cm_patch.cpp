@@ -1610,7 +1610,8 @@ Called from the renderer
 ==================
 */
 #ifndef BSPC
-void BotDrawDebugPolygons(void (*drawPoly)(int color, int numPoints, float *points), int value);
+// Defined in code/server/sv_bot.c, which is still C. Keep C linkage.
+extern "C" void BotDrawDebugPolygons(void (*drawPoly)(int color, int numPoints, float *points), int value);
 #endif
 
 void CM_DrawDebugSurface( void (*drawPoly)(int color, int numPoints, float *points) ) {

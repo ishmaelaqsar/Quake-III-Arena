@@ -20,6 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 #include "../client/client.h"
+// sys_local.h declares IN_* and Sys_SendKeyEvents inside extern "C", so that the
+// definitions below match what code/sys/sys_main.cpp references.
+#include "../sys/sys_local.h"
 
 void IN_Init( void ) {
 }

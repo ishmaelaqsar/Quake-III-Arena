@@ -92,7 +92,10 @@ qboolean	com_fullyInitialized;
 char	com_errorMessage[MAXPRINTMSG];
 
 void Com_WriteConfig_f( void );
-void CIN_CloseAllVideos();
+
+// Defined in the client, which is still C. Keep C linkage so that the symbol matches
+// whether the client is compiled as C or C++.
+extern "C" void CIN_CloseAllVideos( void );
 
 //============================================================================
 
@@ -1582,9 +1585,12 @@ qboolean Hunk_CheckMark( void ) {
 	return qfalse;
 }
 
+// Defined in the client and the server, which are still C. Keep C linkage.
+extern "C" {
 void CL_ShutdownCGame( void );
 void CL_ShutdownUI( void );
 void SV_ShutdownGameProgs( void );
+}
 
 /*
 =================
@@ -2237,7 +2243,8 @@ char	cl_cdkey[34] = "                                ";
 Com_ReadCDKey
 =================
 */
-qboolean CL_CDKeyValidate( const char *key, const char *checksum );
+// Defined in the client, which is still C. Keep C linkage.
+extern "C" qboolean CL_CDKeyValidate( const char *key, const char *checksum );
 void Com_ReadCDKey( const char *filename ) {
 	fileHandle_t	f;
 	char			buffer[33];
