@@ -107,14 +107,24 @@ std::vector<std::string> ScriptEngine::tokenize_line(std::string_view line) {
 bool ScriptEngine::execute(std::string_view script) {
     std::string script_str(script);
 
-    // First try running via Sol2 Lua engine
-    try {
-        auto result = lua_.script(script_str);
+    // safe_script, not script. The unprotected form raises a Lua error on invalid input, and
+    // LuaJIT unwinds that with a structured exception; a Microsoft Visual C++ build uses /EHsc,
+    // under which catch (...) does not catch one, so the error escaped the engine entirely and
+    // took the test process with it. script_pass_on_error turns the failure into a return value,
+    // so no unwinding crosses the LuaJIT frames on any platform.
+    //
+    // sol::state installs the other half of the bridge for us: its constructor reaches
+    // sol::set_default_state, which calls stack::luajit_exception_handler, so a C++ exception
+    // thrown by a registered function becomes a Lua error rather than unwinding through LuaJIT.
+    {
+        auto result = lua_.safe_script(script_str, sol::script_pass_on_error);
         if (result.valid()) {
             return true;
         }
-    } catch (...) {
-        // Fallback to command token parser
+        // Not valid Lua. That is expected for the legacy token syntax handled below, so this is
+        // DEBUG rather than a warning; step S1.1 removes that syntax and makes it an error.
+        const sol::error err = result;
+        LOG_DEBUG("ScriptEngine::execute: not valid Lua (", err.what(), "), trying the token parser");
     }
 
     std::istringstream stream(script_str);

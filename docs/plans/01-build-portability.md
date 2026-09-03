@@ -582,10 +582,9 @@ With the link fixed, the Windows leg ran the suite and 66 of 77 passed. Three ca
   path, which uses the platform separator, so it failed for a path that was correct; both sides
   are now normalised.
 
-Left for checklist 07: three `ModernScriptingTest` cases. They were first assumed to be failing
-because they exercise the legacy domain-specific language that step S1.1 deletes; the logs say
-otherwise. They throw a structured exception out of LuaJIT's frames, which is a real Windows
-integration gap in the Sol2 binding, diagnosed in `07-scripting.md`.
+The last three, `ModernScriptingTest`, were fixed on 3 September 2026 as well: an unprotected
+Lua call let a structured exception escape LuaJIT on Windows. Diagnosed and recorded in
+`07-scripting.md`.
 
 ## Windows link gaps closed on 3 September 2026
 

@@ -71,35 +71,42 @@ Facts that shape the design:
 - `Sys_SubsystemFrame` runs in `Com_Frame` (`code/qcommon/common.c:2685`) for client and
   dedicated server. Timers fire there on the main thread.
 
-## Windows blocker found on 3 September 2026
+## Windows blocker, found and fixed on 3 September 2026
 
-The three `ModernScriptingTest` cases fail on the `windows-x64` continuous integration leg, and
-**not** because they exercise the legacy domain-specific language that step S1.1 deletes. They
-fail with:
+The three `ModernScriptingTest` cases failed on the `windows-x64` leg with:
 
 ```
 unknown file: error: SEH exception with code 0xe24c4a02 thrown in the test body.
 ```
 
-That is a structured exception escaping LuaJIT's own frames, which is exactly the hazard listed
-as M21 in the design notes for this checklist: a C++ exception unwinding through LuaJIT's C stack
-is undefined unless the interoperation is set up. Two things are missing, and S1.1 has to handle
-both:
+They were first assumed to be failing because they exercise the legacy token syntax that step
+S1.1 deletes. They were not. The cause was `script_engine.cpp` calling `lua_.script()`, the
+**unprotected** form, which raises a Lua error on input that is not valid Lua. LuaJIT unwinds
+that error with a structured exception, and the Microsoft Visual C++ build uses `/EHsc`, under
+which `catch (...)` does not catch one, so the error escaped the engine and took the test process
+with it. On Linux and macOS the same error was caught, which is why it only ever showed on
+Windows.
 
-- Sol2 ships `sol::exception_handler` and a LuaJIT trampoline
-  (`code/sys/scripting/sol/sol.hpp:16677`), gated on `SOL_EXCEPTIONS_SAFE_PROPAGATION` and
-  `SOL_USE_LUAJIT_EXCEPTION_TRAMPOLINE`. Neither is defined in `CMakeLists.txt` and
-  `script_engine.cpp` never installs the handler, so nothing bridges the two exception models.
-- The Microsoft Visual C++ build uses `/EHsc`, under which `catch (...)` does not catch a
-  structured exception at all. The five `catch (...)` blocks in `script_engine.cpp` are therefore
-  inert on Windows, whatever Sol2 is told to do.
+The call is now `lua_.safe_script(code, sol::script_pass_on_error)`, which routes through
+`lua_pcall` and returns the failure rather than raising it, so no unwinding crosses the LuaJIT
+frames on any platform. The error text is logged at `DEBUG` rather than discarded, because
+invalid Lua is the expected path for the legacy syntax until S1.1 removes it.
 
-Until S1.1 lands, the Windows leg stays red on these three cases. That is deliberate: the defect
-is real, so skipping the tests would hide a genuine Windows integration gap rather than a feature
-awaiting deletion. Fix the exception bridge as part of S1.1 rather than separately, since that
-step rewrites the engine anyway.
+Two notes for S1.1:
 
-## Steps
+- **The other half of the bridge was already in place.** `sol::state`'s constructor reaches
+  `sol::set_default_state`, which calls `stack::luajit_exception_handler`
+  (`code/sys/scripting/sol/sol.hpp:27140`), so a C++ exception thrown by a registered function
+  is converted to a Lua error instead of unwinding through LuaJIT. Nothing extra is needed, and
+  `SOL_EXCEPTIONS_SAFE_PROPAGATION` should stay undefined: it is for a Lua built as C++, not for
+  LuaJIT.
+- **Keep `/EHsc`.** Switching to `/EHa` would make `catch (...)` swallow structured exceptions,
+  including access violations, which hides defects rather than fixing them. The rule that keeps
+  this working is the one S1.1 already states: every call into Lua goes through `safe_script` or
+  `protected_function`. `execute()` was the only unprotected call; the remaining interactions are
+  `open_libraries`, table assignment, and `set_function`, none of which raise.
+
+## Steps## Steps
 
 ### Phase S1: scripting (about 5.5 days)
 
