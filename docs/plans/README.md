@@ -128,15 +128,27 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 The tree builds and links on Linux and macOS, and **all 77 tests pass** locally, under
 AddressSanitizer too. The Linux continuous integration leg is green.
 
-Fixed today beyond the checklists, because the platform legs exposed them: `Q_rsqrt` read eight
-bytes from a four-byte float and returned a sign-flipped result on x86_64; the module entry point
-was called through a variadic pointer, which passes garbage arguments on Apple arm64;
-`Snd_Memset` was defined off Linux where it is a macro for `Com_Memset`; `ctime` received an
-`unsigned long` where Windows wants a 64-bit `time_t`; `sol::nil` does not exist on macOS; and
-gate G1 could pass on a crash. All are recorded in `00-environment.md`.
+Fixed today beyond the checklist steps, because the platform legs exposed them:
 
-Two blockers remain, both in `00-environment.md`: the Windows leg cannot resolve LuaJIT, and gate
-G1 has no golden image because no machine used so far has game data.
+- `Q_rsqrt` read eight bytes from a four-byte float and returned a sign-flipped result on
+  x86_64, which is wrong arithmetic in `VectorNormalizeFast` and the renderer.
+- The module entry point was called through a variadic pointer, so every module call on Apple
+  arm64 received garbage arguments.
+- `Snd_Memset` was defined off Linux, where it is a macro for `Com_Memset`, giving macOS a
+  duplicate symbol.
+- `ctime` received an `unsigned long` where Windows wants a 64-bit `time_t`.
+- `sol::nil` does not exist on macOS, where `nil` is an Objective-C macro.
+- Gate G1 could pass on a crash, and would silently test the bytecode in `pak0.pk3` when the
+  built modules were absent.
+- The download filename check was a blacklist with four live bypasses and no test.
+- LuaJIT could not be resolved on Windows, and the fallback that was meant to cover it was
+  itself broken.
+
+All are recorded in `00-environment.md`, and the two C++ migration classes are catalogue rows 23
+and 24 in `04-cxx-migration.md`.
+
+One blocker remains: gate G1 has no golden image, because no machine used so far has game data.
+Produce it with `make smoke-update-golden` on the Linux machine before the next rename.
 
 ## Dependency order
 

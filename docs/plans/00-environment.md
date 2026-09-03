@@ -334,14 +334,14 @@ the argument for keeping the macOS and Windows legs on every push.
 
 ## Remaining continuous integration blockers, 3 September 2026
 
-- [ ] **The logger tests fail on every leg.** `Linux`, `Linux ASan/UBSan`, and `macOS arm64` all
+- [x] **The logger tests fail on every leg.** Fixed on 3 September 2026 by checklist 02 phase B4. The whole suite passes, and the Linux leg is green. `Linux`, `Linux ASan/UBSan`, and `macOS arm64` all
   build and then fail at their test step on `ModernLoggerTest.MacroFormattingAndLevels`,
   `ErrorLevelToStderr`, and `CApiLoggingWrappers`. A `RelWithDebInfo` build defines `NDEBUG`, and
   `code/sys/logger/logger.hpp:62-72` compiles every `LOG_*` call out under it, errors included,
   so the tests capture nothing. This is the single thing between those three legs and green.
   Checklist 02 step B4 rewrites the logger and checklist 03 rewrites the tests; the part that
   unblocks CI is keeping `LOG_WARN` and `LOG_ERROR` compiled in release builds.
-- [ ] **The Windows leg cannot resolve LuaJIT.** After the PowerShell fix the configure step now
+- [x] **The Windows leg cannot resolve LuaJIT.** Fixed on 3 September 2026, see checklist 01 step A6.1 for the three-strategy lookup and the `LUAJIT_DIR` ordering defect behind it. The `windows-x64` leg is the real confirmation. After the PowerShell fix the configure step now
   reaches dependency resolution and fails there. `CMakeLists.txt` looks for LuaJIT with
   `pkg_check_modules`, which needs pkg-config; the `windows-2022` runner has none, so
   `LUAJIT_FOUND` is false even though vcpkg installed the port, and the build falls through to

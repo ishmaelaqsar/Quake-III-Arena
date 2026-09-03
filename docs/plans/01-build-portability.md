@@ -470,11 +470,30 @@ found it correct, and change only what each step names.
   endif()
   target_link_libraries(q3sys PUBLIC luajit::luajit)
   ```
-  Follow-up found on 3 September 2026: this lookup fails on Windows. `pkg_check_modules` needs
-  pkg-config, which the `windows-2022` runner does not have, so `LUAJIT_FOUND` is false even
-  with the vcpkg port installed and the build falls through to FetchContent, which then breaks.
-  Add a `find_path`/`find_library` attempt between the two, because the vcpkg toolchain makes
-  those work without pkg-config. See `docs/plans/00-environment.md`.
+  Resolved on 3 September 2026. The lookup now tries three strategies in order, because no
+  single one covers every platform:
+
+  1. `pkg_check_modules`, which covers a Linux distribution package and Homebrew.
+  2. `find_path(NAMES luajit.h PATH_SUFFIXES luajit-2.1 luajit luajit-2.0)` and
+     `find_library(NAMES luajit-5.1 luajit lua51 libluajit-5.1 libluajit)`, wrapped in an
+     `UNKNOWN IMPORTED` target. This is the branch Windows needs: vcpkg installs the port but
+     the runner has no pkg-config, so step 1 silently finds nothing, while these searches do
+     work because the vcpkg toolchain adds its installed tree to the CMake search paths. It
+     also covers a manual install and the cross prefix in `docker/Dockerfile.mingw`.
+  3. `FetchContent`, when `Q3_FETCH_LUAJIT` is on.
+
+  A second defect was in the FetchContent branch itself and was the actual cause of the Windows
+  failure once step 1 fell through: `LUAJIT_DIR` was derived from `luajit_SOURCE_DIR`, which is
+  empty until after `FetchContent_MakeAvailable`, so it became `/LuaJIT` and the wrapper failed
+  with `file COPY cannot find "/LuaJIT/src/jit"`. It now derives from `FETCHCONTENT_BASE_DIR`,
+  which is known before the call, and an unrecognised target list is a `FATAL_ERROR` rather
+  than a silent miss. Each branch prints which one it took.
+
+  Verification without a Windows machine: configuring with `-DPKG_CONFIG_EXECUTABLE=/nonexistent`
+  in the container takes branch 2 and finds the system library, and a probe using the MSVC
+  library naming rules (`CMAKE_FIND_LIBRARY_PREFIXES ""`, suffix `.lib`) against a simulated
+  vcpkg prefix resolves both `include/luajit.h` and `lib/lua51.lib`. The real check is the
+  `windows-x64` continuous integration leg.
 
   `PUBLIC` is required because `script_engine.hpp` includes `sol.hpp`, which tests include.
   LuaJIT 2.1 is required for arm64; the wrapper tracks it. Pin the commit SHA when you land

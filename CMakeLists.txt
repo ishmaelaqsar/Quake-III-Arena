@@ -125,13 +125,45 @@ if(NOT TARGET OpenGL::GL)
 endif()
 
 # LuaJIT lookup and fallback (A6.1)
+#
+# Three ways of finding it, in order, because no single one covers every platform:
+#
+#   1. pkg-config. Covers a Linux distribution package and Homebrew, and carries the include and
+#      library paths for us.
+#   2. find_path and find_library. Needed on Windows: vcpkg installs the port but the runner has
+#      no pkg-config, so step 1 silently finds nothing. These searches do work there, because the
+#      vcpkg toolchain adds its installed tree to the CMake search paths. They also cover a
+#      manual install and the cross prefix in docker/Dockerfile.mingw.
+#   3. Build it from source with FetchContent, when Q3_FETCH_LUAJIT is on.
+#
+# The header is named luajit.h in every layout; only its directory differs, hence the suffixes.
+# The library is libluajit-5.1 on Unix layouts and lua51 with vcpkg.
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
     pkg_check_modules(LUAJIT IMPORTED_TARGET luajit)
 endif()
 
+if(NOT TARGET PkgConfig::LUAJIT)
+    find_path(LUAJIT_INCLUDE_DIR
+        NAMES luajit.h
+        PATH_SUFFIXES luajit-2.1 luajit luajit-2.0
+    )
+    find_library(LUAJIT_LIBRARY
+        NAMES luajit-5.1 luajit lua51 libluajit-5.1 libluajit
+    )
+    mark_as_advanced(LUAJIT_INCLUDE_DIR LUAJIT_LIBRARY)
+endif()
+
 if(TARGET PkgConfig::LUAJIT)
     add_library(luajit::luajit ALIAS PkgConfig::LUAJIT)
+    message(STATUS "LuaJIT: found through pkg-config")
+elseif(LUAJIT_INCLUDE_DIR AND LUAJIT_LIBRARY)
+    add_library(luajit::luajit UNKNOWN IMPORTED)
+    set_target_properties(luajit::luajit PROPERTIES
+        IMPORTED_LOCATION "${LUAJIT_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LUAJIT_INCLUDE_DIR}"
+    )
+    message(STATUS "LuaJIT: found at ${LUAJIT_LIBRARY}")
 elseif(Q3_FETCH_LUAJIT)
     include(FetchContent)
     FetchContent_Declare(luajit
@@ -139,7 +171,15 @@ elseif(Q3_FETCH_LUAJIT)
         GIT_TAG 94444a6c9bde77a768822f5cd00139161c9de412
         GIT_SUBMODULES_RECURSE ON
     )
-    set(LUAJIT_DIR ${luajit_SOURCE_DIR}/LuaJIT CACHE PATH "" FORCE)
+    # The wrapper reads LUAJIT_DIR while it configures, which happens inside
+    # FetchContent_MakeAvailable, so it has to be set beforehand. It used to be derived from
+    # luajit_SOURCE_DIR, which is empty until after that call, so LUAJIT_DIR became "/LuaJIT"
+    # and the wrapper failed with `file COPY cannot find "/LuaJIT/src/jit"`. FETCHCONTENT_BASE_DIR
+    # gives the same path and is known in advance.
+    if(NOT FETCHCONTENT_BASE_DIR)
+        set(FETCHCONTENT_BASE_DIR "${CMAKE_BINARY_DIR}/_deps")
+    endif()
+    set(LUAJIT_DIR "${FETCHCONTENT_BASE_DIR}/luajit-src/LuaJIT" CACHE PATH "" FORCE)
     FetchContent_MakeAvailable(luajit)
     if(TARGET luajit::lib)
         add_library(luajit::luajit ALIAS luajit::lib)
@@ -147,11 +187,14 @@ elseif(Q3_FETCH_LUAJIT)
         add_library(luajit::luajit ALIAS libluajit)
     elseif(TARGET luajit)
         add_library(luajit::luajit ALIAS luajit)
+    else()
+        message(FATAL_ERROR "LuaJIT was fetched but exposed no known target; inspect ${LUAJIT_DIR}")
     endif()
+    message(STATUS "LuaJIT: built from source in ${LUAJIT_DIR}")
 else()
     message(FATAL_ERROR
-        "LuaJIT not found. Install it (brew install luajit | apt install libluajit-5.1-dev | vcpkg install luajit) "
-        "or configure with -DQ3_FETCH_LUAJIT=ON.")
+        "LuaJIT not found. Install it (brew install luajit | apt install libluajit-5.1-dev | "
+        "vcpkg install luajit --triplet x64-windows) or configure with -DQ3_FETCH_LUAJIT=ON.")
 endif()
 
 # Include directories
