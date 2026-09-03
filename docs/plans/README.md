@@ -123,16 +123,13 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 
 ## Current state, 3 September 2026
 
-The tree builds and links in the container, and 62 of 65 tests pass. The three failures are
-`ModernLoggerTest.*`, because a `RelWithDebInfo` build defines `NDEBUG` and
-`code/sys/logger/logger.hpp` compiles every `LOG_*` call out, including errors. Checklist 02
-step B4 fixes the logger and checklist 03 rewrites those tests. Treat them as the only expected
-red until then.
+The tree builds and links on Linux and macOS, and **all 68 tests pass**. The logger tests that
+had failed on every leg were fixed by checklist 02 phase B4.
 
-Two gates are not yet usable. Gate G1 has no golden image, because no machine used so far has
-game data; produce it on the Linux machine before the next rename (checklist 00 step 3b). The
-MinGW cross image does not build on an Apple Silicon host, where the emulated compiler crashes;
-build and verify it on the Linux machine (checklist 00 step 7 and checklist 01 step A6.3).
+Continuous integration runs four jobs on a push: `linux` (build, unit tests, gate G1),
+`linux-asan`, `macos-arm64`, and `windows-x64`. The `linux-mingw` cross leg runs nightly and on
+demand. Two blockers remain, both recorded in `00-environment.md`: the Windows leg cannot
+resolve LuaJIT, and gate G1 has no golden image because no machine used so far has game data.
 
 ## Dependency order
 

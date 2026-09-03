@@ -6,8 +6,28 @@
 #include "scripting/script_engine.hpp"
 #include "logger/logger.hpp"
 
+#include <thread>
+
 static q3::scripting::ScriptEngine* g_scriptEngine = nullptr;
 static q3::net::HttpDownloader g_httpDownloader;
+static cvar_t* g_logLevelCvar = nullptr;
+static cvar_t* g_developerCvar = nullptr;
+
+// com_logLevel: 0 debug, 1 info, 2 warn, 3 error. `developer 1` forces debug, so that turning
+// the developer cvar on does not also require remembering this one.
+static void ApplyLogLevel(void) {
+    int level = g_logLevelCvar ? g_logLevelCvar->integer : 1;
+    if (g_developerCvar && g_developerCvar->integer) {
+        level = 0;
+    }
+    if (level < 0) {
+        level = 0;
+    }
+    if (level > 3) {
+        level = 3;
+    }
+    q3::log::Logger::instance().set_level(static_cast<q3::log::Level>(level));
+}
 
 static void ConsolePrintSink(const char* msg) {
     if (msg) {
@@ -18,6 +38,20 @@ static void ConsolePrintSink(const char* msg) {
 extern "C" {
 
 void Sys_SubsystemInit(void) {
+    // Before the sink is installed, so that a line logged from a worker during start-up is
+    // queued rather than delivered on the wrong thread.
+    q3::log::Logger::instance().set_main_thread(std::this_thread::get_id());
+
+    // Quieter by default in an optimised build, because the info lines are development
+    // commentary rather than something a player needs to read.
+#ifdef NDEBUG
+    g_logLevelCvar = Cvar_Get("com_logLevel", "2", CVAR_ARCHIVE);
+#else
+    g_logLevelCvar = Cvar_Get("com_logLevel", "1", CVAR_ARCHIVE);
+#endif
+    g_developerCvar = Cvar_Get("developer", "0", 0);
+    ApplyLogLevel();
+
     q3::log::Logger::instance().set_console_sink(ConsolePrintSink);
     LOG_INFO("Sys_SubsystemInit: Initializing subsystem layers");
     q3::multiplayer::SessionManager::instance().reset();
@@ -33,6 +67,20 @@ void Sys_SubsystemInit(void) {
 }
 
 void Sys_SubsystemFrame(int msec) {
+    if ((g_logLevelCvar && g_logLevelCvar->modified) ||
+        (g_developerCvar && g_developerCvar->modified)) {
+        if (g_logLevelCvar) {
+            g_logLevelCvar->modified = qfalse;
+        }
+        if (g_developerCvar) {
+            g_developerCvar->modified = qfalse;
+        }
+        ApplyLogLevel();
+    }
+
+    // Deliver anything the worker threads logged. Main thread only, which this is.
+    q3::log::Logger::instance().flush_queued();
+
     if (g_scriptEngine) {
         // Convert msec to seconds
         g_scriptEngine->update_timers(msec / 1000.0);

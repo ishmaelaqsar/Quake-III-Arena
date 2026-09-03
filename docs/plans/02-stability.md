@@ -8,7 +8,7 @@ the `sys_api` boundary, the VFS hook that bypasses the file system, the busy-wai
 the hostile first-run message, and the CD key and authorize server gates that no longer serve
 a purpose in a GPL build.
 
-**Status:** In progress. Phase B1 complete, including its tests as of 3 September 2026, and phase B2 complete. Next: B3 crash handling. Phases B1 and B2 complete on 2 September 2026 (64-bit VM ABI, prototype fallout).
+**Status:** In progress. Phases B1, B2, and B4 complete as of 3 September 2026 (64-bit virtual machine ABI with tests, prototype fallout, logger). Next: B3 crash handling. B4 turned the whole test suite green.
 
 ## Prerequisites
 
@@ -185,7 +185,7 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
 
 ### Phase B4: logger
 
-- [ ] **B4.1 Rewrite `code/sys/logger/logger.hpp`.** Keep it header-only. Add
+- [x] **B4.1 Rewrite `code/sys/logger/logger.hpp`.** Done on 3 September 2026. Keep it header-only. Add
   `std::atomic<Level> min_level_` with `set_level()` and `level()`; `log()` returns before any
   formatting when `level < min_level_`. Guard output and the sink with a `std::mutex`. Strip
   `__FILE__` to its basename with a `constexpr std::string_view basename(std::string_view)`
@@ -197,7 +197,7 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
   T1 replaces this queue with `MainThreadQueue`; keep the interface identical so the swap is
   one line. Macros: `LOG_WARN` and `LOG_ERROR` are always compiled; `LOG_DEBUG` and `LOG_INFO`
   compile to `((void)0)` only when `Q3_LOG_STRIP_VERBOSE` is defined, never on `NDEBUG`.
-- [ ] **B4.2 Add the `com_logLevel` cvar.** Register it in `Sys_SubsystemInit`: `0` debug, `1`
+- [x] **B4.2 Add the `com_logLevel` cvar.** Done on 3 September 2026. Register it in `Sys_SubsystemInit`: `0` debug, `1`
   info, `2` warn, `3` error; default `"1"` in debug builds and `"2"` otherwise, `CVAR_ARCHIVE`.
   `Sys_SubsystemFrame` polls `->modified` and calls `set_level`. When `developer` is `1`, force
   debug.
@@ -213,6 +213,19 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
   - **Verify:** `ctest --preset dev -R Logger` and `ctest --preset release -R Logger` pass in the
     container. Start the client with `+set com_logLevel 0` and observe lines of the form
     `[DEBUG] [sys_sdl.cpp:99] ...` with no absolute path.
+
+Notes from the landing, 3 September 2026:
+- The whole test suite is green for the first time: 68 of 68. These three tests had failed on
+  every continuous integration leg since the workflow was added, because a `RelWithDebInfo`
+  build defines `NDEBUG` and the old macros stripped every level under it.
+- `tests/test_modern_logger.cpp` was rewritten to assert through an installed sink rather than by
+  capturing stdout. Reinstating the old `#ifndef NDEBUG` stripping makes five of the six cases
+  fail, so they detect the defect they were written for.
+- Deviation from the step text: the tests live in `quake3_tests`, not `q3sys_tests`, because
+  checklist 03 step C1 has not split the binaries yet. Move them when it does.
+- `flush_queued()` is called from `Sys_SubsystemFrame`, and the bounded queue reports how many
+  lines it dropped rather than staying silent. Checklist 05 step T1 replaces the queue with the
+  general MainThreadQueue; the interface is unchanged by that swap.
 
 ### Phase B5: `sys_api` hardening
 
