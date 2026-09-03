@@ -572,7 +572,6 @@ set(UI_SOURCES
     code/game/q_shared.cpp
     code/q3_ui/ui_addbots.c
     code/q3_ui/ui_atoms.c
-    code/q3_ui/ui_cdkey.c
     code/q3_ui/ui_cinematics.c
     code/q3_ui/ui_confirm.c
     code/q3_ui/ui_connect.c

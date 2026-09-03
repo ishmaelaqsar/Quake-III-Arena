@@ -3266,7 +3266,11 @@ void FS_InitFilesystem( void ) {
 	// busted and error out now, rather than getting an unreadable
 	// graphics screen when the font fails to load
 	if ( FS_ReadFile( "default.cfg", NULL ) <= 0 ) {
-		Com_Error( ERR_FATAL, "Couldn't load default.cfg" );
+		Com_Error( ERR_FATAL,
+			"Couldn't find pak0.pk3 (default.cfg missing).\n"
+			"Searched:\n  fs_basepath: %s/%s\n  fs_homepath: %s/%s\n  fs_cdpath: %s/%s\n"
+			"Copy pak0.pk3 to pak8.pk3 from your Quake III Arena install into one of these directories.",
+			fs_basepath->string, BASEGAME, fs_homepath->string, BASEGAME, fs_cdpath->string, BASEGAME );
 		// bk001208 - SafeMode see below, FIXME?
 	}
 
@@ -3317,7 +3321,11 @@ void FS_Restart( int checksumFeed ) {
 			Com_Error( ERR_DROP, "Invalid game folder\n" );
 			return;
 		}
-		Com_Error( ERR_FATAL, "Couldn't load default.cfg" );
+		Com_Error( ERR_FATAL,
+			"Couldn't find pak0.pk3 (default.cfg missing).\n"
+			"Searched:\n  fs_basepath: %s/%s\n  fs_homepath: %s/%s\n  fs_cdpath: %s/%s\n"
+			"Copy pak0.pk3 to pak8.pk3 from your Quake III Arena install into one of these directories.",
+			fs_basepath->string, BASEGAME, fs_homepath->string, BASEGAME, fs_cdpath->string, BASEGAME );
 	}
 
 	// bk010116 - new check before safeMode

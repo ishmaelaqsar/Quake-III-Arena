@@ -354,24 +354,32 @@ char *NET_ErrorString(void) {
 }
 
 void NET_Sleep(int msec) {
-    struct timeval timeout;
-    fd_set fdset;
+    if (msec < 0) {
+        msec = 0;
+    }
 
-    if (ip_socket == Q3_INVALID_SOCKET || !com_dedicated || !com_dedicated->integer) {
+    if (ip_socket == Q3_INVALID_SOCKET) {
+        Sys_Sleep(msec);
         return;
     }
 
+    struct timeval timeout;
+    fd_set fdset;
+    int maxfd = ip_socket;
+
     FD_ZERO(&fdset);
-    if (stdin_active) {
+#ifndef _WIN32
+    if (com_dedicated && com_dedicated->integer && stdin_active) {
         FD_SET(0, &fdset);
     }
+#endif
     FD_SET(ip_socket, &fdset);
     timeout.tv_sec = msec / 1000;
     timeout.tv_usec = (msec % 1000) * 1000;
 #ifdef _WIN32
     select(0, &fdset, NULL, NULL, &timeout);
 #else
-    select(ip_socket + 1, &fdset, NULL, NULL, &timeout);
+    select(maxfd + 1, &fdset, NULL, NULL, &timeout);
 #endif
 }
 

@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <thread>
 
 #include "q_shared.h"
 #include "qcommon.h"
@@ -12,6 +13,14 @@ int Sys_Milliseconds(void) {
     static auto start = std::chrono::steady_clock::now();
     auto now = std::chrono::steady_clock::now();
     return (int)std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+}
+
+void Sys_Sleep(int msec) {
+    if (msec > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(msec));
+    } else {
+        std::this_thread::yield();
+    }
 }
 
 void Sys_Print(const char *msg) {

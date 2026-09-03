@@ -30,6 +30,7 @@ set(TEST_SOURCES
     test_vm.cpp
     test_download_policy.cpp
     test_sys_api_boundary.cpp
+    test_sys_time.cpp
 )
 
 # Shared module that tests/test_vm.cpp loads through VM_Create to exercise the 64-bit virtual

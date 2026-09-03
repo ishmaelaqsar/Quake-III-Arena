@@ -113,6 +113,8 @@ int Sys_Milliseconds(void) {
 void Sys_Sleep(int msec) {
     if (msec > 0) {
         SDL_Delay(msec);
+    } else {
+        SDL_Delay(0);
     }
 }
 

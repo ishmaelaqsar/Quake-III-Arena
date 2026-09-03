@@ -8,7 +8,7 @@ the `sys_api` boundary, the VFS hook that bypasses the file system, the busy-wai
 the hostile first-run message, and the CD key and authorize server gates that no longer serve
 a purpose in a GPL build.
 
-**Status:** In progress. Phases B1, B2, B3, B4, B5, and B6 complete as of 3 September 2026 (64-bit virtual machine ABI, prototype fallout, crash handling and signals, logger, sys_api hardening, VFS hooks removed). Next: B7 frame pacing. B4 turned the whole test suite green.
+**Status:** Complete. Phases B1 through B10 complete on 3 September 2026 (64-bit VM ABI, prototypes, signals, logger, sys_api boundary, VFS hooks removed, frame pacing and monotonic clock, first-run pak diagnostics, CD key and authorize server removed; master server pointer noted for checklist 08).
 
 ## Prerequisites
 
@@ -330,7 +330,7 @@ precedence rules. The C++ class stays as a helper for tests and future code.
 
 ### Phase B7: frame pacing and monotonic clock
 
-- [ ] **B7.1 Replace the spin loop.** At `code/qcommon/common.c:2700-2713` use:
+- [x] **B7.1 Replace the spin loop.** Done on 3 September 2026. At `code/qcommon/common.c:2700-2713` use:
   ```c
   do {
       com_frameTime = Com_EventLoop();
@@ -349,14 +349,14 @@ precedence rules. The C++ class stays as a helper for tests and future code.
   } while ( msec < minMsec );
   ```
   Register `com_busyWait` (`"0"`, `CVAR_ARCHIVE`) next to `com_maxfps`.
-- [ ] **B7.2 Make `NET_Sleep` work for the client.** In `code/sys/net/sys_net.cpp` remove the
+- [x] **B7.2 Make `NET_Sleep` work for the client.** Done on 3 September 2026. In `code/sys/net/sys_net.cpp` remove the
   `!com_dedicated->integer` early return. When `ip_socket` is open, `select()` on it (plus
   `stdin` when dedicated and `stdin_active`) with the timeout; otherwise call `Sys_Sleep(msec)`.
   On Windows `select` works on sockets; skip `stdin` and use `Sys_Sleep` when no socket is
   open. `NET_Sleep(0)` on the client falls through to `Sys_Sleep(0)`, which yields.
   `SV_Frame`'s dedicated sleep at `code/server/sv_main.c:784` is unchanged and now uses the
   same path.
-- [ ] **B7.3 Confirm the monotonic clock.** `Sys_Milliseconds` from checklist 01 A4.2 uses
+- [x] **B7.3 Confirm the monotonic clock.** Done on 3 September 2026. `Sys_Milliseconds` from checklist 01 A4.2 uses
   `SDL_GetPerformanceCounter`. Confirm no caller depends on wall-clock alignment (grep
   `Sys_Milliseconds` in `code/`); none should.
   - **Tests:** `tests/test_sys_time.cpp` (binary `quake3_tests`). Cases:
@@ -371,7 +371,7 @@ precedence rules. The C++ class stays as a helper for tests and future code.
 
 ### Phase B8: first-run diagnostics
 
-- [ ] **B8.1 Name the pak and the searched paths.** Replace the error at
+- [x] **B8.1 Name the pak and the searched paths.** Done on 3 September 2026. Replace the error at
   `code/qcommon/files.c:3273-3276` with:
   ```c
   if ( FS_ReadFile( "default.cfg", NULL ) <= 0 ) {
@@ -392,21 +392,21 @@ precedence rules. The C++ class stays as a helper for tests and future code.
 
 ### Phase B9: CD key, authorize server, intro
 
-- [ ] **B9.1 Remove the CD key gate.** Delete the block at `code/q3_ui/ui_menu.c:276-282`. Remove
+- [x] **B9.1 Remove the CD key gate.** Done on 3 September 2026. Delete the block at `code/q3_ui/ui_menu.c:276-282`. Remove
   `code/q3_ui/ui_cdkey.c` from `UI_SOURCES` and every `UI_CDKeyMenu` and `UI_CDKeyMenu_Cache`
   reference (grep `ui_menu.c`, `ui_atoms.c`, `ui_main.c`, `ui_setup.c:127,231-239,296`, and
   `ui_local.h`). Remove the `UIMENU_NEED_CD` handling at `ui_atoms.c:805-823`.
-- [ ] **B9.2 Stop touching the key file.** In `code/qcommon/common.c:2242-2330` make
+- [x] **B9.2 Stop touching the key file.** Done on 3 September 2026. In `code/qcommon/common.c:2242-2330` make
   `Com_ReadCDKey` and `Com_AppendCDKey` fill blanks without disk access and `Com_WriteCDKey` a
   no-op. Remove the `Com_WriteCDKey` call in `Com_WriteConfiguration` at `:2552-2559`. Keep
   `cl_cdkey` storage because the `UI_GET_CDKEY` trap still reads it.
-- [ ] **B9.3 Remove the authorize handshake.** In `code/client/cl_main.c` make
+- [x] **B9.3 Remove the authorize handshake.** Done on 3 September 2026. In `code/client/cl_main.c` make
   `CL_RequestAuthorization` a no-op (no packet, no DNS lookup). In
   `code/server/sv_client.c:60-140` delete the authorize branch at `:92-133` so
   `SV_GetChallenge` always sends `challengeResponse` at once. Remove `SV_AuthorizeIpPacket` and
   its dispatch in `code/server/sv_main.c` `SV_ConnectionlessPacket`. Drop
   `AUTHORIZE_SERVER_NAME` and `PORT_AUTHORIZE` from `code/qcommon/qcommon.h:240`.
-- [ ] **B9.4 Skip the intro.** Add `com_skipIntro` (`CVAR_ARCHIVE`, default `"1"`) and, when set,
+- [x] **B9.4 Skip the intro.** Done on 3 September 2026. Add `com_skipIntro` (`CVAR_ARCHIVE`, default `"1"`) and, when set,
   skip both `idlogo.RoQ` and the `nextmap "cinematic intro.RoQ"` at `common.c:2489-2492`.
   - **Tests:** `tests/test_server_challenge.cpp` (binary `quake3_tests`) if `SV_GetChallenge` can be
     called with a stubbed `svs.challenges` and a captured `NET_OutOfBandPrint`; case
@@ -420,7 +420,7 @@ precedence rules. The C++ class stays as a helper for tests and future code.
 
 ### Phase B10: master server cvars
 
-- [ ] **B10.1 Pointer.** The dead master hostnames (`code/qcommon/qcommon.h:237`,
+- [x] **B10.1 Pointer.** Noted on 3 September 2026. The dead master hostnames (`code/qcommon/qcommon.h:237`,
   `code/client/cl_main.c:2903-2909`) are fixed in checklist `08-renderer-ui.md` step U1.7
   together with the server browser. Do not duplicate the work here.
 
