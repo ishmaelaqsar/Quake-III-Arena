@@ -227,6 +227,14 @@ Notes from the landing, 3 September 2026:
   lines it dropped rather than staying silent. Checklist 05 step T1 replaces the queue with the
   general MainThreadQueue; the interface is unchanged by that swap.
 
+Also landed on 3 September 2026, ahead of its phase, because the macOS continuous integration
+leg exposed it: `Sys_DefaultHomePath` in `code/sys/sys_files_unix.cpp` now creates parent
+directories. A single `mkdir` cannot create `$HOME/Library/Application Support/Quake3`, so on
+any macOS home that Finder has not populated the call failed with `ENOENT` and the engine
+quietly fell back to the install path. `tests/test_sys_paths.cpp` now asserts that the returned
+directory exists, which is what caught it; the previous version only checked the string and hid
+the failure behind an `if (stat(...) == 0)`.
+
 ### Phase B5: `sys_api` hardening
 
 - [ ] **B5.1 Own the script engine.** In `code/sys/sys_api.cpp` replace the raw pointer at `:9`

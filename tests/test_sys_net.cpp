@@ -51,19 +51,23 @@ TEST_F(SysNet, InvalidSocketSentinelIsNotZero) {
 }
 
 TEST_F(SysNet, ErrorStringIsNonEmpty) {
+    // Assert the socket, rather than wrapping the body in an `if`: a failure to create one
+    // would otherwise leave the test passing with no assertions evaluated at all.
     socket_t s = socket(AF_INET, SOCK_STREAM, 0);
-    if (s != Q3_INVALID_SOCKET) {
-        struct sockaddr_in addr;
-        memset(&addr, 0, sizeof(addr));
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(1); // Port 1 usually refuses connection
-        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    ASSERT_NE(s, Q3_INVALID_SOCKET) << "could not create a socket: " << NET_ErrorString();
 
-        connect(s, (struct sockaddr *)&addr, sizeof(addr));
-        char *errStr = NET_ErrorString();
-        EXPECT_NE(errStr, nullptr);
-        EXPECT_GT(strlen(errStr), 0u);
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(1);  // port 1 refuses the connection, which sets the error
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-        q3_closesocket(s);
-    }
+    const int rc = connect(s, (struct sockaddr *)&addr, sizeof(addr));
+    EXPECT_EQ(rc, -1) << "connecting to port 1 was expected to fail";
+
+    char *errStr = NET_ErrorString();
+    ASSERT_NE(errStr, nullptr);
+    EXPECT_GT(strlen(errStr), 0u);
+
+    q3_closesocket(s);
 }

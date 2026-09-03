@@ -63,13 +63,15 @@ pass in the container. These rules apply to every checklist.
   `botlib`, `q3server`, and `q3sys` objects, the real platform files (`code/sys/sys_dll.c`,
   `code/sys/sys_files_*.c`, `code/sys/net/sys_net.c`), the null client stubs, and the
   reduced stubs in `tests/test_platform_stubs.cpp`. Checklist `03-tests.md` creates this split.
-- **Discovery and timeouts.** Both binaries use `gtest_discover_tests` with a 60 second
-  timeout per test and `--gtest_shuffle` in continuous integration, so tests must not depend on
-  order or on process-wide singletons that another test mutates.
-- **Locations.** Fixtures (sample pk3 files, demo frames, shader corpora) live in
-  `tests/fixtures/`. Shared helpers live in `tests/*.hpp` (`engine_fixture.hpp`,
-  `zip_writer.hpp`, `fake_ipc_server.hpp`, `test_http_server.hpp`). One test file per
-  subsystem, named `tests/test_<subsystem>.cpp`.
+- **Discovery and timeouts.** There is one binary today, `quake3_tests`; checklist 03 step C1
+  splits it. `gtest_discover_tests` registers each case separately, so each runs in its own
+  process and there is no intra-binary order to shuffle: continuous integration uses
+  `ctest --schedule-random`, which is the property that matters. No per-test timeout is set in
+  CMake yet, so only the CI `--timeout 120` bounds a hung test; add `PROPERTIES TIMEOUT` in C1.
+- **Locations.** One test file per subsystem, named `tests/test_<subsystem>.cpp`. Shared
+  helpers live in `tests/*.hpp`; today that is `engine_init.hpp` alone. The fuller set
+  (`engine_fixture.hpp`, `zip_writer.hpp`, `fake_ipc_server.hpp`, `test_http_server.hpp`) and
+  `tests/fixtures/` arrive with checklists 03 and 06, so do not cite them as existing.
 - **Naming.** Test case names read `Subsystem.BehaviourUnderCondition`, for example
   `Files.LoadStackReturnsToZeroAfterPairedReadAndFree`.
 - **Build with both compilers.** GCC and Clang disagree about what is an error, not just a
@@ -123,13 +125,18 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 
 ## Current state, 3 September 2026
 
-The tree builds and links on Linux and macOS, and **all 68 tests pass**. The logger tests that
-had failed on every leg were fixed by checklist 02 phase B4.
+The tree builds and links on Linux and macOS, and **all 77 tests pass** locally, under
+AddressSanitizer too. The Linux continuous integration leg is green.
 
-Continuous integration runs four jobs on a push: `linux` (build, unit tests, gate G1),
-`linux-asan`, `macos-arm64`, and `windows-x64`. The `linux-mingw` cross leg runs nightly and on
-demand. Two blockers remain, both recorded in `00-environment.md`: the Windows leg cannot
-resolve LuaJIT, and gate G1 has no golden image because no machine used so far has game data.
+Fixed today beyond the checklists, because the platform legs exposed them: `Q_rsqrt` read eight
+bytes from a four-byte float and returned a sign-flipped result on x86_64; the module entry point
+was called through a variadic pointer, which passes garbage arguments on Apple arm64;
+`Snd_Memset` was defined off Linux where it is a macro for `Com_Memset`; `ctime` received an
+`unsigned long` where Windows wants a 64-bit `time_t`; `sol::nil` does not exist on macOS; and
+gate G1 could pass on a crash. All are recorded in `00-environment.md`.
+
+Two blockers remain, both in `00-environment.md`: the Windows leg cannot resolve LuaJIT, and gate
+G1 has no golden image because no machine used so far has game data.
 
 ## Dependency order
 

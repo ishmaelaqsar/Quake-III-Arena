@@ -1,122 +1,88 @@
-# Building Quake III Arena
+# Build and test
 
-This document describes how to configure, build, and test the modernized Quake III Arena engine across supported platforms.
+Everything runs in a container, so nothing is installed on the host. The `Makefile` at the
+repository root wraps the containers defined in `compose.yaml`. Run `make help` for the target
+list.
 
-## Prerequisites
-
-You can build the project through containers on Linux, or natively on Linux, macOS, and Windows.
-
-### Linux container build (recommended)
-
-The container image includes all compilers, libraries, and tools:
-
-- Docker or Podman
-- Docker Compose plugin (optional for Makefile wrappers)
-- GNU Make
-
-### Linux native build
-
-Install development packages from your distribution repository:
-
-- `cmake` (version 3.16 or newer)
-- `ninja` or GNU `make`
-- `gcc` or `clang`
-- `libsdl2-dev`
-- `libgl-dev`
-- `libluajit-5.1-dev`
-- `libcurl4-openssl-dev`
-
-### macOS native build
-
-- Xcode Command Line Tools (`xcode-select --install`)
-- CMake and Ninja
-
-You can install dependencies through Homebrew:
+## Linux, in the container
 
 ```sh
-brew install cmake ninja sdl2 luajit
+make build      # configure and compile
+make test       # build, then run the unit tests
+make shell      # a prompt inside the container
 ```
 
-Alternatively, configure with `-DQ3_FETCH_DEPS=ON` (or run `make native-build`), which downloads and compiles SDL2, LuaJIT, and GoogleTest automatically without host installations.
+The first `make` builds the image from `docker/Dockerfile`, which takes a few minutes. Later
+runs reuse it, and `ccache` persists in a named volume.
 
-### Windows native build
+Prerequisites on the host: Docker with the Compose plugin. Nothing else. Do not call
+`docker compose` directly: the `Makefile` exports `Q3_UID` and `Q3_GID` so that files the
+container writes belong to you, and the compose file now refuses to start without them.
 
-- Visual Studio 2022 (version 17 or newer) with C++ Desktop Development workload
-- CMake (version 3.21 or newer)
-- vcpkg package manager
+## Game data
 
-Install required libraries via vcpkg:
-
-```cmd
-vcpkg install sdl2 luajit gtest curl:x64-windows
-```
-
-## CMake presets
-
-The project provides standard configuration presets in `CMakePresets.json`:
-
-- `dev`: Linux and macOS development preset. Uses Ninja, `RelWithDebInfo`, and builds unit tests in `build/`.
-- `debug`: Debug build with debug symbols and assertions in `build-debug/`.
-- `release`: Release build with optimizations enabled in `build-release/`.
-- `asan`: AddressSanitizer and UndefinedBehaviorSanitizer build in `build-asan/`.
-- `tsan`: ThreadSanitizer build in `build-tsan/`.
-- `msvc`: Windows 64-bit build targeting Visual Studio 2022 with vcpkg integration.
-- `mingw`: Cross-compilation preset for MinGW-w64 in `build-win64/`.
-
-List available presets with:
+The paks are not in the repository. Copy `pak0.pk3` to `pak8.pk3` from a Quake III Arena
+installation into `docker/paks/`, or point `Q3_PAKS` at a directory holding them:
 
 ```sh
-cmake --list-presets
+Q3_PAKS=/path/to/quake3/baseq3 make smoke
 ```
 
-Configure, build, and test using presets:
+Unit tests do not need the paks. The rendering and server gates do.
+
+## Gates
 
 ```sh
-cmake --preset dev
-cmake --build --preset dev
-ctest --preset dev
+make smoke                # gate G1: render a fixed demo frame, compare with the golden image
+make smoke-update-golden  # accept the current frame as the new golden image
+make bot-match            # 60 seconds of the dedicated server with four bots
+make apitrace             # record the smoke run and count GL calls
 ```
 
-## Game data files
+`ci/smoke/README.md` describes what each gate checks and why. The golden image does not exist
+yet; until it does, `make smoke` saves a candidate and exits non-zero.
 
-Original game data pak files (`pak0.pk3` through `pak8.pk3`) are required to run the game.
+## Sanitizers
 
-You can place pak files in:
-
-1. `build/baseq3/` next to compiled modules
-2. Any directory referenced with `+set fs_basepath /path/to/paks`
-3. `docker/paks/` when using container Make targets
-
-## Home paths per platform
-
-User configuration, screenshots, and downloaded maps are stored in platform-standard directories:
-
-- Linux: `~/.q3a/`
-- macOS: `~/Library/Application Support/Quake3/`
-- Windows: `%APPDATA%\Quake3\`
-
-## Module naming scheme
-
-Dynamic game modules follow an architecture and platform convention:
-
-```text
-<module><arch><ext>
+```sh
+make asan   # AddressSanitizer and UndefinedBehaviorSanitizer
+make tsan   # ThreadSanitizer
 ```
 
-- Module names: `qagame`, `cgame`, `ui`
-- Architectures: `x86_64`, `arm64`, `x86`
-- Extensions: `.so` (Linux), `.dylib` (macOS), `.dll` (Windows)
+Both go through the `Q3_SANITIZE` CMake option, so a local run and the continuous integration
+legs build identically. The alignment check is excluded, because the zone allocator hands out
+four-byte-aligned blocks by design; leak detection is off, because the zone and hunk never free
+at exit.
 
-Examples:
+## Windows, cross-compiled
 
-- Linux x86_64: `baseq3/qagamex86_64.so`
-- macOS Apple Silicon: `baseq3/qagamearm64.dylib`
-- Windows x64: `baseq3/qagamex86_64.dll`
+```sh
+make win-build   # cross-compile with MinGW-w64
+make win-test    # run the Windows unit tests under Wine
+```
 
-## Pinned dependencies
+This image builds SDL2, curl, and LuaJIT from source, so the first build is slow. It is
+`linux/amd64`, so on an Apple Silicon host it runs under emulation and the compiler has been
+seen to crash there; build it on an x86_64 machine. Microsoft Visual C++ is the Windows gate in
+continuous integration, not this leg.
 
-When system packages are not detected, CMake fetches pinned source dependencies:
+## macOS, natively
 
-- LuaJIT wrapper: `https://github.com/zhaozg/luajit-cmake` at commit `94444a6c9bde77a768822f5cd00139161c9de412`.
-- GoogleTest: release `v1.14.0` (SHA-256: `1f357c27ca988c3f7c6b4bf68a9395005ac6761f034046e9dde0896e3aba00e4`).
-- SDL2: release `2.32.8` (under `-DQ3_FETCH_DEPS=ON`).
+macOS cannot run in a container, so this is the one native path:
+
+```sh
+make native-build
+make native-test
+```
+
+These pass `-DQ3_FETCH_DEPS=ON`, which fetches SDL2, LuaJIT, and GoogleTest into the build tree,
+so no Homebrew package is needed. You need Xcode, CMake, and Ninja. The `macos-arm64` continuous
+integration leg is the primary macOS check, and its artifacts can be downloaded for a real-GPU
+run.
+
+## Cleaning
+
+```sh
+make clean       # the default build directory
+make distclean   # every build directory, gate output, and the container volumes
+```

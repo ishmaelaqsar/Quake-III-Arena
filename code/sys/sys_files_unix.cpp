@@ -20,6 +20,37 @@ void Sys_Mkdir(const char *path) {
     mkdir(path, 0755);
 }
 
+// Create `path` and any missing parent, like `mkdir -p`. Returns qtrue when the directory
+// exists afterwards. An existing directory is success.
+static qboolean Sys_MkdirRecursive(const char *path, mode_t mode) {
+    char work[MAX_OSPATH];
+    struct stat st;
+
+    Q_strncpyz(work, path, sizeof(work));
+
+    // Walk the separators, creating each prefix in turn. Start at 1 so that a leading slash is
+    // never treated as an empty component to create.
+    for (char *p = work + 1; *p != '\0'; p++) {
+        if (*p != '/') {
+            continue;
+        }
+        *p = '\0';
+        if (mkdir(work, mode) != 0 && errno != EEXIST) {
+            return qfalse;
+        }
+        *p = '/';
+    }
+
+    if (mkdir(work, mode) == 0) {
+        return qtrue;
+    }
+    if (errno == EEXIST) {
+        // Only a directory counts: a file of the same name is a failure, not a success.
+        return (stat(work, &st) == 0 && S_ISDIR(st.st_mode)) ? qtrue : qfalse;
+    }
+    return qfalse;
+}
+
 char *Sys_Cwd(void) {
     static char cwd[MAX_OSPATH];
     if (getcwd(cwd, sizeof(cwd) - 1)) {
@@ -77,11 +108,12 @@ char *Sys_DefaultHomePath(void) {
 #else
         Q_strcat(homePath, sizeof(homePath), "/.q3a");
 #endif
-        if (mkdir(homePath, 0700)) {
-            if (errno != EEXIST) {
-                Com_Printf("Sys_DefaultHomePath: Unable to create \"%s\": %s\n", homePath, strerror(errno));
-                return Sys_DefaultInstallPath();
-            }
+        // Create the parents too. On macOS the path is $HOME/Library/Application Support/Quake3
+        // and a single mkdir fails with ENOENT whenever an intermediate directory is absent,
+        // which is any $HOME that Finder has not populated.
+        if (!Sys_MkdirRecursive(homePath, 0700)) {
+            Com_Printf("Sys_DefaultHomePath: Unable to create \"%s\": %s\n", homePath, strerror(errno));
+            return Sys_DefaultInstallPath();
         }
         return homePath;
     }

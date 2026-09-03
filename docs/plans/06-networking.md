@@ -235,7 +235,30 @@ handshake. This file does not touch them.
   **Verify:** `make test -R HttpDownloader` passes, and `ldd build/quake3_modern`
   lists libcurl.
 
-- [ ] **N1.5 Replace the sanitizer with an allowlist and a URL builder.**
+- [x] **N1.5 Replace the sanitizer with an allowlist and a URL builder.** Done on 3 September 2026, ahead of the rest of phase N1, because the four bypasses were live and untested.
+
+  The rules now live in `Sys_SanitizeDownloadFilename` in `code/sys/sys_api.cpp` rather than in a
+  separate `code/sys/net/download_policy.{hpp,cpp}`. Split the file out when the rest of N1
+  lands; the behaviour and its tests move unchanged. `BuildDownloadUrl` is still to do.
+
+  What changed: an allowlist replaced the blacklist. The only accepted shape is
+  `<gamedir>/<name>.pk3`, which is what `FS_ComparePaks` produces
+  (`code/qcommon/files.cpp:2588-2614`). The game directory must be `baseq3` or the running
+  `fs_game`, the extension must be `.pk3` compared case-insensitively with a non-empty stem, each
+  segment is checked against `[A-Za-z0-9_.-]`, `.` and `..` segments are refused, and the stock
+  paks (`pak0` to `pak8` in `baseq3`, `pak0` to `pak3` in `missionpack`) cannot be overwritten.
+
+  The four bypasses this closes, all of which passed before and none of which had a test:
+  `evil.SO`, because the extension compare was case-sensitive; `maps/autoexec.cfg`, because the
+  config check compared the whole string; any extensionless name, because that check sat inside a
+  branch taken only when the name had an extension; and `.command`, `.py`, or `.dylib.1`, because
+  a blacklist can only reject what it lists.
+  - **Tests:** `tests/test_download_policy.cpp` (binary `quake3_tests`), eleven cases, one group
+    per bypass plus traversal, percent-encoded input, stock paks, and the mod directory. The
+    sanitizer cases were removed from `tests/test_http_downloader.cpp`, whose positive cases
+    (`maps/q3dm17.pk3`, a bare `pak6-custom.pk3`) encoded the old lax shape.
+  - **Verify:** `make test CTEST_ARGS='-R DownloadPolicy'` passes, and so does `make asan` over
+    the same cases.
   Files: new `code/sys/net/download_policy.hpp` and `download_policy.cpp` (pure functions),
   `code/sys/sys_api.cpp` (`Sys_SanitizeDownloadFilename` at `:82-117` becomes a wrapper),
   `code/sys/sys_api.h`.

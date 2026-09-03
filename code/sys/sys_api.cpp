@@ -6,6 +6,8 @@
 #include "scripting/script_engine.hpp"
 #include "logger/logger.hpp"
 
+#include <string>
+#include <string_view>
 #include <thread>
 
 static q3::scripting::ScriptEngine* g_scriptEngine = nullptr;
@@ -127,38 +129,108 @@ void Sys_VFS_WriteFile(const char *qpath, const void *buffer, int size) {
     );
 }
 
+// Names the download code will accept. An allowlist, not a blacklist: the previous version
+// enumerated dangerous extensions, which let through `.command`, `.py`, `.dylib.1`, and any
+// case variant such as `evil.SO`, and its config-overwrite check was an exact whole-string
+// compare nested inside the has-an-extension branch, so `maps/autoexec.cfg` and any
+// extensionless name skipped it entirely.
+//
+// The only legitimate shape is `<gamedir>/<name>.pk3`. FS_ComparePaks builds the download list
+// from the server's referenced pak names, which are `<gamedir>/<basename>` with `.pk3`
+// appended (code/qcommon/files.cpp:2588-2614), so nothing else needs to pass.
+static qboolean Sys_DownloadSegmentIsSane(std::string_view segment) {
+    if (segment.empty()) {
+        return qfalse;  // an empty segment means a leading, trailing, or doubled slash
+    }
+    if (segment == "." || segment == "..") {
+        return qfalse;
+    }
+    for (const char c : segment) {
+        const bool allowed = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+                             (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.';
+        if (!allowed) {
+            return qfalse;  // rejects '\\', ':', whitespace, control characters, and '%'
+        }
+    }
+    return qtrue;
+}
+
+static qboolean Sys_DownloadHasPk3Extension(std::string_view file) {
+    const std::string_view suffix(".pk3");
+    if (file.size() <= suffix.size()) {
+        return qfalse;  // the stem must not be empty
+    }
+    const std::string_view actual = file.substr(file.size() - suffix.size());
+    return Q_stricmpn(actual.data(), suffix.data(), static_cast<int>(suffix.size())) == 0 ? qtrue
+                                                                                         : qfalse;
+}
+
+// The paks that ship with the game. A server must never be able to replace them.
+static qboolean Sys_DownloadIsStockPak(std::string_view gamedir, std::string_view file) {
+    if (file.size() != sizeof("pak0.pk3") - 1) {
+        return qfalse;
+    }
+    if (Q_stricmpn(file.data(), "pak", 3) != 0 || file[4] != '.') {
+        return qfalse;
+    }
+    const char digit = file[3];
+    if (digit < '0' || digit > '9') {
+        return qfalse;
+    }
+    if (Q_stricmp(std::string(gamedir).c_str(), BASEGAME) == 0) {
+        return digit <= '8' ? qtrue : qfalse;
+    }
+    if (Q_stricmp(std::string(gamedir).c_str(), "missionpack") == 0) {
+        return digit <= '3' ? qtrue : qfalse;
+    }
+    return qfalse;
+}
+
 qboolean Sys_SanitizeDownloadFilename(const char *filename) {
-    if (!filename || !*filename) return qfalse;
-
-    std::string_view name(filename);
-
-    // Prevent path traversal
-    if (name.find("..") != std::string_view::npos || name.find(':') != std::string_view::npos) {
-        LOG_WARN("Sys_SanitizeDownloadFilename: Path traversal blocked in '", filename, "'");
+    if (!filename || !*filename) {
         return qfalse;
     }
 
-    // Prevent absolute paths
-    if (name.front() == '/' || name.front() == '\\') {
-        LOG_WARN("Sys_SanitizeDownloadFilename: Absolute path blocked in '", filename, "'");
+    const std::string_view name(filename);
+    if (name.size() >= MAX_QPATH) {
+        LOG_WARN("Sys_SanitizeDownloadFilename: too long: '", filename, "'");
         return qfalse;
     }
 
-    // Check dangerous file extensions
-    auto ext_pos = name.rfind('.');
-    if (ext_pos != std::string_view::npos) {
-        std::string_view ext = name.substr(ext_pos);
-        if (ext == ".so" || ext == ".dll" || ext == ".dylib" || ext == ".exe" ||
-            ext == ".bat" || ext == ".sh" || ext == ".cmd") {
-            LOG_WARN("Sys_SanitizeDownloadFilename: Executable extension blocked in '", filename, "'");
-            return qfalse;
-        }
+    // Exactly two segments: the game directory and the pak file.
+    const std::size_t slash = name.find('/');
+    if (slash == std::string_view::npos || name.find('/', slash + 1) != std::string_view::npos) {
+        LOG_WARN("Sys_SanitizeDownloadFilename: expected <gamedir>/<name>.pk3, got '", filename, "'");
+        return qfalse;
+    }
 
-        // Prevent config overwrites
-        if (name == "autoexec.cfg" || name == "q3config.cfg" || name == "default.cfg") {
-            LOG_WARN("Sys_SanitizeDownloadFilename: Config overwrite blocked in '", filename, "'");
-            return qfalse;
-        }
+    const std::string_view gamedir = name.substr(0, slash);
+    const std::string_view file = name.substr(slash + 1);
+
+    if (!Sys_DownloadSegmentIsSane(gamedir) || !Sys_DownloadSegmentIsSane(file)) {
+        LOG_WARN("Sys_SanitizeDownloadFilename: unsafe path component in '", filename, "'");
+        return qfalse;
+    }
+
+    if (!Sys_DownloadHasPk3Extension(file)) {
+        LOG_WARN("Sys_SanitizeDownloadFilename: only .pk3 files may be downloaded: '", filename, "'");
+        return qfalse;
+    }
+
+    // The game directory must be the base game or the mod the client is running, so that a
+    // server cannot write into an unrelated directory.
+    const char *fsGame = Cvar_VariableString("fs_game");
+    const bool gamedirAllowed =
+        Q_stricmp(std::string(gamedir).c_str(), BASEGAME) == 0 ||
+        (fsGame && *fsGame && Q_stricmp(std::string(gamedir).c_str(), fsGame) == 0);
+    if (!gamedirAllowed) {
+        LOG_WARN("Sys_SanitizeDownloadFilename: game directory not allowed in '", filename, "'");
+        return qfalse;
+    }
+
+    if (Sys_DownloadIsStockPak(gamedir, file)) {
+        LOG_WARN("Sys_SanitizeDownloadFilename: refusing to overwrite a stock pak: '", filename, "'");
+        return qfalse;
     }
 
     return qtrue;
