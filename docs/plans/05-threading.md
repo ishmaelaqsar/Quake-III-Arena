@@ -8,7 +8,7 @@ system runs background work, and a dedicated render backend thread executes the 
 lists. The render thread revives the id `r_smp` design correctly and maps onto the Vulkan backend
 planned in checklist 09.
 
-**Status:** Not started
+**Status:** In progress. Phase T1 complete on 3 September 2026 (thread identity, affinity asserts, main-thread queue, logger hook, interim HTTP worker fix, threading docs, sanitizer presets). Next: Phase T2a (job system).
 
 ## Prerequisites
 
@@ -66,7 +66,7 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
 `code/client/cl_console.cpp`, `code/server/sv_main.cpp`, `code/client/cl_main.cpp`,
 `CMakeLists.txt`, `tests/CMakeLists.txt`.
 
-- [ ] **T1.1 Thread identity.** `q3::threading::mark_main_thread()` captures `std::thread::id`
+- [x] **T1.1 Thread identity.** Done on 3 September 2026. `q3::threading::mark_main_thread()` captures `std::thread::id`
   and is the first call in `Sys_SubsystemInit`. Provide `main_thread_id()`, `is_main_thread()`,
   and `set_current_thread_name(const char*)` (`pthread_setname_np` with the Linux and macOS
   variants, `SetThreadDescription` on Windows). Store the name in a `thread_local const char*`
@@ -76,7 +76,7 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
   `std::thread`.
   **Verify:** `ctest -R Affinity`.
 
-- [ ] **T1.2 `Q3_ASSERT_MAIN_THREAD()`.** Macro in `threading_api.h`, C-callable. Compiled when
+- [x] **T1.2 `Q3_ASSERT_MAIN_THREAD()`.** Done on 3 September 2026. Macro in `threading_api.h`, C-callable. Compiled when
   `!defined(NDEBUG) || defined(Q3_SANITIZE)`. Expands to `Sys_AssertMainThread(__FILE__,
   __LINE__)`, which prints the thread name and a backtrace hint with `write(2)` and calls
   `abort()`. Never call `Com_Error` from it (that is a `longjmp`). Place one assert at the entry
@@ -92,7 +92,7 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
   **Verify:** a debug run `make smoke` (which runs `+map` and `+quit`) fires no assert,
   because every existing path is on main.
 
-- [ ] **T1.3 `MainThreadQueue`.** Singleton in `main_thread_queue.hpp/.cpp`.
+- [x] **T1.3 `MainThreadQueue`.** Done on 3 September 2026. Singleton in `main_thread_queue.hpp/.cpp`.
   `post(std::function<void()>)` is the reliable lane. `post_lossy(FixedTask)` takes a 64-byte
   plain-old-data struct (function pointer plus 48 bytes of inline arguments) so the logger path
   never allocates. `drain(std::chrono::milliseconds budget)` runs from `Sys_SubsystemFrame`
@@ -108,7 +108,7 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
   on drain).
   **Verify:** `ctest -R Queue`; TSan build of `q3sys_tests` clean.
 
-- [ ] **T1.4 Logger hook.** In `Logger::log`, keep the stdout and stderr writes under a small
+- [x] **T1.4 Logger hook.** Done on 3 September 2026. In `Logger::log`, keep the stdout and stderr writes under a small
   mutex to avoid interleaving, call the console sink directly when `is_main_thread()`, otherwise
   `post_lossy` the formatted line so `ConsolePrintSink` runs on main. This is the hook that
   checklist 02 B4's logger rewrite plugs into.
@@ -117,13 +117,13 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
   `drain()`.
   **Verify:** `ctest -R Logger`.
 
-- [ ] **T1.5 Interim HTTP worker fix.** In `Sys_StartHttpDownload` (`sys_api.cpp:119-129`) the
+- [x] **T1.5 Interim HTTP worker fix.** Done on 3 September 2026. In `Sys_StartHttpDownload` (`sys_api.cpp:119-129`) the
   progress lambda posts the two `Cvar_SetValue` calls through `Sys_PostToMainThread`. Checklist
   06 N1 removes the worker entirely.
   **Tests:** none, because checklist 06 replaces the code; the TSan build is the check.
   **Verify:** TSan build has no report from `http_downloader.cpp`.
 
-- [ ] **T1.6 `docs/threading.md`.** State the ownership rule: the main thread owns cvars, cmds,
+- [x] **T1.6 `docs/threading.md`.** Done on 3 September 2026. State the ownership rule: the main thread owns cvars, cmds,
   the console, zone and hunk memory, file handles, VMs, client and server state, and every
   `refimport_t` callback. List what is legal off main: pure functions on caller-owned buffers,
   `q_shared` string and math helpers, `Com_BlockChecksum` and MD4, the JPEG codec with its own
@@ -135,7 +135,7 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
   **Tests:** none, because documentation.
   **Verify:** the file exists and checklist 10's link check passes.
 
-- [ ] **T1.7 Sanitizer option (with T6).** Add `Q3_SANITIZE` to `CMakeLists.txt` if checklist 01
+- [x] **T1.7 Sanitizer option (with T6).** Done on 3 September 2026. Add `Q3_SANITIZE` to `CMakeLists.txt` if checklist 01
   has not: values `thread`, `address`, `undefined`; adds `-fsanitize=<value> -fno-omit-frame-pointer
   -g` to all targets and defines `Q3_SANITIZE` so the affinity asserts compile in sanitizer
   builds. Add the `asan` and `tsan` presets to `CMakePresets.json`.

@@ -1960,6 +1960,7 @@ CL_Frame
 ==================
 */
 void CL_Frame ( int msec ) {
+	Q3_ASSERT_MAIN_THREAD();
 
 	if ( !com_cl_running->integer ) {
 		return;

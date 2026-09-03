@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstring>
 #include <iostream>
 #include <mutex>
 #include <sstream>
@@ -28,6 +29,9 @@
 #include <thread>
 #include <utility>
 #include <vector>
+
+#include "threading/thread_affinity.hpp"
+#include "threading/main_thread_queue.hpp"
 
 namespace q3::log {
 
@@ -94,52 +98,49 @@ public:
 
     // Deliver the lines that worker threads queued. Main thread only.
     void flush_queued() {
-        std::vector<std::string> lines;
-        std::size_t dropped = 0;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            lines.swap(queued_);
-            dropped = dropped_;
-            dropped_ = 0;
-        }
-
-        for (const std::string &line : lines) {
-            call_sink(line);
-        }
-        if (dropped != 0) {
-            call_sink("[WARN] [logger.hpp] " + std::to_string(dropped) +
-                      " log lines dropped from worker threads\n");
-        }
+        q3::threading::MainThreadQueue::instance().drain_all();
     }
 
     // Test seam: the number of lines waiting for the next flush.
-    std::size_t queued_count() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return queued_.size();
+    std::size_t queued_count() const noexcept {
+        return q3::threading::MainThreadQueue::instance().lossy_count();
     }
 
 private:
     Logger() = default;
 
     void deliver(Level level, std::string formatted) {
-        std::lock_guard<std::mutex> lock(mutex_);
-
-        // The streams are guarded, so writing them from any thread is safe.
-        std::ostream &out = (level == Level::Error) ? std::cerr : std::cout;
-        out << formatted;
+        {
+            std::lock_guard<std::mutex> lock(out_mutex_);
+            std::ostream &out = (level == Level::Error) ? std::cerr : std::cout;
+            out << formatted;
+        }
 
         if (console_sink_ == nullptr) {
             return;
         }
-        if (on_main_thread()) {
-            console_sink_(formatted.c_str());
+        if (q3::threading::is_main_thread()) {
+            call_sink(formatted);
             return;
         }
-        if (queued_.size() >= kMaxQueued) {
-            ++dropped_;
-            return;
-        }
-        queued_.push_back(std::move(formatted));
+
+        static constexpr std::size_t kPoolSize = 1024;
+        static constexpr std::size_t kMaxLineLength = 512;
+        static char s_log_pool[kPoolSize][kMaxLineLength];
+        static std::atomic<std::size_t> s_log_pool_head{0};
+
+        std::size_t slot = s_log_pool_head.fetch_add(1, std::memory_order_relaxed) % kPoolSize;
+        std::strncpy(s_log_pool[slot], formatted.c_str(), kMaxLineLength - 1);
+        s_log_pool[slot][kMaxLineLength - 1] = '\0';
+
+        q3::threading::FixedTask task;
+        task.fn = [](void *payload) {
+            const char *msg = *reinterpret_cast<const char **>(payload);
+            Logger::instance().call_sink(msg);
+        };
+        const char *ptr = s_log_pool[slot];
+        std::memcpy(task.payload, &ptr, sizeof(ptr));
+        q3::threading::MainThreadQueue::instance().post_lossy(task);
     }
 
     void call_sink(const std::string &line) {
@@ -153,15 +154,6 @@ private:
         }
     }
 
-    // Until the main thread is known, treat the caller as the main thread: during start-up the
-    // only thread running is the main one, and queueing then would delay the start-up lines.
-    bool on_main_thread() const noexcept {
-        if (!has_main_thread_.load(std::memory_order_acquire)) {
-            return true;
-        }
-        return std::this_thread::get_id() == main_thread_;
-    }
-
     static constexpr const char *level_to_string(Level level) noexcept {
         switch (level) {
             case Level::Debug:   return "DEBUG";
@@ -172,13 +164,12 @@ private:
         return "LOG";
     }
 
+    std::mutex out_mutex_;
     std::mutex mutex_;
     ConsoleSink console_sink_ = nullptr;
     std::atomic<Level> min_level_{Level::Info};
     std::atomic<bool> has_main_thread_{false};
     std::thread::id main_thread_{};
-    std::vector<std::string> queued_;
-    std::size_t dropped_ = 0;
 };
 
 }  // namespace q3::log

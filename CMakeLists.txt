@@ -336,6 +336,8 @@ set(SYS_SOURCES
     code/sys/scripting/script_engine.cpp
     code/sys/fs/vfs.cpp
     code/sys/multiplayer/session.cpp
+    code/sys/threading/thread_affinity.cpp
+    code/sys/threading/main_thread_queue.cpp
     code/sys/sys_api.cpp
 )
 add_library(q3sys OBJECT ${SYS_SOURCES})

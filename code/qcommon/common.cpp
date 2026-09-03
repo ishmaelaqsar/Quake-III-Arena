@@ -142,6 +142,8 @@ void QDECL Com_Printf( const char *fmt, ... ) {
 	char		msg[MAXPRINTMSG];
   static qboolean opening_qconsole = qfalse;
 
+	Q3_ASSERT_MAIN_THREAD();
+
 	va_start (argptr,fmt);
 	Q_vsnprintf (msg, sizeof(msg), fmt, argptr);
 	va_end (argptr);
@@ -805,6 +807,8 @@ void Z_Free( void *ptr ) {
 	memblock_t	*block, *other;
 	memzone_t *zone;
 	
+	Q3_ASSERT_MAIN_THREAD();
+	
 	if (!ptr) {
 		Com_Error( ERR_DROP, "Z_Free: NULL pointer" );
 	}
@@ -995,8 +999,10 @@ Z_Malloc
 */
 #ifdef ZONE_DEBUG
 void *Z_MallocDebug( int size, const char *label, const char *file, int line ) {
+	Q3_ASSERT_MAIN_THREAD();
 #else
 void *Z_Malloc( int size ) {
+	Q3_ASSERT_MAIN_THREAD();
 #endif
 	void	*buf;
 	
@@ -1670,8 +1676,10 @@ Allocate permanent (until the hunk is cleared) memory
 */
 #ifdef HUNK_DEBUG
 void *Hunk_AllocDebug( int size, ha_pref preference, const char *label, const char *file, int line ) {
+	Q3_ASSERT_MAIN_THREAD();
 #else
 void *Hunk_Alloc( int size, ha_pref preference ) {
+	Q3_ASSERT_MAIN_THREAD();
 #endif
 	void	*buf;
 
@@ -1747,6 +1755,8 @@ When the files-in-use count reaches zero, all temp memory will be deleted
 void *Hunk_AllocateTempMemory( int size ) {
 	void		*buf;
 	hunkHeader_t	*hdr;
+
+	Q3_ASSERT_MAIN_THREAD();
 
 	// return a Z_Malloc'd block if the hunk has not been initialized
 	// this allows the config and product id files ( journal files too ) to be loaded

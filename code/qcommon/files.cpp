@@ -851,6 +851,8 @@ fileHandle_t FS_FOpenFileWrite( const char *filename ) {
 	char			*ospath;
 	fileHandle_t	f;
 
+	Q3_ASSERT_MAIN_THREAD();
+
 	if ( !fs_searchpaths ) {
 		Com_Error( ERR_FATAL, "Filesystem call made without initialization\n" );
 	}
@@ -996,6 +998,8 @@ int FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean uniqueF
 	FILE			*temp;
 	int				l;
 	char demoExt[16];
+
+	Q3_ASSERT_MAIN_THREAD();
 
 	hash = 0;
 
@@ -1311,6 +1315,8 @@ int FS_Write( const void *buffer, int len, fileHandle_t h ) {
 	int		tries;
 	FILE	*f;
 
+	Q3_ASSERT_MAIN_THREAD();
+
 	if ( !fs_searchpaths ) {
 		Com_Error( ERR_FATAL, "Filesystem call made without initialization\n" );
 	}
@@ -1502,6 +1508,8 @@ int FS_ReadFile( const char *qpath, void **buffer ) {
 	qboolean		isConfig;
 	int				len;
 
+	Q3_ASSERT_MAIN_THREAD();
+
 	if ( !fs_searchpaths ) {
 		Com_Error( ERR_FATAL, "Filesystem call made without initialization\n" );
 	}
@@ -1635,6 +1643,7 @@ Filename are reletive to the quake search path
 ============
 */
 void FS_WriteFile( const char *qpath, const void *buffer, int size ) {
+	Q3_ASSERT_MAIN_THREAD();
 	LOG_DEBUG("FS_WriteFile: ", qpath ? qpath : "(null)", ", ", size, " bytes");
 
 	fileHandle_t f;

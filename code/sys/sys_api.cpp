@@ -5,6 +5,8 @@
 #include "multiplayer/session.hpp"
 #include "scripting/script_engine.hpp"
 #include "logger/logger.hpp"
+#include "threading/thread_affinity.hpp"
+#include "threading/main_thread_queue.hpp"
 
 #include <string>
 #include <string_view>
@@ -41,6 +43,7 @@ static void ConsolePrintSink(const char* msg) {
 extern "C" {
 
 void Sys_SubsystemInit(void) {
+    q3::threading::mark_main_thread();
     Q3_NOEXCEPT_BOUNDARY(
         // Before the sink is installed, so that a line logged from a worker during start-up is
         // queued rather than delivered on the wrong thread.
@@ -75,6 +78,7 @@ void Sys_SubsystemShutdown(void) {
     Q3_NOEXCEPT_BOUNDARY(
         g_httpDownloader.cancel();
         g_scriptEngine.reset();
+        q3::threading::MainThreadQueue::instance().drain_all();
         q3::log::Logger::instance().flush_queued();
     )
 }
@@ -100,7 +104,8 @@ void Sys_SubsystemFrame(int msec) {
             ApplyLogLevel();
         }
 
-        // Deliver anything the worker threads logged. Main thread only, which this is.
+        // Drain the main-thread queue and any queued logs before updating timers.
+        q3::threading::MainThreadQueue::instance().drain(std::chrono::milliseconds(10));
         q3::log::Logger::instance().flush_queued();
 
         if (g_scriptEngine) {
@@ -247,10 +252,12 @@ void Sys_StartHttpDownload(const char *url, const char *outputPath) {
     Q3_NOEXCEPT_BOUNDARY(
         LOG_INFO("Sys_StartHttpDownload: ", url, " -> ", outputPath);
         g_httpDownloader.start_download(url, outputPath, [](std::size_t downloaded, std::size_t total) {
-            Cvar_SetValue("cl_downloadCount", downloaded);
-            if (total > 0) {
-                Cvar_SetValue("cl_downloadSize", total);
-            }
+            q3::threading::MainThreadQueue::instance().post([downloaded, total]() {
+                Cvar_SetValue("cl_downloadCount", static_cast<float>(downloaded));
+                if (total > 0) {
+                    Cvar_SetValue("cl_downloadSize", static_cast<float>(total));
+                }
+            });
         });
     )
 }

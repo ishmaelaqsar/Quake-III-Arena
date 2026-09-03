@@ -1,5 +1,6 @@
 #include "sys_local.h"
 #include "logger/logger.hpp"
+#include "threading/threading_api.h"
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@ void Sys_In_Restart_f(void) {
 }
 
 void Sys_QueEvent(int time, sysEventType_t type, int value, int value2, int ptrLength, void *ptr) {
+    Q3_ASSERT_MAIN_THREAD();
     sysEvent_t *ev;
 
     ev = &eventQue[eventHead & MASK_QUED_EVENTS];

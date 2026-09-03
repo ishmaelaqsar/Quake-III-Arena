@@ -89,6 +89,8 @@ Adds command text at the end of the buffer, does NOT add a final \n
 void Cbuf_AddText( const char *text ) {
 	int		l;
 	
+	Q3_ASSERT_MAIN_THREAD();
+	
 	l = strlen (text);
 
 	if (cmd_text.cursize + l >= cmd_text.maxsize)
@@ -172,6 +174,8 @@ void Cbuf_Execute (void)
 	char	*text;
 	char	line[MAX_CMD_LINE];
 	int		quotes;
+
+	Q3_ASSERT_MAIN_THREAD();
 
 	while (cmd_text.cursize)
 	{
@@ -622,6 +626,8 @@ A complete command line has been parsed, so try to execute it
 */
 void	Cmd_ExecuteString( const char *text ) {	
 	cmd_function_t	*cmd, **prev;
+
+	Q3_ASSERT_MAIN_THREAD();
 
 	// execute the command line
 	Cmd_TokenizeString( text );		

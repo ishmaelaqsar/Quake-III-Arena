@@ -190,6 +190,8 @@ cvar_t *Cvar_Get( const char *var_name, const char *var_value, int flags ) {
 	cvar_t	*var;
 	long	hash;
 
+	Q3_ASSERT_MAIN_THREAD();
+
   if ( !var_name || ! var_value ) {
 		Com_Error( ERR_FATAL, "Cvar_Get: NULL parameter" );
   }
@@ -288,6 +290,8 @@ Cvar_Set2
 cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force ) {
 	cvar_t	*var;
 	char	*old_val;
+
+	Q3_ASSERT_MAIN_THREAD();
 
 	Com_DPrintf( "Cvar_Set2: %s %s\n", var_name, value );
 

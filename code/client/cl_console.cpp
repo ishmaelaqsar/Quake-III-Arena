@@ -374,6 +374,8 @@ void CL_ConsolePrint( const char *txt ) {
 	qboolean skipnotify = qfalse;		// NERVE - SMF
 	int prev;							// NERVE - SMF
 
+	Q3_ASSERT_MAIN_THREAD();
+
 	// TTimo - prefix for text that shows up in console but not in notify
 	// backported from RTCW
 	if ( !Q_strncmp( txt, "[skipnotify]", 12 ) ) {

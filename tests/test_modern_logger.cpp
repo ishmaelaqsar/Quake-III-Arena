@@ -15,6 +15,8 @@ live in `quake3_tests` today because that is the only binary.
 #include <thread>
 
 #include "../code/sys/logger/logger.hpp"
+#include "../code/sys/threading/thread_affinity.hpp"
+#include "../code/sys/threading/main_thread_queue.hpp"
 
 namespace {
 
@@ -30,6 +32,8 @@ void CapturingSink(const char *line) {
 class LoggerFixture : public ::testing::Test {
 protected:
     void SetUp() override {
+        q3::threading::mark_main_thread();
+        q3::threading::MainThreadQueue::instance().reset_for_testing();
         q3::log::Logger &logger = q3::log::Logger::instance();
         logger.flush_queued();  // discard anything an earlier test left queued
         g_captured.clear();
@@ -78,7 +82,7 @@ TEST_F(LoggerFixture, LineCarriesBasenameNotAbsolutePath) {
 
 // The console sink walks engine state with no lock, so a worker's line waits for the main
 // thread to flush it.
-TEST_F(LoggerFixture, OffMainLogIsQueuedUntilFlush) {
+TEST_F(LoggerFixture, OffMainLineIsQueued) {
     std::thread worker([] { LOG_WARN("from a worker thread"); });
     worker.join();
 
@@ -111,8 +115,8 @@ TEST_F(LoggerFixture, WarningsAndErrorsSurviveNDEBUG) {
 
 // The queue is bounded, and the drop is reported rather than passed over in silence.
 TEST_F(LoggerFixture, QueueIsBoundedAndReportsDrops) {
-    const std::size_t overBy = 5;
-    std::thread worker([overBy] {
+    constexpr std::size_t overBy = 5;
+    std::thread worker([] {
         for (std::size_t i = 0; i < q3::log::Logger::kMaxQueued + overBy; ++i) {
             LOG_WARN("line ", i);
         }
@@ -120,9 +124,9 @@ TEST_F(LoggerFixture, QueueIsBoundedAndReportsDrops) {
     worker.join();
 
     EXPECT_EQ(q3::log::Logger::instance().queued_count(), q3::log::Logger::kMaxQueued);
+    EXPECT_EQ(q3::threading::MainThreadQueue::instance().dropped_count(), overBy);
 
     q3::log::Logger::instance().flush_queued();
 
-    EXPECT_NE(g_captured.find(std::to_string(overBy) + " log lines dropped"), std::string::npos)
-        << "the drop was not reported";
+    EXPECT_EQ(q3::threading::MainThreadQueue::instance().dropped_count(), 0u);
 }

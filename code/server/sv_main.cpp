@@ -750,6 +750,8 @@ void SV_Frame( int msec ) {
 	int		frameMsec;
 	int		startTime;
 
+	Q3_ASSERT_MAIN_THREAD();
+
 	// the menu kills the server with this cvar
 	if ( sv_killserver->integer ) {
 		SV_Shutdown ("Server was killed.\n");

@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <stdint.h>
 #include <signal.h>
+#include "threading/threading_api.h"
 #include "../qcommon/cm_public.h"
 
 // qcommon.h -- definitions common between client and server, but not game.or ref modules

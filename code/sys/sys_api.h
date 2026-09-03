@@ -1,6 +1,7 @@
 #pragma once
 
 #include "q_shared.h"
+#include "threading/threading_api.h"
 
 #ifdef __cplusplus
 #define Q3_NOEXCEPT_BOUNDARY(body) \
