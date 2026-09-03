@@ -159,7 +159,7 @@ void VM_PrepareInterpreter( vm_t *vm, vmHeader_t *header ) {
 	int		instruction;
 	int		*codeBase;
 
-	vm->codeBase = Hunk_Alloc( vm->codeLength*4, h_high );			// we're now int aligned
+	vm->codeBase = (byte *)Hunk_Alloc( vm->codeLength*4, h_high );			// we're now int aligned
 //	memcpy( vm->codeBase, (byte *)header + header->codeOffset, vm->codeLength );
 
 	// we don't need to translate the instructions, but we still need
@@ -479,7 +479,7 @@ nextInstruction2:
 
 				src = (int *)&image[ r0&dataMask ];
 				dest = (int *)&image[ r1&dataMask ];
-				if ( ( (int)src | (int)dest | count ) & 3 ) {
+				if ( ( (uintptr_t)src | (uintptr_t)dest | count ) & 3 ) {
 					Com_Error( ERR_DROP, "OP_BLOCK_COPY not dword aligned" );
 				}
 				count >>= 2;

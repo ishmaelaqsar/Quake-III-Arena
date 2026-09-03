@@ -3,9 +3,10 @@
 #include <cstdlib>
 #include <cmath>
 
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
+
+extern "C" {
 
 int Sys_Milliseconds(void) {
     static auto start = std::chrono::steady_clock::now();

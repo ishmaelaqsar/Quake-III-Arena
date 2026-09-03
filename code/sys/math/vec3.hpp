@@ -7,9 +7,7 @@
 #include <iostream>
 #include <string_view>
 
-extern "C" {
 #include "q_shared.h"
-}
 
 namespace q3::math {
 

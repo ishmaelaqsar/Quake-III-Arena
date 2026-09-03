@@ -21,13 +21,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "../game/q_shared.h"
 #include "qcommon.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef enum {
 	OP_UNDEF, 
 

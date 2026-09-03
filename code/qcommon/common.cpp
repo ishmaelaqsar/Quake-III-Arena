@@ -1142,7 +1142,7 @@ char *CopyString( const char *in ) {
 			return ((char *)&numberstring[in[0]-'0']) + sizeof(memblock_t);
 		}
 	}
-	out = S_Malloc (strlen(in)+1);
+	out = (char *)S_Malloc (strlen(in)+1);
 	strcpy (out, in);
 	return out;
 }
@@ -1367,7 +1367,7 @@ Com_InitZoneMemory
 void Com_InitSmallZoneMemory( void ) {
 	s_smallZoneTotal = 512 * 1024;
 	// bk001205 - was malloc
-	smallzone = calloc( s_smallZoneTotal, 1 );
+	smallzone = (memzone_t *)calloc( s_smallZoneTotal, 1 );
 	if ( !smallzone ) {
 		Com_Error( ERR_FATAL, "Small zone data failed to allocate %1.1f megs", (float)s_smallZoneTotal / (1024*1024) );
 	}
@@ -1388,7 +1388,7 @@ void Com_InitZoneMemory( void ) {
 	}
 
 	// bk001205 - was malloc
-	mainzone = calloc( s_zoneTotal, 1 );
+	mainzone = (memzone_t *)calloc( s_zoneTotal, 1 );
 	if ( !mainzone ) {
 		Com_Error( ERR_FATAL, "Zone data failed to allocate %i megs", s_zoneTotal / (1024*1024) );
 	}
@@ -1514,7 +1514,7 @@ void Com_InitHunkMemory( void ) {
 
 
 	// bk001205 - was malloc
-	s_hunkData = calloc( s_hunkTotal + 31, 1 );
+	s_hunkData = (byte *)calloc( s_hunkTotal + 31, 1 );
 	if ( !s_hunkData ) {
 		Com_Error( ERR_FATAL, "Hunk data failed to allocate %i megs", s_hunkTotal / (1024*1024) );
 	}
@@ -1850,9 +1850,9 @@ void Hunk_Trash( void ) {
 	Hunk_SwapBanks();
 
 	if ( hunk_permanent == &hunk_low ) {
-		buf = (void *)(s_hunkData + hunk_permanent->permanent);
+		buf = (char *)(s_hunkData + hunk_permanent->permanent);
 	} else {
-		buf = (void *)(s_hunkData + s_hunkTotal - hunk_permanent->permanent );
+		buf = (char *)(s_hunkData + s_hunkTotal - hunk_permanent->permanent );
 	}
 	length = hunk_permanent->permanent;
 
@@ -2945,7 +2945,7 @@ static void keyConcatArgs( void ) {
 }
 
 static void ConcatRemaining( const char *src, const char *start ) {
-	char *str;
+	const char *str;
 
 	str = strstr(src, start);
 	if (!str) {

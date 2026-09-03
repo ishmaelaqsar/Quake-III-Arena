@@ -21,10 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // client.h -- primary header for client
 
 #include "../game/q_shared.h"
@@ -35,6 +31,10 @@ extern "C" {
 #include "snd_public.h"
 #include "../cgame/cg_public.h"
 #include "../game/bg_public.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define	RETRANSMIT_TIMEOUT	3000	// time between connection packet retransmits
 

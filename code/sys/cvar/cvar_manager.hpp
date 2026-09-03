@@ -8,10 +8,8 @@
 #include <optional>
 #include <vector>
 
-extern "C" {
 #include "q_shared.h"
 #include "qcommon.h"
-}
 
 namespace q3::cvar {
 

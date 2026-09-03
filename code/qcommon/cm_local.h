@@ -21,15 +21,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
 #include "../game/q_shared.h"
 #include "qcommon.h"
 #include "cm_polylib.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #define	MAX_SUBMODELS			256
 #define	BOX_MODEL_HANDLE		255
 #define CAPSULE_MODEL_HANDLE	254

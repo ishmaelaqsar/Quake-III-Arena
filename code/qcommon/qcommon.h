@@ -21,6 +21,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #pragma once
 
+#include <stdint.h>
+#include "../qcommon/cm_public.h"
+
 // qcommon.h -- definitions common between client and server, but not game.or ref modules
 #ifndef _QCOMMON_H_
 #define _QCOMMON_H_
@@ -28,10 +31,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-#include "../qcommon/cm_public.h"
-
 //#define	PRE_RELEASE_DEMO
 
 //============================================================================
@@ -1079,6 +1078,16 @@ extern huffman_t clientHuffTables;
 #define CL_DECODE_START		4
 
 #ifdef __cplusplus
+}
+
+template <class T>
+inline T* Z_New(int n = 1) {
+    return static_cast<T*>(Z_Malloc(n * sizeof(T)));
+}
+
+template <class T>
+inline T* Hunk_New(int n = 1, ha_pref preference = h_low) {
+    return static_cast<T*>(Hunk_Alloc(n * sizeof(T), preference));
 }
 #endif
 
