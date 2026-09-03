@@ -928,7 +928,7 @@ void *Z_TagMalloc( int size, int tag ) {
 	//
 	size += sizeof(memblock_t);	// account for size of block header
 	size += 4;					// space for memory trash tester
-	size = (size + 3) & ~3;		// align to 32 bit boundary
+	size = (size + 15) & ~15;	// align to 16-byte boundary
 	
 	base = rover = zone->rover;
 	start = base->prev;

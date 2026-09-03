@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** In progress. Phase P0 complete and phase P1 step P1.1 complete on 3 September 2026 (qcommon, shared game files, and null stubs build and link as C++). Next: P1.2 server. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1, P2.
+**Status:** In progress. Phase P0 complete and phase P1 steps P1.1 and P1.2 complete on 3 September 2026 (qcommon, server, shared game files, and null stubs build and link as C++). Next: P1.3 renderer. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.3-P1.10), P2.
 
 ## Prerequisites
 
@@ -306,22 +306,14 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
     `-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++` and build with `-- -k 0` to see
     them all at once; one error per build is otherwise all Ninja reports.
 
-- [ ] **P1.2 server.** `git mv code/server/*.c` (10 files). Expected classes: rows 1 (10 casts),
-  2 (119 `VMA` uses in `sv_game.cpp`), 5. Introduce the `VmArg` proxy in `qcommon.h` inside
-  `#ifdef __cplusplus`:
-
-  ```cpp
-  struct VmArg {
-      intptr_t v;
-      template <class T> operator T*() const { return static_cast<T*>(VM_ArgPtr(v)); }
-      explicit operator bool() const { return v != 0; }
-  };
-  ```
-
-  Redefine `VMA(x)` in `sv_game.cpp` as `VmArg{args[x]}`. Keep explicit casts only where `VMA` is
-  used in arithmetic.
+- [x] **P1.2 server.** Done on 3 September 2026. `git mv code/server/*.c` (9 built files; `sv_rankings.c` stays as `.c` because no build target references it and its proprietary headers are absent, matching the precedent set for `vm_ppc.c` in P1.1). Expected classes: rows 1 (allocator casts), 2 (`VmArg` proxy in `qcommon.h` and redefining `VMA(x)` in `sv_game.cpp`), 5 (enum casts for `FS_FOpenFileByMode` and `VM_Create`).
   **Tests:** none, because renames; gate G1 and the q3ded bot match are the tests.
-  **Verify:** the shared verify block, both bot-match variants.
+  **Verify:** the shared verify block: GCC and Clang builds clean, all 77 tests pass under normal and AddressSanitizer runs, and `q3ded` bot match runs cleanly with 4 bots entering and playing.
+
+  Notes from the landing:
+  - `server.h` opened `extern "C"` before including `qcommon.h`, which caused C++ templates in `qcommon.h` to fail with "template with C linkage". Moved `#include` statements above the `extern "C"` block.
+  - Added declarations for `botlib_export`, `bot_enable`, `SV_BotInitBotLib`, and `BotDrawDebugPolygons` inside `server.h` so all translation units agree on C linkage.
+  - Fixed an unaligned memory fault during bot setup: `Z_TagMalloc` in `common.cpp` aligned to 4 bytes instead of 16 bytes, and `l_memory.c` in botlib prepended an 8-byte header to allocations instead of 16 bytes. Modern compilers emitted `movaps` instructions to clear tokens and sources, causing a hardware alignment fault on 8-byte aligned addresses. Aligning zone and botlib allocations to 16 bytes fixed the fault.
 
 - [ ] **P1.3 renderer.** `git mv code/renderer/*.c` (23 files). `vk_backend.cpp` is already C++.
   Expected classes: rows 1 (58 casts), 5 (`cullType_t`, `genFunc_t`, `deform_t`, `alphaGen_t`,

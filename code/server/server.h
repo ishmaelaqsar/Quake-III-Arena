@@ -21,16 +21,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // server.h
 
 #include "../game/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../game/g_public.h"
 #include "../game/bg_public.h"
+#include "../game/botlib.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 //=============================================================================
 
@@ -250,6 +251,9 @@ extern	cvar_t	*sv_floodProtect;
 extern	cvar_t	*sv_lanForceRate;
 extern	cvar_t	*sv_strictAuth;
 
+extern	botlib_export_t	*botlib_export;
+extern	int	bot_enable;
+
 //===========================================================
 
 //
@@ -334,6 +338,8 @@ qboolean	SV_inPVS (const vec3_t p1, const vec3_t p2);
 //
 // sv_bot.c
 //
+void		SV_BotInitBotLib(void);
+void		BotDrawDebugPolygons(void (*drawPoly)(int color, int numPoints, float *points), int value);
 void		SV_BotFrame( int time );
 int			SV_BotAllocateClient(void);
 void		SV_BotFreeClient( int clientNum );

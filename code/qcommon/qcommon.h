@@ -1104,6 +1104,12 @@ template <class T>
 inline T* Hunk_New(int n = 1, ha_pref preference = h_low) {
     return static_cast<T*>(Hunk_Alloc(n * sizeof(T), preference));
 }
+
+struct VmArg {
+    intptr_t v;
+    template <class T> operator T*() const { return static_cast<T*>(VM_ArgPtr(v)); }
+    explicit operator bool() const { return v != 0; }
+};
 #endif
 
 #endif // _QCOMMON_H_

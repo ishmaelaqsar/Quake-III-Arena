@@ -306,16 +306,16 @@ The module is making a system call
 ====================
 */
 //rcg010207 - see my comments in VM_DllSyscall(), in qcommon/vm.c ...
-#define	VMA(x) VM_ArgPtr(args[x])
+#define	VMA(x)	VmArg{args[x]}
 #define	VMF(x)	(*((float*)&args[x]))
 
 intptr_t SV_GameSystemCalls( intptr_t *args ) {
 	switch( args[0] ) {
 	case G_PRINT:
-		Com_Printf( "%s", VMA(1) );
+		Com_Printf( "%s", (const char *)VMA(1) );
 		return 0;
 	case G_ERROR:
-		Com_Error( ERR_DROP, "%s", VMA(1) );
+		Com_Error( ERR_DROP, "%s", (const char *)VMA(1) );
 		return 0;
 	case G_MILLISECONDS:
 		return Sys_Milliseconds();
@@ -343,7 +343,7 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return 0;
 
 	case G_FS_FOPEN_FILE:
-		return FS_FOpenFileByMode( VMA(1), VMA(2), args[3] );
+		return FS_FOpenFileByMode( VMA(1), VMA(2), (fsMode_t)args[3] );
 	case G_FS_READ:
 		FS_Read2( VMA(1), args[2], args[3] );
 		return 0;
@@ -823,7 +823,7 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 		return 0;
 
 	case TRAP_STRNCPY:
-		return (int)strncpy( VMA(1), VMA(2), args[3] );
+		return (intptr_t)strncpy( (char *)VMA(1), (const char *)VMA(2), args[3] );
 
 	case TRAP_SIN:
 		return FloatAsInt( sin( VMF(1) ) );
@@ -938,8 +938,6 @@ Called on a normal map change, not on a map_restart
 */
 void SV_InitGameProgs( void ) {
 	cvar_t	*var;
-	//FIXME these are temp while I make bots run in vm
-	extern int	bot_enable;
 
 	var = Cvar_Get( "bot_enable", "1", CVAR_LATCH );
 	if ( var ) {
@@ -950,7 +948,7 @@ void SV_InitGameProgs( void ) {
 	}
 
 	// load the dll or bytecode
-	gvm = VM_Create( "qagame", SV_GameSystemCalls, Cvar_VariableValue( "vm_game" ) );
+	gvm = VM_Create( "qagame", SV_GameSystemCalls, (vmInterpret_t)(int)Cvar_VariableValue( "vm_game" ) );
 	if ( !gvm ) {
 		Com_Error( ERR_FATAL, "VM_Create on game failed" );
 	}

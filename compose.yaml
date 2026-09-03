@@ -25,6 +25,7 @@ x-common: &common
   # Sanitizers, gdb, and Wine need ptrace.
   cap_add:
     - SYS_PTRACE
+  userns_mode: keep-id
   security_opt:
     - seccomp=unconfined
 

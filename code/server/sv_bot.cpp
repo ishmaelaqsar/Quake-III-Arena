@@ -35,7 +35,6 @@ typedef struct bot_debugpoly_s
 static bot_debugpoly_t *debugpolygons;
 int bot_maxdebugpolys;
 
-extern botlib_export_t	*botlib_export;
 int	bot_enable;
 
 
@@ -524,7 +523,7 @@ void SV_BotInitBotLib(void) {
 
 	if (debugpolygons) Z_Free(debugpolygons);
 	bot_maxdebugpolys = Cvar_VariableIntegerValue("bot_maxdebugpolys");
-	debugpolygons = Z_Malloc(sizeof(bot_debugpoly_t) * bot_maxdebugpolys);
+	debugpolygons = Z_New<bot_debugpoly_t>(bot_maxdebugpolys);
 
 	botlib_import.Print = BotImport_Print;
 	botlib_import.Trace = BotImport_Trace;

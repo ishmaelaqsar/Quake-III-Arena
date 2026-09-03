@@ -345,11 +345,11 @@ void *GetMemory(unsigned long size)
 	void *ptr;
 	unsigned long int *memid;
 
-	ptr = botimport.GetMemory(size + sizeof(unsigned long int));
+	ptr = botimport.GetMemory(size + 16);
 	if (!ptr) return NULL;
 	memid = (unsigned long int *) ptr;
 	*memid = MEM_ID;
-	return (unsigned long int *) ((char *) ptr + sizeof(unsigned long int));
+	return (void *) ((char *) ptr + 16);
 } //end of the function GetMemory
 //===========================================================================
 //
@@ -387,11 +387,11 @@ void *GetHunkMemory(unsigned long size)
 	void *ptr;
 	unsigned long int *memid;
 
-	ptr = botimport.HunkAlloc(size + sizeof(unsigned long int));
+	ptr = botimport.HunkAlloc(size + 16);
 	if (!ptr) return NULL;
 	memid = (unsigned long int *) ptr;
 	*memid = HUNK_ID;
-	return (unsigned long int *) ((char *) ptr + sizeof(unsigned long int));
+	return (void *) ((char *) ptr + 16);
 } //end of the function GetHunkMemory
 //===========================================================================
 //
@@ -424,7 +424,7 @@ void FreeMemory(void *ptr)
 {
 	unsigned long int *memid;
 
-	memid = (unsigned long int *) ((char *) ptr - sizeof(unsigned long int));
+	memid = (unsigned long int *) ((char *) ptr - 16);
 
 	if (*memid == MEM_ID)
 	{
