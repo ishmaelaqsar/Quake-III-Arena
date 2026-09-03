@@ -211,7 +211,9 @@ void ScriptEngine::set_variable(std::string_view name, const ScriptValue& val) {
     std::visit([this, &key](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, std::monostate>) {
-            lua_[key] = sol::nil;
+            // sol::lua_nil, not sol::nil: Sol2 only defines the short alias when the platform
+            // has not already taken the name, and on macOS `nil` is an Objective-C macro.
+            lua_[key] = sol::lua_nil;
         } else {
             lua_[key] = arg;
         }
@@ -239,7 +241,7 @@ void ScriptEngine::register_function(std::string_view name, ScriptFunction fn) {
             else if (arg.is<std::string>()) args.push_back(arg.as<std::string>());
         }
         auto ret = fn(args);
-        return sol::nil;
+        return sol::lua_nil;
     });
 }
 
