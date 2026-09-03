@@ -549,7 +549,7 @@ void PC_PrintDefineHashTable(define_t **definehash)
 
 int PC_NameHash(char *name)
 {
-	int register hash, i;
+	int hash, i;
 
 	hash = 0;
 	for (i = 0; name[i] != '\0'; i++)
@@ -1333,7 +1333,7 @@ define_t *PC_DefineFromString(char *string)
 	strncpy(src.filename, "*extern", MAX_PATH);
 	src.scriptstack = script;
 #if DEFINEHASHING
-	src.definehash = GetClearedMemory(DEFINEHASHSIZE * sizeof(define_t *));
+	src.definehash = (define_t **)GetClearedMemory(DEFINEHASHSIZE * sizeof(define_t *));
 #endif //DEFINEHASHING
 	//create a define from the source
 	res = PC_Directive_define(&src);
@@ -3004,7 +3004,7 @@ source_t *LoadSourceFile(const char *filename)
 	source->skip = 0;
 
 #if DEFINEHASHING
-	source->definehash = GetClearedMemory(DEFINEHASHSIZE * sizeof(define_t *));
+	source->definehash = (define_t **)GetClearedMemory(DEFINEHASHSIZE * sizeof(define_t *));
 #endif //DEFINEHASHING
 	PC_AddGlobalDefinesToSource(source);
 	return source;
@@ -3037,7 +3037,7 @@ source_t *LoadSourceMemory(char *ptr, int length, char *name)
 	source->skip = 0;
 
 #if DEFINEHASHING
-	source->definehash = GetClearedMemory(DEFINEHASHSIZE * sizeof(define_t *));
+	source->definehash = (define_t **)GetClearedMemory(DEFINEHASHSIZE * sizeof(define_t *));
 #endif //DEFINEHASHING
 	PC_AddGlobalDefinesToSource(source);
 	return source;

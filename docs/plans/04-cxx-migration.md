@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** In progress. Phase P0 complete and phase P1 steps P1.1, P1.2, P1.3, and P1.4 complete on 3 September 2026 (qcommon, server, renderer, client, shared game files, and null stubs build and link as C++). Next: P1.5 botlib. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.5-P1.10), P2.
+**Status:** In progress. Phase P0 complete and phase P1 steps P1.1, P1.2, P1.3, P1.4, and P1.5 complete on 3 September 2026 (qcommon, server, renderer, client, botlib, shared game files, and null stubs build and link as C++). Next: P1.6 game (qagame). Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.6-P1.10), P2.
 
 ## Prerequisites
 
@@ -335,11 +335,16 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
   - Cast `NET_OutOfBandData` buffer to `(byte *)` in `cl_main.cpp`.
   - Disambiguated `abs` call on unsigned frame difference in `cl_cin.cpp`.
 
-- [ ] **P1.5 botlib.** `git mv code/botlib/*.c` (28 files). Expected classes: rows 1 (17 casts),
+- [x] **P1.5 botlib.** Done on 3 September 2026. `git mv code/botlib/*.c` (28 files). Expected classes: rows 1 (17 casts),
   5, 6 (`be_ai_weap.c` tables). `operator` is already renamed. Botlib is compiled-as-C++ legacy
   and never idiomatic. Add `-Wno-*` allowances to this target only if a class has no cheap fix.
   **Tests:** none, because renames; the bot match is the test.
   **Verify:** the shared verify block, both bot-match variants.
+
+  Notes from the landing:
+  - Cast `void*` memory allocations in `be_ai_char.cpp`, `be_ai_chat.cpp`, `be_ai_weap.cpp`, `be_ai_goal.cpp`, `be_ai_move.cpp`, `l_precomp.cpp`.
+  - Removed deprecated `register` storage class in `l_precomp.cpp`.
+  - Added `#include "l_memory.h"`, `"l_log.h"`, `"l_crc.h"`, `"be_ea.h"`, `"be_interface.h"` to match `extern "C"` linkage.
 
 - [ ] **P1.6 game (qagame).** `git mv code/game/*.c` except `bg_lib.c` (35 files). Expected
   classes: rows 1 (4 casts), 5 (`weapon_t`, `team_t`, `entity_event_t`, `moverState_t`,

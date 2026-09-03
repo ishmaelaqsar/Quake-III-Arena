@@ -41,8 +41,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../game/be_aas.h"
 #include "be_aas_funcs.h"
 #include "be_aas_def.h"
-
-extern int Sys_MilliSeconds(void);
+#include "be_interface.h"
 
 
 extern botlib_import_t botimport;

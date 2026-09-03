@@ -30,11 +30,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *****************************************************************************/
 
 #include "../game/q_shared.h"
-#include "l_memory.h"
-#include "l_script.h"
-#include "l_precomp.h"
-#include "l_struct.h"
 #include "../game/botlib.h"
+#include "../game/be_ea.h"
+#include "l_memory.h"
 #include "be_interface.h"
 
 #define MAX_USERMOVE				400
