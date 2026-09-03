@@ -107,6 +107,8 @@ ninja -C build/scout 2>&1 | grep 'error:' | sed 's/.*error: //' | sort | uniq -c
 
 | 23 | **File-local forward declarations** of functions that are defined in a translation unit which is still C. The declaration in the renamed `.cpp` file asks for a mangled symbol; the definition emits an unmangled one, so the link fails. This is not a header problem, so the `extern "C"` sweep in P0.2 does not catch it. | Yes: it broke the link after P1.1 with ten symbols | `grep -nE '^[a-z_]+ *\**[A-Za-z_]+\(.*\);$' <renamed>.cpp` and check each name against `grep -rl "<name>" code --include=*.c` | Wrap the declaration in `extern "C"`, and confirm the definition's translation unit includes a header that also gives it C linkage. Do not simply delete the declaration. Applies symmetrically in reverse: after the definition side converts, both sides must agree, so prefer moving the declaration into the guarded header that both include. Sites fixed in P1.1: `code/qcommon/common.cpp:95,1585-1587,2240` and `code/qcommon/cm_patch.cpp:1613`; `code/null/null_input.cpp` now includes `code/sys/sys_local.h` for the same reason. |
 
+| 24 | **Clang rejects what GCC only warns about.** Two families showed up only on the macOS leg. First, the `register` storage class specifier is removed in C++17: GCC emits `-Wregister` but Apple Clang makes it an error. Second, Clang folds discarded `const` qualifiers into `-Wincompatible-pointer-types-discards-qualifiers`, which the build promotes with `-Werror=incompatible-pointer-types`, while GCC keeps them in `-Wdiscarded-qualifiers` and stays quiet. A GCC-clean rename is therefore not portable-clean. | Yes: 1 `register` and 23 qualifier sites after P0 and P1.1 | `grep -rn '\bregister\b' <renamed>.cpp` and build once with `-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -- -k 0` | Drop `register`. For each qualifier site decide which side is wrong: propagate `const` when the callee only reads (`G_ModelIndex`, `G_SoundIndex`, `G_FindConfigstringIndex`, `G_PickTarget`, and the locals in `CG_RegisterItemSounds` and `cg_weapons.c`), or revert the field when it is a write target (`menutext_s.string`). **Build every rename with both compilers before ticking it**, because the continuous integration macOS leg does. |
+
 ## Compiler flags
 
 Set on the converted legacy OBJECT libraries (qcommon, server, client, renderer, botlib, and the
@@ -296,6 +298,11 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
   - Gate G1 could not run: the machine that landed this has no game data. Run
     `make smoke-update-golden` then `make smoke` on the Linux machine before P1.2, so that the
     remaining renames have a pixel baseline. Unit tests and the link were the checks used here.
+  - The tree was GCC-clean but not Clang-clean, so the continuous integration macOS leg still
+    failed after the link fix. Catalogue row 24 records both families and the fix for each.
+    Twenty-four further sites were corrected on 3 September 2026. Configure with
+    `-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++` and build with `-- -k 0` to see
+    them all at once; one error per build is otherwise all Ninja reports.
 
 - [ ] **P1.2 server.** `git mv code/server/*.c` (10 files). Expected classes: rows 1 (10 casts),
   2 (119 `VMA` uses in `sv_game.cpp`), 5. Introduce the `VmArg` proxy in `qcommon.h` inside

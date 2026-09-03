@@ -1469,7 +1469,7 @@ void CG_DrawWeaponSelect( void ) {
 	int		bits;
 	int		count;
 	int		x, y, w;
-	char	*name;
+	const char	*name;
 	float	*color;
 
 	// don't display if dead

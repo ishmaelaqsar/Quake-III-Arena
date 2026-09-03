@@ -255,7 +255,8 @@ typedef struct
 typedef struct
 {
 	menucommon_s	generic;
-	const char*		string;
+	char*			string;		// mutable: q3_ui writes through this field, for example
+								// ui_startserver.c and ui_playermodel.c copy into it
 	int				style;
 	float*			color;
 } menutext_s;

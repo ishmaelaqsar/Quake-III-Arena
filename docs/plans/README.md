@@ -72,6 +72,12 @@ pass in the container. These rules apply to every checklist.
   subsystem, named `tests/test_<subsystem>.cpp`.
 - **Naming.** Test case names read `Subsystem.BehaviourUnderCondition`, for example
   `Files.LoadStackReturnsToZeroAfterPairedReadAndFree`.
+- **Build with both compilers.** GCC and Clang disagree about what is an error, not just a
+  warning: Clang rejects the `register` storage class in C++17 and treats discarded `const`
+  qualifiers as an error under the flags this build sets. A GCC-clean change can still fail the
+  macOS leg. Before ticking any step that renames or const-corrects code, configure a second
+  build directory with `-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++` and build it
+  with `-- -k 0`.
 - **Regression rule.** Every bug fix adds a regression case that fails before the fix and
   passes after it. Name the case after the behaviour, not the bug number.
 - **Integration checks live in `ci/`.** Screenshot gates, timedemos, bot matches, sanitizer
