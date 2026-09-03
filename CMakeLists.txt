@@ -40,7 +40,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU
         add_compile_options(-Werror)
     endif()
     if(Q3_SANITIZE)
-        add_compile_options(-fsanitize=${Q3_SANITIZE} -fno-omit-frame-pointer -fno-sanitize-recover=undefined -g)
+        # -fno-sanitize=alignment: the zone allocator hands out four-byte-aligned blocks and
+        # reads memblock_t through them (code/qcommon/common.cpp:957), and the netcode misaligns
+        # by design. Those reports are known and would drown out real findings. Remove this
+        # exclusion when the C++ migration replaces the punning, not before.
+        add_compile_options(-fsanitize=${Q3_SANITIZE} -fno-sanitize=alignment
+                            -fno-omit-frame-pointer -fno-sanitize-recover=undefined -g)
         add_link_options(-fsanitize=${Q3_SANITIZE})
         add_compile_definitions(Q3_SANITIZE)
     endif()

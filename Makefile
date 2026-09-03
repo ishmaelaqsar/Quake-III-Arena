@@ -40,17 +40,13 @@ CMAKE_COMMON := -G Ninja \
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-# Sanitizer flags are passed through the CMake flag variables until checklist 01 adds the
-# Q3_SANITIZE option. Switch these targets to -DQ3_SANITIZE=... when that option exists.
-ASAN_FLAGS := -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize=alignment
-TSAN_FLAGS := -fsanitize=thread -fno-omit-frame-pointer
-ASAN_ENV   := -e ASAN_OPTIONS=detect_leaks=0:strict_string_checks=1 -e UBSAN_OPTIONS=print_stacktrace=1
-TSAN_ENV   := -e TSAN_OPTIONS=halt_on_error=1:second_deadlock_stack=1
-
-define sanitizer_cmake_args
--DCMAKE_C_FLAGS='$(1)' -DCMAKE_CXX_FLAGS='$(1)' \
--DCMAKE_EXE_LINKER_FLAGS='$(1)' -DCMAKE_SHARED_LINKER_FLAGS='$(1)'
-endef
+# Sanitizers go through the Q3_SANITIZE CMake option, not raw compiler flags, so that a local
+# run and the continuous integration legs build the same way and so that the option's
+# add_compile_definitions(Q3_SANITIZE) fires. Code gated on that macro, such as the thread
+# affinity asserts planned in checklist 05 phase T1, would otherwise compile out of exactly the
+# build meant to exercise it. The alignment exclusion now lives in CMakeLists.txt.
+ASAN_ENV := -e ASAN_OPTIONS=detect_leaks=0:strict_string_checks=1 -e UBSAN_OPTIONS=print_stacktrace=1
+TSAN_ENV := -e TSAN_OPTIONS=halt_on_error=1:second_deadlock_stack=1
 
 .PHONY: help image image-rebuild configure build test asan tsan smoke smoke-update-golden \
         apitrace bot-match shell clean distclean \
@@ -65,8 +61,10 @@ help: ## Show this help
 # Linux (container `dev`)
 # ---------------------------------------------------------------------------------------------
 
-image: ## Build the Linux development image if it does not exist
-	@docker image inspect $(IMAGE) >/dev/null 2>&1 || $(COMPOSE) build dev
+# `compose build` is cheap when nothing changed, because Docker caches the layers, and unlike
+# an `image inspect` guard it notices an edited Dockerfile.
+image: ## Build or refresh the Linux development image
+	$(COMPOSE) build dev
 
 image-rebuild: ## Rebuild the Linux development image from scratch
 	$(COMPOSE) build --no-cache dev
@@ -81,13 +79,13 @@ test: build ## Build and run the unit tests on Linux
 	$(RUN) ctest --test-dir $(BUILD_DIR) --output-on-failure $(CTEST_ARGS)
 
 asan: image ## Linux build and tests with AddressSanitizer and UndefinedBehaviorSanitizer
-	$(RUN) cmake -S . -B build-asan $(CMAKE_COMMON) $(call sanitizer_cmake_args,$(ASAN_FLAGS)) $(CMAKE_ARGS)
+	$(RUN) cmake -S . -B build-asan $(CMAKE_COMMON) -DQ3_SANITIZE=address,undefined $(CMAKE_ARGS)
 	$(RUN) cmake --build build-asan
 	$(COMPOSE) run --rm $(TTY_FLAG) $(ASAN_ENV) dev \
 	    ctest --test-dir build-asan --output-on-failure $(CTEST_ARGS)
 
 tsan: image ## Linux build and tests with ThreadSanitizer
-	$(RUN) cmake -S . -B build-tsan $(CMAKE_COMMON) $(call sanitizer_cmake_args,$(TSAN_FLAGS)) $(CMAKE_ARGS)
+	$(RUN) cmake -S . -B build-tsan $(CMAKE_COMMON) -DQ3_SANITIZE=thread $(CMAKE_ARGS)
 	$(RUN) cmake --build build-tsan
 	$(COMPOSE) run --rm $(TTY_FLAG) $(TSAN_ENV) dev \
 	    ctest --test-dir build-tsan --output-on-failure $(CTEST_ARGS)
@@ -111,8 +109,8 @@ shell: image ## Open a shell in the Linux container
 # Windows x64 cross-compile with MinGW-w64, tests under Wine (container `win`)
 # ---------------------------------------------------------------------------------------------
 
-image-win: ## Build the MinGW cross image if it does not exist (builds SDL2, curl, LuaJIT)
-	@docker image inspect $(IMAGE_WIN) >/dev/null 2>&1 || $(COMPOSE) build win
+image-win: ## Build or refresh the MinGW cross image (builds SDL2, curl, LuaJIT from source)
+	$(COMPOSE) build win
 
 win-configure: image-win ## Configure the Windows cross build in WIN_BUILD_DIR
 	$(RUN_WIN) cmake -S . -B $(WIN_BUILD_DIR) $(CMAKE_COMMON) \
@@ -151,5 +149,5 @@ clean: ## Remove the default Linux build directory
 	rm -rf $(BUILD_DIR)
 
 distclean: clean ## Remove every build directory, smoke output, and the container volumes
-	rm -rf build-asan build-tsan $(WIN_BUILD_DIR) $(NATIVE_BUILD_DIR) ci/smoke/out
+	rm -rf build-* $(WIN_BUILD_DIR) $(NATIVE_BUILD_DIR) ci/smoke/out
 	-$(COMPOSE) down --volumes --remove-orphans

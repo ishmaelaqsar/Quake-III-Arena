@@ -167,7 +167,9 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/src \
             -w /src \
-            -e ASAN_OPTIONS="detect_leaks=1:strict_string_checks=1" \
+            # detect_leaks=0: the zone and hunk allocators deliberately never free at exit,
+            # so leak detection reports every engine allocation and hides real findings.
+            -e ASAN_OPTIONS="detect_leaks=0:strict_string_checks=1" \
             -e UBSAN_OPTIONS="print_stacktrace=1" \
             q3-dev ctest --test-dir build-asan --output-on-failure --timeout 120 --schedule-random
 

@@ -15,7 +15,10 @@
 # directory that holds them. The containers see them read-only at /paks.
 
 x-common: &common
-  user: "${Q3_UID:-1000}:${Q3_GID:-1000}"
+  # Required, not defaulted. A default of 1000 silently mismatches the host user, and the
+  # first symptom is ccache failing to write its own volume with a confusing permission error.
+  # The Makefile exports both; run these services through it.
+  user: "${Q3_UID:?set Q3_UID or run through the Makefile}:${Q3_GID:?set Q3_GID or run through the Makefile}"
   working_dir: /src
   stdin_open: true
   tty: true
