@@ -276,6 +276,26 @@ leg can pass:
   continuous integration runs stay identical.
 - [x] **The MinGW leg** fails at `Configure and build Windows binaries`. Partly fixed on 3 September 2026: the image itself builds on an x86_64 runner, and the first real error was `code/botlib/l_precomp.c:708`, which held `unsigned long t` where `ctime` wants a `time_t *`. On Windows `time_t` is 64-bit and `long` is 32-bit, so the pointer types genuinely differ; Linux hid it because `time_t` is `long` there and the mismatch was only a signedness warning. The declaration now uses `time_t`. Expect further Windows-only findings on the next run.
 
+## Workflow shape, restructured 3 September 2026
+
+The matrix was six jobs, all on every push. It is now five, four of which run on a push:
+
+| Job | Runs on | Why |
+|---|---|---|
+| `linux` | push, pull request, nightly | Builds once, then runs the unit tests and gate G1. Replaces the former `Linux Dev` and `Linux Smoke Gate`, which compiled the same configuration twice. Merged rather than chained with `needs:`, because artifact download does not preserve the executable bit and the smoke gate has to run the binary. |
+| `linux-asan` | push, pull request, nightly | Different compiler flags, so it cannot share the build. |
+| `macos-arm64` | push, pull request, nightly | Earns its place: it caught four defect families that GCC on Linux accepted, listed in the section below. |
+| `windows-x64` | push, pull request, nightly | Microsoft Visual C++ is what Windows users build with, so this is the Windows gate. |
+| `linux-mingw` | nightly and manual only | Gated with `if: github.event_name == 'schedule' \|\| github.event_name == 'workflow_dispatch'`. It protects the local `make win-test` path, needs an image that builds SDL2, curl, and LuaJIT from source, and is the slowest and most fragile leg. Not a push gate. |
+
+Also changed: `paths-ignore` for `docs/**`, `**.md`, and `COPYING.txt`, so a checklist edit no
+longer spends the whole matrix; a nightly `schedule` at 03:17 UTC plus `workflow_dispatch`; and
+the concurrency group is now keyed on the event as well as the ref, so the nightly run and a
+push to the same branch do not cancel each other.
+
+Still open on the shape: no ThreadSanitizer leg. Checklist 05 step T6 adds it when the threading
+work starts.
+
 ## Cross-platform build defects the continuous integration legs exposed
 
 Each of these built cleanly with GCC on Linux and failed on another platform. Together they are
@@ -294,6 +314,26 @@ the argument for keeping the macOS and Windows legs on every push.
   current work: the script engine had never been compiled on macOS.
 - **macOS, `register` and discarded `const`.** Recorded as catalogue row 24 in
   `docs/plans/04-cxx-migration.md`. Fixed 3 September 2026.
+
+## Remaining continuous integration blockers, 3 September 2026
+
+- [ ] **The logger tests fail on every leg.** `Linux`, `Linux ASan/UBSan`, and `macOS arm64` all
+  build and then fail at their test step on `ModernLoggerTest.MacroFormattingAndLevels`,
+  `ErrorLevelToStderr`, and `CApiLoggingWrappers`. A `RelWithDebInfo` build defines `NDEBUG`, and
+  `code/sys/logger/logger.hpp:62-72` compiles every `LOG_*` call out under it, errors included,
+  so the tests capture nothing. This is the single thing between those three legs and green.
+  Checklist 02 step B4 rewrites the logger and checklist 03 rewrites the tests; the part that
+  unblocks CI is keeping `LOG_WARN` and `LOG_ERROR` compiled in release builds.
+- [ ] **The Windows leg cannot resolve LuaJIT.** After the PowerShell fix the configure step now
+  reaches dependency resolution and fails there. `CMakeLists.txt` looks for LuaJIT with
+  `pkg_check_modules`, which needs pkg-config; the `windows-2022` runner has none, so
+  `LUAJIT_FOUND` is false even though vcpkg installed the port, and the build falls through to
+  the `Q3_FETCH_LUAJIT` path. That wrapper then fails with
+  `LuaJIT.cmake:892 file COPY cannot find "/LuaJIT/src/jit"`. Fix in checklist 01 step A6.1: try
+  `find_path(LUAJIT_INCLUDE_DIR luajit.h)` and `find_library(LUAJIT_LIBRARY NAMES luajit-5.1
+  lua51)` before falling back to FetchContent, because the vcpkg toolchain makes those searches
+  work without pkg-config. Not attempted here, because it cannot be verified without a Windows
+  machine.
 
 ## Test map
 

@@ -3,11 +3,27 @@ name: CI
 on:
   push:
     branches: [ master, main ]
+    # A change to the checklists or any other document cannot break a build, so do not spend a
+    # whole matrix on it. Workflow and source changes are unaffected.
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'COPYING.txt'
   pull_request:
     branches: [ master, main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'COPYING.txt'
+  schedule:
+    # 03:17 UTC daily. Runs the whole matrix, including the MinGW cross leg.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # Keyed on the event as well as the ref, so that the nightly run and a push to the same branch
+  # do not cancel each other. A newer push still cancels an older one.
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 # Q3_WERROR is deliberately not set on any leg. The legacy id code is not warning-clean: a
@@ -17,8 +33,8 @@ concurrency:
 # here only when a target is actually clean. See docs/plans/00-environment.md.
 
 jobs:
-  linux-dev:
-    name: Linux Dev (Ubuntu 24.04)
+  linux:
+    name: Linux (Ubuntu 24.04)
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
@@ -63,11 +79,44 @@ jobs:
             -w /src \
             q3-dev ctest --test-dir build --output-on-failure --timeout 120 --schedule-random
 
+      - name: Download game pak files
+        id: fetch-paks
+        env:
+          Q3_PAKS_URL: ${{ secrets.Q3_PAKS_URL }}
+        run: |
+          if [ -z "$Q3_PAKS_URL" ]; then
+            echo "Secret Q3_PAKS_URL is absent. Skip smoke tests on this branch or fork."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p /tmp/paks
+          curl -sSL "$Q3_PAKS_URL" -o /tmp/paks.tar.gz
+          tar -xzf /tmp/paks.tar.gz -C /tmp/paks
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Run gate G1 smoke test
+        if: steps.fetch-paks.outputs.skip == 'false'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -v /tmp/paks:/paks \
+            -e Q3_PAKS=/paks \
+            -w /src \
+            q3-dev ci/smoke/run_smoke.sh build
+
+      - name: Upload smoke test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-output
+          path: ci/smoke/out/*
+          if-no-files-found: ignore
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: linux-dev-binaries
+          name: linux-binaries
           path: |
             build/quake3_modern
             build/q3ded
@@ -133,80 +182,14 @@ jobs:
             build-asan/baseq3/*
           if-no-files-found: ignore
 
-  linux-smoke:
-    name: Linux Smoke Gate (Ubuntu 24.04)
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Cache Docker image
-        id: cache-docker
-        uses: actions/cache@v4
-        with:
-          path: /tmp/docker-image-dev.tar
-          key: docker-dev-${{ hashFiles('docker/Dockerfile') }}
-
-      - name: Load or build Docker image
-        run: |
-          if [ -f /tmp/docker-image-dev.tar ]; then
-            docker load -i /tmp/docker-image-dev.tar
-          else
-            docker build -t q3-dev -f docker/Dockerfile docker/
-            docker save q3-dev -o /tmp/docker-image-dev.tar
-          fi
-
-      - name: Configure CMake
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/src \
-            -w /src \
-            q3-dev cmake -S . -B build -G Ninja \
-              -DCMAKE_BUILD_TYPE=RelWithDebInfo
-
-      - name: Build
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/src \
-            -w /src \
-            q3-dev cmake --build build
-
-      - name: Download game pak files
-        id: fetch-paks
-        env:
-          Q3_PAKS_URL: ${{ secrets.Q3_PAKS_URL }}
-        run: |
-          if [ -z "$Q3_PAKS_URL" ]; then
-            echo "Secret Q3_PAKS_URL is absent. Skip smoke tests on this branch or fork."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          mkdir -p /tmp/paks
-          curl -sSL "$Q3_PAKS_URL" -o /tmp/paks.tar.gz
-          tar -xzf /tmp/paks.tar.gz -C /tmp/paks
-          echo "skip=false" >> "$GITHUB_OUTPUT"
-
-      - name: Run gate G1 smoke test
-        if: steps.fetch-paks.outputs.skip == 'false'
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/src \
-            -v /tmp/paks:/paks \
-            -e Q3_PAKS=/paks \
-            -w /src \
-            q3-dev ci/smoke/run_smoke.sh build
-
-      - name: Upload smoke test artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: smoke-test-output
-          path: ci/smoke/out/*
-          if-no-files-found: ignore
-
   linux-mingw:
     name: Windows Cross MinGW (Ubuntu 24.04)
     runs-on: ubuntu-24.04
+    # Nightly and manual only. The MSVC leg is the gate for Windows, because that is what
+    # Windows users build with. This leg protects the local `make win-test` path, and it needs
+    # an image that builds SDL2, curl, and LuaJIT from source, so it is too slow and too
+    # fragile to run on every push.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

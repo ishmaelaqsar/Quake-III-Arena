@@ -470,6 +470,12 @@ found it correct, and change only what each step names.
   endif()
   target_link_libraries(q3sys PUBLIC luajit::luajit)
   ```
+  Follow-up found on 3 September 2026: this lookup fails on Windows. `pkg_check_modules` needs
+  pkg-config, which the `windows-2022` runner does not have, so `LUAJIT_FOUND` is false even
+  with the vcpkg port installed and the build falls through to FetchContent, which then breaks.
+  Add a `find_path`/`find_library` attempt between the two, because the vcpkg toolchain makes
+  those work without pkg-config. See `docs/plans/00-environment.md`.
+
   `PUBLIC` is required because `script_engine.hpp` includes `sol.hpp`, which tests include.
   LuaJIT 2.1 is required for arm64; the wrapper tracks it. Pin the commit SHA when you land
   the step and record it in `docs/building.md`.
