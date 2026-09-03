@@ -13,6 +13,22 @@ run inside the development container through the Makefile.
 All scripts need the retail paks. Put `pak0.pk3` to `pak8.pk3` in `docker/paks/` or set
 `Q3_PAKS` to the directory that holds them. Output lands in `out/`, which git ignores.
 
-`golden/` is empty until the C++ preparation pull request produces the first image (checklist
-`04-cxx-migration.md`, phase P0). Until then `make smoke` saves a candidate in `out/smoke.png`
-and exits 1.
+`golden/` is empty until someone produces the first image on a machine that has the paks. Until
+then `make smoke` saves a candidate in `out/smoke.png` and exits 1.
+
+## What gate G1 actually checks
+
+Any one of these passing alone would prove nothing, so the gate requires all of them:
+
+- the modules this tree built are present, because the engine otherwise falls back to the
+  bytecode inside `pak0.pk3` and the gate would test nothing of the game code;
+- the engine exits successfully, so a crash after the frames are written cannot read as a pass;
+- the engine prints its timedemo result, which is the only evidence the demo played to the end;
+- at least `MIN_FRAMES` frames were captured, so the comparison frame exists;
+- that frame matches `golden/smoke.tga` with zero differing pixels.
+
+Frames come from `cl_avidemo`, which writes one screenshot per rendered frame and only while the
+client is active. The Nth captured frame is therefore the Nth frame of demo playback, whatever
+the map load cost. Selecting a frame with `wait` instead would move the frame around, because
+`wait` counts loading frames too. Override `COMPARE_FRAME` and `MIN_FRAMES` to change the
+selection.

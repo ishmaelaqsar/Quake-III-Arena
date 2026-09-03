@@ -25,16 +25,27 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/base/baseq3" "$WORK/home" "$OUT_DIR"
 ln -s "$PAKS"/*.pk3 "$WORK/base/baseq3/"
-for module in "$BUILD_DIR"/qagame*.so "$BUILD_DIR"/baseq3/qagame*.so; do
-    [ -e "$module" ] && ln -sf "$(readlink -f "$module")" "$WORK/base/baseq3/" || true
+# With vm_game 0 the native module is the thing under test. If it is missing the engine falls
+# back to the bytecode in pak0.pk3 and the run would pass without exercising this tree.
+shopt -s nullglob
+found=""
+for candidate in "$BUILD_DIR"/baseq3/qagame*.so "$BUILD_DIR"/qagame*.so \
+                 "$BUILD_DIR"/baseq3/qagame*.dylib "$BUILD_DIR"/qagame*.dylib; do
+    ln -sf "$(readlink -f "$candidate")" "$WORK/base/baseq3/"
+    found=$candidate
+    break
 done
+shopt -u nullglob
+if [ "$VM_GAME" = "0" ] && [ -z "$found" ]; then
+    fail "no built qagame module under $BUILD_DIR, so vm_game 0 would silently run the bytecode in pak0.pk3"
+fi
 
 LOG=$OUT_DIR/bot_match_vm$VM_GAME.log
 echo "run_bot_match: $DURATION s on $MAP with vm_game $VM_GAME (log: ci/smoke/out/$(basename "$LOG"))"
 set +e
 timeout "$DURATION" "$BUILD_DIR/q3ded" \
     +set dedicated 1 +set fs_basepath "$WORK/base" +set fs_homepath "$WORK/home" \
-    +set net_port 27965 +set sv_pure 0 +set vm_game "$VM_GAME" \
+    +set net_port "${NET_PORT:-27965}" +set sv_pure 0 +set vm_game "$VM_GAME" \
     +set bot_enable 1 +set bot_minplayers 4 +set g_gametype 0 \
     +map "$MAP" \
     +addbot sarge 3 +addbot grunt 3 +addbot major 3 +addbot visor 3 \
@@ -48,9 +59,11 @@ if [ "$STATUS" -ne 124 ]; then
     tail -n 20 "$LOG" >&2
     exit 1
 fi
-if grep -Eq 'Sys_Error|\*\*\*\*\*\*\*\* ERROR|Segmentation|Assertion' "$LOG"; then
+# Com_Error prints "********************\nERROR: ...\n********************" across three lines
+# (code/qcommon/common.cpp:282), so match the ERROR: line itself rather than the banner.
+if grep -Eq '^ERROR: |Sys_Error|Segmentation|Assertion' "$LOG"; then
     echo "run_bot_match: error in log:" >&2
-    grep -En 'Sys_Error|ERROR|Segmentation|Assertion' "$LOG" | head >&2
+    grep -En '^ERROR: |Sys_Error|Segmentation|Assertion' "$LOG" | head >&2
     exit 1
 fi
 JOINED=$(grep -c 'entered the game' "$LOG" || true)
