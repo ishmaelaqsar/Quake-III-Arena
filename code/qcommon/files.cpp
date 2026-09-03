@@ -985,8 +985,6 @@ Used for streaming data out of either a
 separate file or a ZIP file.
 ===========
 */
-// Defined in common.cpp, declared in qcommon.h inside extern "C"; keep the linkage the same.
-extern "C" qboolean	com_fullyInitialized;
 
 int FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean uniqueFILE ) {
 	searchpath_t	*search;

@@ -724,6 +724,11 @@ void		Com_StartupVariable( const char *match );
 
 extern	cvar_t	*com_developer;
 extern	cvar_t	*com_dedicated;
+
+// Set once Com_Init has finished. Declared here rather than with a local extern in each user,
+// so that the definition in common.cpp and every use agree on linkage: MSVC decorates C++
+// variable names, so a mismatch links on GCC and Clang and fails only on Windows.
+extern qboolean com_fullyInitialized;
 extern	cvar_t	*com_speeds;
 extern	cvar_t	*com_timescale;
 extern	cvar_t	*com_sv_running;
