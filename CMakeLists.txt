@@ -356,15 +356,15 @@ target_link_libraries(q3sys PUBLIC
 # Server Library
 # ---------------------------------------------------------------------------
 set(SERVER_SOURCES
-    code/server/sv_bot.c
-    code/server/sv_ccmds.c
-    code/server/sv_client.c
-    code/server/sv_game.c
-    code/server/sv_init.c
-    code/server/sv_main.c
-    code/server/sv_net_chan.c
-    code/server/sv_snapshot.c
-    code/server/sv_world.c
+    code/server/sv_bot.cpp
+    code/server/sv_ccmds.cpp
+    code/server/sv_client.cpp
+    code/server/sv_game.cpp
+    code/server/sv_init.cpp
+    code/server/sv_main.cpp
+    code/server/sv_net_chan.cpp
+    code/server/sv_snapshot.cpp
+    code/server/sv_world.cpp
 )
 add_library(q3server OBJECT ${SERVER_SOURCES})
 target_compile_definitions(q3server PUBLIC C_ONLY)
