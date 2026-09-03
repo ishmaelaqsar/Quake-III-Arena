@@ -21,12 +21,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
 #ifndef TR_LOCAL_H
 #define TR_LOCAL_H
 
@@ -35,6 +29,10 @@ extern "C" {
 #include "../qcommon/qcommon.h"
 #include "tr_public.h"
 #include "qgl.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define GL_INDEX_TYPE		GL_UNSIGNED_INT
 typedef unsigned int glIndex_t;
@@ -974,6 +972,9 @@ extern glstate_t	glState;		// outside of TR since it shouldn't be cleared during
 //
 // cvars
 //
+extern cvar_t	*r_ambientScale;
+extern cvar_t	*r_directedScale;
+extern cvar_t	*r_debugLight;
 extern cvar_t	*r_flareSize;
 extern cvar_t	*r_flareFade;
 

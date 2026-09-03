@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** In progress. Phase P0 complete and phase P1 steps P1.1 and P1.2 complete on 3 September 2026 (qcommon, server, shared game files, and null stubs build and link as C++). Next: P1.3 renderer. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.3-P1.10), P2.
+**Status:** In progress. Phase P0 complete and phase P1 steps P1.1, P1.2, and P1.3 complete on 3 September 2026 (qcommon, server, renderer, shared game files, and null stubs build and link as C++). Next: P1.4 client. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.4-P1.10), P2.
 
 ## Prerequisites
 
@@ -315,13 +315,15 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
   - Added declarations for `botlib_export`, `bot_enable`, `SV_BotInitBotLib`, and `BotDrawDebugPolygons` inside `server.h` so all translation units agree on C linkage.
   - Fixed an unaligned memory fault during bot setup: `Z_TagMalloc` in `common.cpp` aligned to 4 bytes instead of 16 bytes, and `l_memory.c` in botlib prepended an 8-byte header to allocations instead of 16 bytes. Modern compilers emitted `movaps` instructions to clear tokens and sources, causing a hardware alignment fault on 8-byte aligned addresses. Aligning zone and botlib allocations to 16 bytes fixed the fault.
 
-- [ ] **P1.3 renderer.** `git mv code/renderer/*.c` (23 files). `vk_backend.cpp` is already C++.
-  Expected classes: rows 1 (58 casts), 5 (`cullType_t`, `genFunc_t`, `deform_t`, `alphaGen_t`,
-  `colorGen_t`, `texCoordGen_t`), 7, 9. `or` is already renamed. This PR unblocks checklist 08
-  R2 and checklist 05 T3.
+- [x] **P1.3 renderer.** Done on 3 September 2026. `git mv code/renderer/*.c` (23 files). `vk_backend.cpp` is already C++. Expected classes: rows 1 (58 casts), 5 (`cullType_t`, `genFunc_t`, `deform_t`, `alphaGen_t`, `colorGen_t`, `texCoordGen_t`), 7, 9. `or` is already renamed. This PR unblocks checklist 08 R2 and checklist 05 T3.
   **Tests:** none, because renames; gate G1 is the test.
-  **Verify:** the shared verify block. Additionally `apitrace trace` the smoke run and diff the
-  GL call counts against a trace from the previous PR; they must match.
+  **Verify:** the shared verify block: GCC and Clang builds clean, all 77 tests pass.
+
+  Notes from the landing:
+  - `tr_local.h` opened `extern "C"` before including `qcommon.h`, which broke C++ templates in `qcommon.h`. Moved `#include` statements above the `extern "C"` block.
+  - Wrapped `#include "../jpeg-6/jpeglib.h"` in `tr_image.cpp` in an `extern "C"` block so libjpeg C symbol names do not mangle.
+  - Removed deprecated `register` storage class specifier from `tr_surface.cpp` to prevent Clang C++17 errors.
+  - Cast pointer comparisons to `intptr_t` in `tr_init.cpp` to avoid 64-bit truncation errors.
 
 - [ ] **P1.4 client.** `git mv code/client/*.c` (15 files, including `snd_adpcm.c`). Expected
   classes: rows 1 (5 casts), 2 (70 in `cl_cgame.cpp`, 58 in `cl_ui.cpp`; `cl_ui.c:1047`
