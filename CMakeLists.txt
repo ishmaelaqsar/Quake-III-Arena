@@ -245,25 +245,25 @@ add_library(q3jpeg OBJECT ${JPEG_SOURCES})
 # QCommon Library
 # ---------------------------------------------------------------------------
 set(QCOMMON_SOURCES
-    code/qcommon/cm_load.c
-    code/qcommon/cm_patch.c
-    code/qcommon/cm_polylib.c
-    code/qcommon/cm_test.c
-    code/qcommon/cm_trace.c
-    code/qcommon/cmd.c
-    code/qcommon/common.c
-    code/qcommon/cvar.c
-    code/qcommon/files.c
+    code/qcommon/cm_load.cpp
+    code/qcommon/cm_patch.cpp
+    code/qcommon/cm_polylib.cpp
+    code/qcommon/cm_test.cpp
+    code/qcommon/cm_trace.cpp
+    code/qcommon/cmd.cpp
+    code/qcommon/common.cpp
+    code/qcommon/cvar.cpp
+    code/qcommon/files.cpp
     code/qcommon/md4.c
-    code/qcommon/msg.c
-    code/qcommon/net_chan.c
-    code/qcommon/huffman.c
+    code/qcommon/msg.cpp
+    code/qcommon/net_chan.cpp
+    code/qcommon/huffman.cpp
     code/qcommon/unzip.c
-    code/qcommon/vm.c
-    code/qcommon/vm_interpreted.c
-    code/qcommon/vm_none.c
-    code/game/q_math.c
-    code/game/q_shared.c
+    code/qcommon/vm.cpp
+    code/qcommon/vm_interpreted.cpp
+    code/qcommon/vm_none.cpp
+    code/game/q_math.cpp
+    code/game/q_shared.cpp
 )
 add_library(qcommon OBJECT ${QCOMMON_SOURCES})
 target_compile_definitions(qcommon PUBLIC C_ONLY)
@@ -327,9 +327,9 @@ set(SYS_PLATFORM_SOURCES
 # ---------------------------------------------------------------------------
 add_executable(q3ded
     ${SYS_PLATFORM_SOURCES}
-    code/null/null_client.c
-    code/null/null_input.c
-    code/null/null_snddma.c
+    code/null/null_client.cpp
+    code/null/null_input.cpp
+    code/null/null_snddma.cpp
 )
 target_compile_definitions(q3ded PRIVATE C_ONLY SDL_MAIN_HANDLED)
 target_link_libraries(q3ded PRIVATE
@@ -454,8 +454,8 @@ set(GAME_SOURCES
     code/game/g_trigger.c
     code/game/g_utils.c
     code/game/g_weapon.c
-    code/game/q_math.c
-    code/game/q_shared.c
+    code/game/q_math.cpp
+    code/game/q_shared.cpp
 )
 add_library(qagame SHARED ${GAME_SOURCES})
 target_compile_definitions(qagame PRIVATE GAME_DLL)
@@ -493,8 +493,8 @@ set(CGAME_SOURCES
     code/cgame/cg_syscalls.c
     code/cgame/cg_view.c
     code/cgame/cg_weapons.c
-    code/game/q_math.c
-    code/game/q_shared.c
+    code/game/q_math.cpp
+    code/game/q_shared.cpp
 )
 add_library(cgame SHARED ${CGAME_SOURCES})
 target_compile_definitions(cgame PRIVATE CGAME_DLL)
@@ -511,8 +511,8 @@ set_target_properties(cgame PROPERTIES
 # ---------------------------------------------------------------------------
 set(UI_SOURCES
     code/game/bg_misc.c
-    code/game/q_math.c
-    code/game/q_shared.c
+    code/game/q_math.cpp
+    code/game/q_shared.cpp
     code/q3_ui/ui_addbots.c
     code/q3_ui/ui_atoms.c
     code/q3_ui/ui_cdkey.c
