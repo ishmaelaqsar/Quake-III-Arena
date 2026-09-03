@@ -429,30 +429,30 @@ target_link_libraries(q3client PUBLIC SDL2::SDL2 OpenGL::GL)
 # Renderer Library
 # ---------------------------------------------------------------------------
 set(RENDERER_SOURCES
-    code/renderer/tr_animation.c
-    code/renderer/tr_backend.c
-    code/renderer/tr_bsp.c
-    code/renderer/tr_cmds.c
-    code/renderer/tr_curve.c
-    code/renderer/tr_flares.c
-    code/renderer/tr_font.c
-    code/renderer/tr_image.c
-    code/renderer/tr_init.c
-    code/renderer/tr_light.c
-    code/renderer/tr_main.c
-    code/renderer/tr_marks.c
-    code/renderer/tr_mesh.c
-    code/renderer/tr_model.c
-    code/renderer/tr_noise.c
-    code/renderer/tr_scene.c
-    code/renderer/tr_shade.c
-    code/renderer/tr_shade_calc.c
+    code/renderer/tr_animation.cpp
+    code/renderer/tr_backend.cpp
+    code/renderer/tr_bsp.cpp
+    code/renderer/tr_cmds.cpp
+    code/renderer/tr_curve.cpp
+    code/renderer/tr_flares.cpp
+    code/renderer/tr_font.cpp
+    code/renderer/tr_image.cpp
+    code/renderer/tr_init.cpp
+    code/renderer/tr_light.cpp
+    code/renderer/tr_main.cpp
+    code/renderer/tr_marks.cpp
+    code/renderer/tr_mesh.cpp
+    code/renderer/tr_model.cpp
+    code/renderer/tr_noise.cpp
+    code/renderer/tr_scene.cpp
+    code/renderer/tr_shade.cpp
+    code/renderer/tr_shade_calc.cpp
     code/renderer/vulkan/vk_backend.cpp
-    code/renderer/tr_shader.c
-    code/renderer/tr_shadows.c
-    code/renderer/tr_sky.c
-    code/renderer/tr_surface.c
-    code/renderer/tr_world.c
+    code/renderer/tr_shader.cpp
+    code/renderer/tr_shadows.cpp
+    code/renderer/tr_sky.cpp
+    code/renderer/tr_surface.cpp
+    code/renderer/tr_world.cpp
 )
 add_library(q3renderer OBJECT ${RENDERER_SOURCES})
 
