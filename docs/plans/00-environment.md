@@ -247,6 +247,16 @@ step on the link errors that checklist 04 step P1.1 fixed on 3 September 2026. T
 failures are defects in `.github/workflows/ci.yml` itself, and each one needs a fix before that
 leg can pass:
 
+- [ ] **`-DQ3_WERROR=ON` makes the Linux legs unpassable.** Both the `Linux Dev` and
+  `Linux ASan/UBSan` legs configure with it (`.github/workflows/ci.yml:43` and `:102`), but the
+  legacy tree is not warning-clean: a local build with `CMAKE_ARGS='-DQ3_WERROR=ON'` produces
+  23 errors, all from original id code, mostly `-Werror=maybe-uninitialized` in the renderer and
+  botlib and `-Werror=stringop-truncation`. Checklist 01 step A3.6 set the option's default to
+  `OFF` and intended `-Werror` to apply per directory as it converts, which is also what
+  checklist 04 assumes. The workflow instead applies it to the whole tree. Pick one: scope the
+  flag to the converted targets, which matches the plan, or fix the 23 warnings in the legacy
+  code first. Do not simply drop the flag, or nothing enforces warning cleanliness on the
+  directories that have converted.
 - [ ] **`--gtest_shuffle` is passed to `ctest`** at `.github/workflows/ci.yml:278` (macOS) and
   `:313` (Windows). It is a GoogleTest flag, not a `ctest` flag, so `ctest` exits with an
   unknown-argument error even when every test would pass. Use `ctest --schedule-random`, or put
