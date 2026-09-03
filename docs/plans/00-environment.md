@@ -296,7 +296,7 @@ push to the same branch do not cancel each other.
 Still open on the shape: no ThreadSanitizer leg. Checklist 05 step T6 adds it when the threading
 work starts.
 
-## Cross-platform build defects the continuous integration legs exposed
+## Cross-platform defects the continuous integration legs exposed
 
 Each of these built cleanly with GCC on Linux and failed on another platform. Together they are
 the argument for keeping the macOS and Windows legs on every push.
@@ -314,6 +314,23 @@ the argument for keeping the macOS and Windows legs on every push.
   current work: the script engine had never been compiled on macOS.
 - **macOS, `register` and discarded `const`.** Recorded as catalogue row 24 in
   `docs/plans/04-cxx-migration.md`. Fixed 3 September 2026.
+- **x86_64, `Q_rsqrt` returned a sign-flipped result.** Not a build error but a runtime one, and
+  the most consequential find of the day. `code/game/q_math.cpp` read the bit pattern of a
+  `float` through `*(long*)&y`, which on any 64-bit target reads eight bytes from a four-byte
+  object; the shift then mixed whatever followed `y` on the stack into the result. On arm64
+  those bytes were zero and the function worked, so it passed locally, while on the x86_64
+  runner it returned roughly the negative of the right answer and
+  `MathTest.FastInverseSquareRoot` failed with a relative error of 1.998. `Q_rsqrt` feeds
+  `VectorNormalizeFast` and the renderer's environment mapping, so this was wrong arithmetic in
+  the engine on the primary development platform, not merely a failing test. It now uses a
+  `union { float f; int32_t i; }`, which is well defined in both C and C++. The test tolerance
+  was also tightened from 1 percent to 0.2 percent: the true bound for one Newton iteration is
+  0.175 percent, measured across 1e-6 to 1e7, so a corrupted bit pattern can no longer hide
+  inside a loose threshold. Fixed 3 September 2026.
+
+  The lesson for the remaining renames: a test that passes on one architecture proves nothing
+  about undefined behaviour. This bug had been present since the original release and was only
+  caught because the macOS and x86_64 legs exist.
 
 ## Remaining continuous integration blockers, 3 September 2026
 

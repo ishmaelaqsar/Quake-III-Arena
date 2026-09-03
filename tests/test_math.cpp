@@ -98,9 +98,12 @@ TEST(MathTest, FastInverseSquareRoot) {
     for (float val : values) {
         float q_inv = Q_rsqrt(val);
         float std_inv = 1.0f / std::sqrt(val);
-        // Fast inverse square root has ~0.2% max relative error
+        // One Newton iteration bounds the relative error at about 0.175 percent. Assert 0.2
+        // percent rather than 1 percent, so that a corrupted bit pattern cannot hide inside a
+        // loose tolerance.
         float relativeError = std::abs((q_inv - std_inv) / std_inv);
-        EXPECT_LT(relativeError, 0.01f);
+        EXPECT_LT(relativeError, 0.002f) << "value " << val << ": Q_rsqrt " << q_inv
+                                         << " against " << std_inv;
     }
 }
 
