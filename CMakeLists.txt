@@ -405,21 +405,21 @@ set_target_properties(q3ded PROPERTIES
 # Client Library
 # ---------------------------------------------------------------------------
 set(CLIENT_SOURCES
-    code/client/cl_cgame.c
-    code/client/cl_cin.c
-    code/client/cl_console.c
-    code/client/cl_input.c
-    code/client/cl_keys.c
-    code/client/cl_main.c
-    code/client/cl_net_chan.c
-    code/client/cl_parse.c
-    code/client/cl_scrn.c
-    code/client/cl_ui.c
-    code/client/snd_adpcm.c
-    code/client/snd_dma.c
-    code/client/snd_mem.c
-    code/client/snd_mix.c
-    code/client/snd_wavelet.c
+    code/client/cl_cgame.cpp
+    code/client/cl_cin.cpp
+    code/client/cl_console.cpp
+    code/client/cl_input.cpp
+    code/client/cl_keys.cpp
+    code/client/cl_main.cpp
+    code/client/cl_net_chan.cpp
+    code/client/cl_parse.cpp
+    code/client/cl_scrn.cpp
+    code/client/cl_ui.cpp
+    code/client/snd_adpcm.cpp
+    code/client/snd_dma.cpp
+    code/client/snd_mem.cpp
+    code/client/snd_mix.cpp
+    code/client/snd_wavelet.cpp
     code/sys/sys_sdl.cpp
 )
 add_library(q3client OBJECT ${CLIENT_SOURCES})
