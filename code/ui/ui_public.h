@@ -194,6 +194,15 @@ typedef enum {
 // a GetClientState syscall will be made to get the current strings
 } uiExport_t;
 
+// Module entry points, resolved by name with SDL_LoadFunction in code/sys/sys_dll.cpp. They
+// must keep C linkage, so declare them here inside the extern "C" block: the modules include
+// this header, so the declarations also fix the linkage of the definitions once these
+// directories are compiled as C++ (checklist 04 phase P1).
+Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4,
+                          int arg5, int arg6, int arg7, int arg8, int arg9, int arg10,
+                          int arg11 );
+Q_EXPORT void dllEntry( intptr_t (QDECL *syscallptr)( intptr_t arg, ... ) );
+
 #endif
 
 #ifdef __cplusplus
