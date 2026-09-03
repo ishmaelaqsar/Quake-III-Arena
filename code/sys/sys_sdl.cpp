@@ -481,10 +481,15 @@ void Sys_SendKeyEvents( void ) {
     }
 }
 
+#ifdef __linux__
+// Only Linux declares Snd_Memset as a function, to work around an old glibc memset bug. On
+// every other platform q_shared.h defines it as a macro for Com_Memset, so defining it here
+// would emit a second Com_Memset and the link would fail with a duplicate symbol.
 void Snd_Memset (void* dest, const int val, const size_t count)
 {
 	std::memset(dest, val, count);
 }
+#endif
 
 void Sys_ReleaseDisplay(void) {
 	if (s_window) {

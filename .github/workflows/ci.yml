@@ -10,6 +10,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Q3_WERROR is deliberately not set on any leg. The legacy id code is not warning-clean: a
+# -DQ3_WERROR=ON build fails in every target, including q3sys, with maybe-uninitialized,
+# write-strings, sign-compare, array-bounds, and a CHAR_WIDTH redefinition. Checklist 01 step
+# A3.6 intends -Werror to be enabled per directory as the C++ migration cleans it, so turn it on
+# here only when a target is actually clean. See docs/plans/00-environment.md.
+
 jobs:
   linux-dev:
     name: Linux Dev (Ubuntu 24.04)
@@ -41,7 +47,6 @@ jobs:
             -w /src \
             q3-dev cmake -S . -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              -DQ3_WERROR=ON \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Build
@@ -56,8 +61,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}:/src \
             -w /src \
-            -e EXTRA_ARGS="--gtest_shuffle" \
-            q3-dev ctest --test-dir build --output-on-failure --timeout 120
+            q3-dev ctest --test-dir build --output-on-failure --timeout 120 --schedule-random
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -100,8 +104,7 @@ jobs:
             -w /src \
             q3-dev cmake -S . -B build-asan -G Ninja \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              -DQ3_SANITIZE=address,undefined \
-              -DQ3_WERROR=ON
+              -DQ3_SANITIZE=address,undefined
 
       - name: Build
         run: |
@@ -117,8 +120,7 @@ jobs:
             -w /src \
             -e ASAN_OPTIONS="detect_leaks=1:strict_string_checks=1" \
             -e UBSAN_OPTIONS="print_stacktrace=1" \
-            -e EXTRA_ARGS="--gtest_shuffle" \
-            q3-dev ctest --test-dir build-asan --output-on-failure --timeout 120
+            q3-dev ctest --test-dir build-asan --output-on-failure --timeout 120 --schedule-random
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -275,7 +277,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          ctest --test-dir build --output-on-failure --timeout 120 --gtest_shuffle
+          ctest --test-dir build --output-on-failure --timeout 120 --schedule-random
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -297,20 +299,23 @@ jobs:
 
       - name: Install dependencies via vcpkg
         run: |
-          vcpkg install sdl2 luajit gtest curl:x64-windows
+          vcpkg install --triplet x64-windows sdl2 luajit gtest curl
 
       - name: Configure CMake
+        # bash, because the runner defaults to PowerShell where a backslash does not continue
+        # a line and $env: is not shell syntax.
+        shell: bash
         run: |
           cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64 \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build
         run: cmake --build build-msvc --config RelWithDebInfo
 
       - name: Run unit tests
         run: |
-          ctest --test-dir build-msvc -C RelWithDebInfo --output-on-failure --timeout 120 --gtest_shuffle
+          ctest --test-dir build-msvc -C RelWithDebInfo --output-on-failure --timeout 120 --schedule-random
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

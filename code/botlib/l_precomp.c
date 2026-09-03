@@ -705,7 +705,9 @@ int PC_ExpandBuiltinDefine(source_t *source, token_t *deftoken, define_t *define
 										token_t **firsttoken, token_t **lasttoken)
 {
 	token_t *token;
-	unsigned long t;	//	time_t t; //to prevent LCC warning
+	time_t t;			// was unsigned long to silence an LCC warning; LCC does not build
+						// botlib, and on Windows time_t is 64-bit while long is 32-bit,
+						// so &t was an incompatible pointer for ctime
 	char *curtime;
 
 	token = PC_CopyToken(deftoken);
