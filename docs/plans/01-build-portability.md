@@ -558,6 +558,33 @@ found it correct, and change only what each step names.
   - **Verify:** a reader who follows only `docs/building.md` reaches a green `ctest` in the
     container.
 
+## Windows test gaps closed on 3 September 2026
+
+With the link fixed, the Windows leg ran the suite and 66 of 77 passed. Three causes:
+
+- **Multi-config generators append a per-configuration subdirectory** to any
+  `*_OUTPUT_DIRECTORY`, so Visual Studio wrote the modules to
+  `build-msvc/baseq3/RelWithDebInfo/` while the engine and the tests look in
+  `build-msvc/baseq3/`. That broke module loading for `ModuleSymbols` and all four `VmAbi`
+  cases, and it would have broken a real Windows run too, because `Sys_LoadDll` derives one of
+  its search paths from the executable's own directory. Every output directory is now wrapped in
+  `"$<1:...>"`, which suppresses the automatic subdirectory, so all generators agree on the
+  layout. The Windows artifact paths in the workflow were updated to match.
+- **Winsock was never started.** `tests/test_sys_net.cpp` called `socket()` without
+  `WSAStartup`, which the engine does in `NET_Init`. The fixture now starts and stops Winsock
+  itself, rather than calling `NET_Init`, which would also bind a UDP port. Worth noting this
+  had been passing silently: the assertions sat inside an `if` that a failed socket skipped, so
+  tightening that check turned a fake pass into an honest failure.
+- **Two test bugs of my own.** `HomePathFallsBackWhenMkdirFails` is POSIX-shaped, because
+  Windows resolves the home path through `SDL_GetPrefPath` and consults no variable a test can
+  redirect at a file, so it is now compiled only off Windows with the reason recorded.
+  `InstallPathIsExecutableDir` compared a CMake path, which uses forward slashes, against an SDL
+  path, which uses the platform separator, so it failed for a path that was correct; both sides
+  are now normalised.
+
+Left for checklist 07: three `ModernScriptingTest` cases, which exercise the legacy
+domain-specific language that step S1.1 deletes.
+
 ## Windows link gaps closed on 3 September 2026
 
 With LuaJIT resolving, the Windows leg compiled every file and failed at link. Three causes, all

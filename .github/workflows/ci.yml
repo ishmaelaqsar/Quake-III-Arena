@@ -309,7 +309,7 @@ jobs:
         with:
           name: windows-x64-binaries
           path: |
-            build-msvc/RelWithDebInfo/quake3_modern.exe
-            build-msvc/RelWithDebInfo/q3ded.exe
+            build-msvc/quake3_modern.exe
+            build-msvc/q3ded.exe
             build-msvc/baseq3/*
           if-no-files-found: ignore

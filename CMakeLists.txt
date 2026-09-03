@@ -398,7 +398,7 @@ target_link_libraries(q3ded PRIVATE
     $<$<PLATFORM_ID:Windows>:ws2_32 winmm shell32>
 )
 set_target_properties(q3ded PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}>"
 )
 
 # ---------------------------------------------------------------------------
@@ -473,7 +473,7 @@ target_link_libraries(quake3_modern PRIVATE
     $<$<PLATFORM_ID:Windows>:ws2_32 winmm shell32>
 )
 set_target_properties(quake3_modern PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}>"
 )
 
 # ---------------------------------------------------------------------------
@@ -519,8 +519,8 @@ target_compile_definitions(qagame PRIVATE GAME_DLL)
 target_link_libraries(qagame PRIVATE $<$<NOT:$<PLATFORM_ID:Windows>>:m>)
 set_target_properties(qagame PROPERTIES
     PREFIX "" OUTPUT_NAME "qagame${Q3_ARCH}" SUFFIX "${Q3_DLL_EXT}"
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    LIBRARY_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}/baseq3>"
+    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}/baseq3>"
     C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden
 )
 
@@ -558,8 +558,8 @@ target_compile_definitions(cgame PRIVATE CGAME_DLL)
 target_link_libraries(cgame PRIVATE $<$<NOT:$<PLATFORM_ID:Windows>>:m>)
 set_target_properties(cgame PROPERTIES
     PREFIX "" OUTPUT_NAME "cgame${Q3_ARCH}" SUFFIX "${Q3_DLL_EXT}"
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    LIBRARY_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}/baseq3>"
+    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}/baseq3>"
     C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden
 )
 
@@ -617,8 +617,8 @@ target_compile_definitions(ui PRIVATE UI_DLL)
 target_link_libraries(ui PRIVATE $<$<NOT:$<PLATFORM_ID:Windows>>:m>)
 set_target_properties(ui PROPERTIES
     PREFIX "" OUTPUT_NAME "ui${Q3_ARCH}" SUFFIX "${Q3_DLL_EXT}"
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/baseq3
+    LIBRARY_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}/baseq3>"
+    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}/baseq3>"
     C_VISIBILITY_PRESET hidden CXX_VISIBILITY_PRESET hidden
 )
 

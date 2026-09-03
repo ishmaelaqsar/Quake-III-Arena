@@ -11,6 +11,19 @@ protected:
         Cvar_Init();
         Com_InitZoneMemory();
         Netchan_Init(0);
+
+#ifdef _WIN32
+        // Winsock needs starting before any socket call, which the engine does in NET_Init.
+        // NET_Init is avoided here because it also binds a UDP port, which a test should not do.
+        WSADATA wsaData;
+        ASSERT_EQ(WSAStartup(MAKEWORD(2, 2), &wsaData), 0) << "WSAStartup failed";
+#endif
+    }
+
+    static void TearDownTestSuite() {
+#ifdef _WIN32
+        WSACleanup();
+#endif
     }
 };
 

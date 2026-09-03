@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -109,6 +110,10 @@ TEST_F(SysPaths, HomePathUsesHomeEnv) {
     }
 }
 
+// POSIX only: Sys_DefaultHomePath reads HOME there, so pointing HOME at a regular file forces
+// the creation to fail. The Windows implementation calls SDL_GetPrefPath, which consults no
+// variable a test can redirect, so there is no way to provoke the fallback and nothing to assert.
+#ifndef _WIN32
 TEST_F(SysPaths, HomePathFallsBackWhenMkdirFails) {
     TempDir tmp;
     ASSERT_FALSE(tmp.str().empty());
@@ -133,6 +138,7 @@ TEST_F(SysPaths, HomePathFallsBackWhenMkdirFails) {
         UnsetEnvVar("HOME");
     }
 }
+#endif  // !_WIN32
 
 TEST_F(SysPaths, InstallPathIsExecutableDir) {
     char *installPath = Sys_DefaultInstallPath();
@@ -142,7 +148,16 @@ TEST_F(SysPaths, InstallPathIsExecutableDir) {
     // The test binary lives under the build directory, so the path derived from the running
     // executable must sit inside it. Asserting only non-empty would accept the current
     // directory, which is what the function returns when it cannot work the path out.
-    EXPECT_NE(std::string(installPath).find(Q3_TEST_BUILD_DIR), std::string::npos)
+    //
+    // Compare with separators normalised: CMake hands Q3_TEST_BUILD_DIR over with forward
+    // slashes, while SDL returns the platform separator, so a direct search fails on Windows
+    // for a path that is perfectly correct.
+    auto forwardSlashes = [](std::string text) {
+        std::replace(text.begin(), text.end(), '\\', '/');
+        return text;
+    };
+    EXPECT_NE(forwardSlashes(installPath).find(forwardSlashes(Q3_TEST_BUILD_DIR)),
+              std::string::npos)
         << "install path " << installPath << " is not under " << Q3_TEST_BUILD_DIR;
 
     EXPECT_TRUE(std::filesystem::is_directory(installPath))
