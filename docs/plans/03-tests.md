@@ -244,6 +244,18 @@ integration (CI).
   - **Tests:** none, because this is CI wiring.
   - **Verify:** `ctest --preset asan` is green in the container and on the Linux CI leg.
 
+## Already seeded
+
+`tests/engine_init.hpp` exists as of 3 September 2026 (added by checklist 02 step B1.8). It
+provides an idempotent `EnsureEngineInitialised()` that calls `Com_InitSmallZoneMemory`,
+`Cmd_Init`, `Cvar_Init`, and `Com_InitZoneMemory` once per process, and
+`tests/test_cvar_cmd.cpp` and `tests/test_vm.cpp` both use it. Step C1 should absorb it into the
+fuller `tests/engine_fixture.hpp` rather than adding a second initialisation path, and keep the
+idempotence, because the suite runs with `--gtest_shuffle`.
+
+`tests/test_vm.cpp` and `tests/vm_testmodule/tm_main.c` also exist already, so step C6 has only
+to confirm the harness and extend the cases, not create them.
+
 ## Test map
 
 Every test file in the repo after this checklist, with the binary and the checklist that owns

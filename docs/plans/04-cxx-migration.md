@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** In progress. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1, P2.
+**Status:** In progress. Phase P0 complete and phase P1 step P1.1 complete on 3 September 2026 (qcommon, shared game files, and null stubs build and link as C++). Next: P1.2 server. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1, P2.
 
 ## Prerequisites
 
@@ -104,6 +104,8 @@ ninja -C build/scout 2>&1 | grep 'error:' | sed 's/.*error: //' | sort | uniq -c
 # 2. git mv, update CMakeLists.txt paths (commit A)
 # 3. fix by class (commit B), build clang, then gcc, then push for the MSVC leg
 ```
+
+| 23 | **File-local forward declarations** of functions that are defined in a translation unit which is still C. The declaration in the renamed `.cpp` file asks for a mangled symbol; the definition emits an unmangled one, so the link fails. This is not a header problem, so the `extern "C"` sweep in P0.2 does not catch it. | Yes: it broke the link after P1.1 with ten symbols | `grep -nE '^[a-z_]+ *\**[A-Za-z_]+\(.*\);$' <renamed>.cpp` and check each name against `grep -rl "<name>" code --include=*.c` | Wrap the declaration in `extern "C"`, and confirm the definition's translation unit includes a header that also gives it C linkage. Do not simply delete the declaration. Applies symmetrically in reverse: after the definition side converts, both sides must agree, so prefer moving the declaration into the guarded header that both include. Sites fixed in P1.1: `code/qcommon/common.cpp:95,1585-1587,2240` and `code/qcommon/cm_patch.cpp:1613`; `code/null/null_input.cpp` now includes `code/sys/sys_local.h` for the same reason. |
 
 ## Compiler flags
 
@@ -240,6 +242,15 @@ narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_share
   **Verify:** `compare -metric AE ci/smoke/golden/smoke.tga build/smoke/smoke.tga /dev/null`
   prints `0` on a second run.
 
+  Landed on 3 September 2026 in addition to the original step: `vmMain` and `dllEntry` are now
+  declared inside the `extern "C"` blocks of `code/game/g_public.h`, `code/cgame/cg_public.h`,
+  and `code/ui/ui_public.h`. `Q_EXPORT` only sets symbol visibility, so without those
+  declarations the definitions would mangle the moment `code/game`, `code/cgame`, or
+  `code/q3_ui` become C++ in P1.6 to P1.8. `Sys_LoadDll` resolves both names as strings, so the
+  engine would have fallen back to the bytecode virtual machine with no diagnostic. Verified by
+  compiling a translation unit that includes `g_public.h` as C++ and confirming with `nm` that
+  both symbols stay unmangled, and by `ModuleSymbols.EveryModuleExportsUnmangledEntryPoints`.
+
 ### C-P1 compile as C++17 (about 5 weeks single, 3 weeks with two people)
 
 Every PR has two commits. Commit A renames files and updates the paths in `CMakeLists.txt` and
@@ -263,7 +274,7 @@ make asan   # -fsanitize=address,undefined -fno-sanitize=alignment,vptr ; ASAN_O
 nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   # diff against the previous PR: only expected additions
 ```
 
-- [ ] **P1.1 qcommon, shared game files, null stubs.** `git mv` the 17 files: all
+- [x] **P1.1 qcommon, shared game files, null stubs.** Done on 3 September 2026. `git mv` the 17 files: all
   `code/qcommon/*.c` except `unzip.c` and `md4.c`, `code/game/q_shared.c`, `code/game/q_math.c`,
   `code/null/null_client.c`, `null_input.c`, `null_snddma.c`. Remove
   `#include "../client/client.h"` from `unzip.c` (it needs only `q_shared.h` and `qcommon.h`).
@@ -274,6 +285,17 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
   the tests. Existing `test_math.cpp`, `test_strings.cpp`, `test_msg.cpp`, `test_huffman.cpp`,
   `test_md4.cpp`, `test_cvar_cmd.cpp` must still pass unchanged.
   **Verify:** the shared verify block.
+
+  Notes from the landing:
+  - `code/qcommon/vm_ppc.c`, `vm_ppc_new.c`, and `vm_x86.c` stay as `.c`. No build target
+    references them, so renaming them would add churn with no benefit. Revisit if a
+    just-in-time compiler is ever revived.
+  - The rename first broke the link with ten undefined symbols, all from catalogue row 23
+    (file-local forward declarations). Read that row before starting P1.2 or P1.4, because the
+    same declarations point the other way once the client and the server become C++.
+  - Gate G1 could not run: the machine that landed this has no game data. Run
+    `make smoke-update-golden` then `make smoke` on the Linux machine before P1.2, so that the
+    remaining renames have a pixel baseline. Unit tests and the link were the checks used here.
 
 - [ ] **P1.2 server.** `git mv code/server/*.c` (10 files). Expected classes: rows 1 (10 casts),
   2 (119 `VMA` uses in `sv_game.cpp`), 5. Introduce the `VmArg` proxy in `qcommon.h` inside

@@ -148,7 +148,14 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
   count and exit 1 (proves the gate detects change); restore the script. `make bot-match`
   prints `pass`.
 
-- [ ] **3b. Produce the first golden image.** Blocked on checklist 01 (the tree does not build
+- [ ] **3b. Produce the first golden image.** Still open on 3 September 2026, now blocked only
+  on game data. Checklist 01 is complete and the tree builds and links, but the machine used so
+  far has no `pak0.pk3`, so `make smoke` stops with `no pak0.pk3 in /paks` (exit code 2). Run
+  this on the Linux machine: put the retail paks in `docker/paks/` or set `Q3_PAKS`, run
+  `make smoke-update-golden`, inspect `ci/smoke/out/smoke.png`, then commit
+  `ci/smoke/golden/smoke.tga` and `.png` with a message that says which build produced them.
+  Until this lands, no rename in checklist 04 has a pixel baseline, so do it before phase P1
+  step P1.2. Original note: blocked on checklist 01 (the tree does not build
   yet) and owned by checklist `04-cxx-migration.md` phase P0, which produces it from the all-C
   tree. Until then `make smoke` exits 1.
   **Tests:** none.

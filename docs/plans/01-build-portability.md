@@ -533,11 +533,19 @@ found it correct, and change only what each step names.
   - **Verify:** a reader who follows only `docs/building.md` reaches a green `ctest` in the
     container.
 
+## Correction on 3 September 2026
+
+`tests/test_module_symbols.cpp` was rewritten. As first written it held two cases with identical
+bodies, and both called `GTEST_SKIP()` when a module file was absent, so the test passed on any
+build where the modules had not been produced. This test is the tripwire for C++ name mangling
+on `vmMain` and `dllEntry`, so it now fails with the list of paths it tried instead of skipping,
+and the duplicate case is gone. Keep that property: a guard that can only skip guards nothing.
+
 ## Test map
 
 | Test file | Binary | Cases | Added by |
 |---|---|---|---|
-| `tests/test_module_symbols.cpp` | `quake3_tests` | `EveryModuleExportsVmMainAndDllEntry`, `FileNameSchemeMatchesPlatform` | A3.1, A4.3, A4.10 |
+| `tests/test_module_symbols.cpp` | `quake3_tests` | `FileNameSchemeMatchesPlatform`, `EveryModuleExportsUnmangledEntryPoints` | A3.1, A4.3, A4.10; hardened 3 September 2026 |
 | `tests/test_sys_paths.cpp` | `quake3_tests` | `HomePathUsesHomeEnv`, `HomePathFallsBackWhenMkdirFails`, `InstallPathIsExecutableDir`, `ListFilesFiltersByExtension` | A4.4, A4.5 |
 | `tests/test_sys_net.cpp` | `quake3_tests` | `StringToAdrParsesIPv4AndPort`, `LoopbackPacketRoundTrip`, `InvalidSocketSentinelIsNotZero`, `ErrorStringIsNonEmpty` | A4.8 |
 | `tests/test_sys_args.cpp` | `quake3_tests` | `ParseArgsRecognisesHelp` (only if `Sys_ParseArgs` is factored pure) | A4.2 |

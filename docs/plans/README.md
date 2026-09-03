@@ -106,7 +106,7 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 | `00-environment.md` | Docker image, the Makefile targets, gate G1 harness, continuous integration skeleton | In progress (Linux image, compose, Makefile, smoke scripts, pixel gate, CI skeleton, building doc, native targets done; MinGW image verification and golden image open) |
 | `01-build-portability.md` | Stray files, platform macros, CMake object libraries, platform layer under `code/sys/`, `DEDICATED` at runtime, LuaJIT, CI legs, `docs/building.md` | In progress (Phases A1-A8 complete: platform layer, CMake restructure, CI legs, build docs; MinGW cross-check open) |
 | `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | In progress (Phases B1 and B2 complete: 64-bit VM ABI, prototype fixes) |
-| `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, replacement of vacuous tests, sanitizer CI | Not started |
+| `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, replacement of vacuous tests, sanitizer CI | Not started; `engine_init.hpp` and the VM test already seeded |
 | `04-cxx-migration.md` | Compile every directory as C++17, JPEG library swap, header close-out, idiomatic rewrites with `Com_Error` as an exception first | In progress (Phase P0 steps P0.1-P0.6 complete) |
 | `05-threading.md` | Main-thread ownership, main-thread queue, job system, render backend thread, image precache, sound handoff, shutdown, ThreadSanitizer CI | Not started |
 | `06-networking.md` | UDP download restore, `sv_dlURL`, download policy, libcurl downloader, allowlist, client state machine, Discord IPC, bitstream facade, netchan loopback test, session slots | In progress (N1.1 UDP download restored) |
@@ -114,6 +114,19 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 | `08-renderer-ui.md` | Extension detection, gamma, VSync, mode table, resize and high-DPI, MSAA and anisotropy, VBO ring, GLSL programs, immediate-mode removal, core profile, FBO post-pass, HUD, pillarbox, console scale, video menu, mouse and controller, master servers, Hor+ FOV | Not started |
 | `09-vulkan.md` | Backend vtable seams, milestones M0 to M4, MoltenVK, honest cost | Not started |
 | `10-docs-hygiene.md` | Root README, third-party licences, docs rewrite, cvar reference, changelog, doc comments, formatting configuration, debug prints, stray files | Not started |
+
+## Current state, 3 September 2026
+
+The tree builds and links in the container, and 62 of 65 tests pass. The three failures are
+`ModernLoggerTest.*`, because a `RelWithDebInfo` build defines `NDEBUG` and
+`code/sys/logger/logger.hpp` compiles every `LOG_*` call out, including errors. Checklist 02
+step B4 fixes the logger and checklist 03 rewrites those tests. Treat them as the only expected
+red until then.
+
+Two gates are not yet usable. Gate G1 has no golden image, because no machine used so far has
+game data; produce it on the Linux machine before the next rename (checklist 00 step 3b). The
+MinGW cross image does not build on an Apple Silicon host, where the emulated compiler crashes;
+build and verify it on the Linux machine (checklist 00 step 7 and checklist 01 step A6.3).
 
 ## Dependency order
 

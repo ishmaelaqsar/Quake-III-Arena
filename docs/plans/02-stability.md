@@ -8,7 +8,7 @@ the `sys_api` boundary, the VFS hook that bypasses the file system, the busy-wai
 the hostile first-run message, and the CD key and authorize server gates that no longer serve
 a purpose in a GPL build.
 
-**Status:** In progress. Phases B1 and B2 complete on 2 September 2026 (64-bit VM ABI, prototype fallout).
+**Status:** In progress. Phase B1 complete, including its tests as of 3 September 2026, and phase B2 complete. Next: B3 crash handling. Phases B1 and B2 complete on 2 September 2026 (64-bit VM ABI, prototype fallout).
 
 ## Prerequisites
 
@@ -87,7 +87,7 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
   `Q_EXPORT void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t arg, ...))`. Trap wrappers that
   return `int` are unchanged; values fit, and the one pointer return (`trap_strncpy`) is
   discarded by its callers.
-- [x] **B1.7 Update `sys_dll.cpp` and the test stubs.** Done on 2 September 2026. Match the new `Sys_LoadDll` signature in
+- [x] **B1.7 Update `sys_dll.cpp` and the test stubs.** Done on 2 September 2026. The tests this phase requires were added on 3 September 2026, see the note below. Match the new `Sys_LoadDll` signature in
   `code/sys/sys_dll.cpp` (checklist 01 A4.3) and in `tests/test_platform_stubs.cpp`. Update the
   VM ABI paragraph in `docs/architecture.md:14-17`.
   - **Tests (for all of B1):** `tests/test_vm.cpp` (binary `quake3_tests`) plus
@@ -106,6 +106,28 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
     `./build/quake3_modern +set sv_pure 0 +map q3dm17 +addbot sarge +quit` under `xvfb-run`
     runs bots without a crash; `ctest --preset dev -R VmAbi` passes in the container and on the
     macOS leg.
+
+- [x] **B1.8 Add the tests that phase B1 requires.** Done on 3 September 2026. Phases B1.1 to
+  B1.7 were ticked before their tests existed, which left the highest-risk change in the
+  programme unguarded. Added `tests/vm_testmodule/tm_main.c`, a real shared module that exports
+  `dllEntry` and `vmMain` and calls back through the syscall pointer, built by
+  `tests/CMakeLists.txt` as `testmodule${Q3_ARCH}${Q3_DLL_EXT}` into `<build>/tests/baseq3`.
+  Added `tests/test_vm.cpp`, which points `fs_basepath` at `<build>/tests`, loads the module
+  with `VM_Create(..., VMI_NATIVE)`, and drives it with `VM_Call`. Added
+  `tests/engine_init.hpp`, an idempotent one-time engine initialisation, because GoogleTest
+  calls `SetUpTestSuite` once per fixture and a second fixture would otherwise initialise the
+  zone, command, and cvar systems twice; `tests/test_cvar_cmd.cpp` now uses it too.
+  - **Tests:** `tests/test_vm.cpp` (binary `quake3_tests`). Cases:
+    `VmAbiFixture.AddCommandReturnsSum` (argument order and return),
+    `VmAbiFixture.SyscallArgumentAndReturnSurvive` (module to engine and back),
+    `VmAbiFixture.HeapPointerSurvivesRoundTrip` and
+    `VmAbiFixture.HighAddressSurvivesRoundTrip` (a full-width address survives
+    `VM_Call` to `vmMain` to syscall to handler and back).
+  - **Verify:** `make test CTEST_ARGS='-R VmAbi'` passes. The tests were also confirmed to fail
+    for the right reason: narrowing the return variable in `VM_Call` (`code/qcommon/vm.cpp`)
+    from `intptr_t` to `int`, which is the original defect, makes both pointer cases fail with
+    "pointer changed in the round trip" and "high address bits were lost", while the two
+    integer cases still pass. A test that cannot fail is not a test.
 
 ### Phase B2: prototype fallout
 
@@ -349,7 +371,8 @@ precedence rules. The C++ class stays as a helper for tests and future code.
 
 | Test file | Binary | Cases | Added by |
 |---|---|---|---|
-| `tests/test_vm.cpp` with `tests/vm_testmodule/tm_main.c` | `quake3_tests` | `HeapPointerSurvivesRoundTrip`, `AddCommandReturnsSum`, `MissingModuleReturnsNull` | B1 (harness in checklist 03 C6) |
+| `tests/test_vm.cpp` with `tests/vm_testmodule/tm_main.c` | `quake3_tests` | `AddCommandReturnsSum`, `SyscallArgumentAndReturnSurvive`, `HeapPointerSurvivesRoundTrip`, `HighAddressSurvivesRoundTrip` | B1.8, done 3 September 2026 |
+| `tests/engine_init.hpp` | shared helper | idempotent one-time engine initialisation; seeds the fuller fixture in checklist 03 step C1 | B1.8, done 3 September 2026 |
 | `tests/test_modern_logger.cpp` (rewrite) | `q3sys_tests` | `CapturingSinkReceivesFormattedLine`, `LevelFilterDropsInfoBelowWarning`, `LineCarriesBasenameNotAbsolutePath`, `OffMainLogIsQueuedUntilFlush`, `ErrorCompiledUnderNDEBUG` | B4 |
 | `tests/test_sys_api_boundary.cpp` | `quake3_tests` | `ThrowingScriptDoesNotTerminate`, `ShutdownIsIdempotent` | B5 |
 | `tests/test_files.cpp` | `quake3_tests` | `ReadFreeLeavesLoadStackAtZero`, `WriteFileLandsOnlyInHomePath`, `MissingDefaultCfgNamesPak0AndPaths` | B6, B8 (harness in checklist 03 C2) |
