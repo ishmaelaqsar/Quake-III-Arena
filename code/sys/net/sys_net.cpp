@@ -1,5 +1,6 @@
 #include "net_compat.h"
 #include "../sys_local.h"
+#include "../logger/logger.hpp"
 #include <string.h>
 
 extern "C" {
@@ -244,6 +245,7 @@ void NET_GetLocalAddress(void) {
 }
 
 void NET_OpenIP(void) {
+    LOG_DEBUG("NET_OpenIP: opening the UDP socket");
     cvar_t *ip;
     int port;
     int i;
@@ -263,6 +265,7 @@ void NET_OpenIP(void) {
 }
 
 void NET_Init(void) {
+    LOG_INFO("NET_Init: starting the network layer");
 #ifdef _WIN32
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -327,6 +330,7 @@ socket_t NET_IPSocket(char *net_interface, int port) {
 }
 
 void NET_Shutdown(void) {
+    LOG_INFO("NET_Shutdown: closing sockets");
     if (ip_socket != Q3_INVALID_SOCKET) {
         q3_closesocket(ip_socket);
         ip_socket = Q3_INVALID_SOCKET;

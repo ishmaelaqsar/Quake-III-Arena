@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/q_shared.h"
 #include "qcommon.h"
+#include "../sys/logger/logger.hpp"
 
 /*
 
@@ -84,6 +85,8 @@ called to open a channel to a remote system
 ==============
 */
 void Netchan_Setup( netsrc_t sock, netchan_t *chan, netadr_t adr, int qport ) {
+	LOG_DEBUG("Netchan_Setup: ", (sock == NS_CLIENT) ? "client" : "server", " channel to ",
+	          NET_AdrToString( adr ), " with qport ", qport);
 	Com_Memset (chan, 0, sizeof(*chan));
 	
 	chan->sock = sock;
@@ -355,6 +358,8 @@ qboolean Netchan_Process( netchan_t *chan, msg_t *msg ) {
 	// discard out of order or duplicated packets
 	//
 	if ( sequence <= chan->incomingSequence ) {
+		LOG_DEBUG("Netchan_Process: discarding out-of-order packet ", sequence, ", already at ",
+		          chan->incomingSequence, " from ", NET_AdrToString( chan->remoteAddress ));
 		if ( showdrop->integer || showpackets->integer ) {
 			Com_Printf( "%s:Out of order packet %i at %i\n"
 				, NET_AdrToString( chan->remoteAddress )

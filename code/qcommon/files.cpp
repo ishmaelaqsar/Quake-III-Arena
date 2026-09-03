@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/q_shared.h"
 #include "qcommon.h"
+#include "../sys/logger/logger.hpp"
 #include "unzip.h"
 #include "../sys/sys_api.h"
 
@@ -1640,6 +1641,7 @@ Filename are reletive to the quake search path
 ============
 */
 void FS_WriteFile( const char *qpath, const void *buffer, int size ) {
+	LOG_DEBUG("FS_WriteFile: ", qpath ? qpath : "(null)", ", ", size, " bytes");
 	Sys_VFS_WriteFile(qpath, buffer, size);
 
 	fileHandle_t f;
@@ -2466,6 +2468,7 @@ then loads the zip headers
 #define	MAX_PAKFILES	1024
 static void FS_AddGameDirectory( const char *path, const char *dir ) {
 	searchpath_t	*sp;
+	LOG_DEBUG("FS_AddGameDirectory: ", path, "/", dir);
 	int				i;
 	searchpath_t	*search;
 	pack_t			*pak;
@@ -2657,6 +2660,7 @@ Frees all resources and closes all files
 ================
 */
 void FS_Shutdown( qboolean closemfp ) {
+	LOG_DEBUG("FS_Shutdown: releasing ", fs_packFiles, " files in the search paths");
 	searchpath_t	*p, *next;
 	int	i;
 
@@ -3286,6 +3290,7 @@ FS_Restart
 ================
 */
 void FS_Restart( int checksumFeed ) {
+	LOG_INFO("FS_Restart: restarting the filesystem with checksum feed ", checksumFeed);
 
 	// free anything we currently have loaded
 	FS_Shutdown(qfalse);

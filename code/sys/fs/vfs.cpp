@@ -1,4 +1,5 @@
 #include "vfs.hpp"
+#include "../logger/logger.hpp"
 #include <algorithm>
 
 namespace q3::fs {

@@ -1,4 +1,5 @@
 #include "sys_local.h"
+#include "logger/logger.hpp"
 #include <SDL.h>
 #include <string.h>
 
@@ -32,6 +33,7 @@ void *Sys_LoadDll(const char *name, char *fqpath,
     }
 
     Sys_ModuleFileName(name, fname, sizeof(fname));
+    LOG_DEBUG("Sys_LoadDll: looking for ", fname);
 
     pwdpath = Sys_Cwd();
     homepath = Cvar_VariableString("fs_homepath");
@@ -49,6 +51,7 @@ void *Sys_LoadDll(const char *name, char *fqpath,
         if (libHandle) {
             break;
         }
+        LOG_DEBUG("Sys_LoadDll: not at ", fn);
         if (gamedir && gamedir[0] && Q_stricmp(gamedir, "baseq3")) {
             fn = FS_BuildOSPath(searchPaths[i], "baseq3", fname);
             libHandle = SDL_LoadObject(fn);
@@ -59,6 +62,7 @@ void *Sys_LoadDll(const char *name, char *fqpath,
     }
 
     if (!libHandle) {
+        LOG_WARN("Sys_LoadDll: ", name, " not found in any search path: ", SDL_GetError());
         Com_Printf("Sys_LoadDll(%s) failed completely: %s\n", name, SDL_GetError());
         return NULL;
     }
@@ -67,6 +71,8 @@ void *Sys_LoadDll(const char *name, char *fqpath,
     *entryPoint = (vmMainFunc_t)SDL_LoadFunction(libHandle, "vmMain");
 
     if (!*entryPoint || !dllEntry) {
+        // Usually a mangled symbol: the module was compiled as C++ without extern "C".
+        LOG_ERROR("Sys_LoadDll: ", name, " has no unmangled vmMain or dllEntry: ", SDL_GetError());
         Com_Printf("Sys_LoadDll(%s) failed finding vmMain/dllEntry: %s\n", name, SDL_GetError());
         SDL_UnloadObject(libHandle);
         return NULL;

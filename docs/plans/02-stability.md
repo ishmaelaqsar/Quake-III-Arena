@@ -235,6 +235,42 @@ quietly fell back to the install path. `tests/test_sys_paths.cpp` now asserts th
 directory exists, which is what caught it; the previous version only checked the string and hid
 the failure behind an `if (stat(...) == 0)`.
 
+- [x] **B4.3 Instrument the C++ code and write the policy.** Done on 3 September 2026, beyond the
+  original two steps, because a logger with nothing calling it does not make development easier.
+  - `docs/logging.md` is the policy: which level to use, where logging belongs, and the hot paths
+    it must stay out of. Read it before adding a line. The rule that matters is that `INFO` is
+    one line per lifecycle event and anything repeatable is `DEBUG`; the first version of this
+    layer logged at `INFO` on every cvar change and every file read, which is what made the
+    console unusable.
+  - `CMakeLists.txt` defines `Q3_LOG_STRIP_VERBOSE` for `Release` only, so a shipped build has no
+    verbose logging at all while `Debug` and `RelWithDebInfo`, which are the local default and the
+    continuous integration build type, keep it and filter at run time. Verified with `strings`
+    over `q3ded`: a `LOG_DEBUG` and a `LOG_INFO` literal are absent from a `Release` binary and
+    present in `RelWithDebInfo`, while `LOG_WARN` and `LOG_ERROR` are in both.
+  - Instrumented, at 77 call sites in total: `files.cpp` (search path assembly, restart,
+    shutdown, writes), `vm.cpp` (native module against bytecode, and the fallback), `cvar.cpp`
+    (refusals and latching, never plain sets), `cmd.cpp` (duplicate registration),
+    `common.cpp` (`Com_Error`, hunk and zone reservation), `cm_load.cpp` (map load),
+    `net_chan.cpp` (channel setup and out-of-order packets, at `DEBUG` because it is per packet),
+    and the platform layer under `code/sys`, which had none at all: `sys_dll.cpp` now reports
+    every path it tried for a module and names a mangled entry point as the likely cause when
+    the symbols are missing.
+  - Deliberately not instrumented: `msg.cpp` and `huffman.cpp`, which run per field; the
+    `cm_trace` and `cm_patch` collision paths, which run many times per frame; and every C file,
+    because the logger is a C++ header. Instrument each directory as checklist 04 converts it,
+    rather than adding a second logging idiom.
+  - A defect found while verifying: `Sys_SubsystemInit` runs before `Com_ParseCommandLine`
+    (`code/qcommon/common.cpp:2368` against `:2373`), so a `+set com_logLevel 0` on the command
+    line was not visible when the level was first applied, and the whole of start-up stayed
+    filtered. `Com_Init` now calls a new `Sys_LogApplyLevel()` after `Com_StartupVariable`, so
+    start-up itself can be traced.
+  - **Tests:** covered by the six cases in `tests/test_modern_logger.cpp` from B4.1. The
+    instrumentation itself has no unit test: the check is that the suite stays green and that a
+    `Release` binary contains no verbose literals.
+  - **Verify:** `q3ded +set com_logLevel 0` with no game data prints the home path it resolved,
+    each search path it added, the filesystem restart, the error, and the exit. The same command
+    without the cvar prints no `DEBUG` lines at all.
+
 ### Phase B5: `sys_api` hardening
 
 - [ ] **B5.1 Own the script engine.** In `code/sys/sys_api.cpp` replace the raw pointer at `:9`

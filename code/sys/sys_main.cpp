@@ -1,4 +1,5 @@
 #include "sys_local.h"
+#include "logger/logger.hpp"
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -132,6 +133,7 @@ void Sys_Print(const char *msg) {
 }
 
 void Sys_Exit(int ex) {
+    LOG_INFO("Sys_Exit: exiting with status ", ex);
     Sys_ConsoleInputShutdown();
     Sys_PlatformExit();
     SDL_Quit();
@@ -158,6 +160,7 @@ void QDECL Sys_Error(const char *error, ...) {
 }
 
 void Sys_Init(void) {
+    LOG_DEBUG("Sys_Init: registering platform cvars and starting input");
     Cmd_AddCommand("in_restart", Sys_In_Restart_f);
     Cvar_Set("arch", OS_STRING "-" ARCH_STRING);
     Cvar_Set("username", Sys_GetCurrentUser());

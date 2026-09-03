@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/q_shared.h"
 #include "qcommon.h"
+#include "../sys/logger/logger.hpp"
 #include <setjmp.h>
 #include <stdint.h>
 #ifdef _WIN32
@@ -268,6 +269,8 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	va_start (argptr,fmt);
 	vsprintf (com_errorMessage,fmt,argptr);
 	va_end (argptr);
+
+	LOG_ERROR("Com_Error: code ", code, ": ", com_errorMessage);
 
 	if ( code != ERR_DISCONNECT && code != ERR_NEED_CD ) {
 		Cvar_Set("com_errorMessage", com_errorMessage);
@@ -1380,6 +1383,7 @@ void Com_InitSmallZoneMemory( void ) {
 }
 
 void Com_InitZoneMemory( void ) {
+	LOG_DEBUG("Com_InitZoneMemory: reserving the main zone");
 	cvar_t	*cv;
 	// allocate the random block zone
 	cv = Cvar_Get( "com_zoneMegs", DEF_COMZONEMEGS, CVAR_LATCH | CVAR_ARCHIVE );
@@ -1483,6 +1487,7 @@ Com_InitZoneMemory
 =================
 */
 void Com_InitHunkMemory( void ) {
+	LOG_INFO("Com_InitHunkMemory: reserving ", Cvar_VariableIntegerValue("com_hunkMegs"), " MB");
 	cvar_t	*cv;
 	int nMinAlloc;
 	char *pMsg = NULL;
@@ -2377,6 +2382,10 @@ void Com_Init( char *commandLine ) {
 
 	// get the developer cvar set as early as possible
 	Com_StartupVariable( "developer" );
+
+	// The log level is registered in Sys_SubsystemInit, which runs before the command line is
+	// parsed, so re-read it here now that `+set com_logLevel` has been applied.
+	Sys_LogApplyLevel();
 
 	// done early so bind command exists
 	CL_InitKeyCommands();

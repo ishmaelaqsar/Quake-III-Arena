@@ -52,6 +52,14 @@ what you found, and add a replacement step. The checklist is the record of decis
   owner took during planning. Do not re-ask them. When a step needs a decision that is not
   recorded, the step names the default that the plan proceeds on.
 
+## Logging
+
+`docs/logging.md` is the policy. In short: `LOG_WARN` and `LOG_ERROR` are compiled in every build
+type, `LOG_DEBUG` and `LOG_INFO` are compiled out of `Release` only, and `com_logLevel` filters at
+run time. `INFO` is one line per lifecycle event; anything that can repeat is `DEBUG`. Nothing goes
+in per-frame or per-field code. The logger is a C++ header, so instrument each directory as
+checklist 04 converts it to C++ rather than adding a second idiom for the C files.
+
 ## Testing conventions
 
 Every checklist step that changes behaviour names its unit tests on a **Tests** line and its

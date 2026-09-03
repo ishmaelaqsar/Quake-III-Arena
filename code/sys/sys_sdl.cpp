@@ -178,7 +178,7 @@ void GLimp_Init( void ) {
     int drawableHeight = height;
     SDL_GL_GetDrawableSize(s_window, &drawableWidth, &drawableHeight);
 
-    LOG_INFO("GLimp_Init: Drawable surface dimensions: ", drawableWidth, "x", drawableHeight);
+    LOG_DEBUG("GLimp_Init: drawable surface ", drawableWidth, "x", drawableHeight);
 
     glConfig.vidWidth = drawableWidth;
     glConfig.vidHeight = drawableHeight;

@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/q_shared.h"
 #include "qcommon.h"
+#include "../sys/logger/logger.hpp"
 
 #define	MAX_CMD_BUFFER	16384
 #define	MAX_CMD_LINE	1024
@@ -555,7 +556,8 @@ void	Cmd_AddCommand( const char *cmd_name, xcommand_t function ) {
 		if ( !strcmp( cmd_name, cmd->name ) ) {
 			// allow completion-only commands to be silently doubled
 			if ( function != NULL ) {
-				Com_Printf ("Cmd_AddCommand: %s already defined\n", cmd_name);
+LOG_WARN("Cmd_AddCommand: '", cmd_name, "' is already defined; the later handler is ignored");
+			Com_Printf ("Cmd_AddCommand: %s already defined\n", cmd_name);
 			}
 			return;
 		}

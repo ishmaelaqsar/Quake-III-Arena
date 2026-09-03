@@ -29,6 +29,9 @@ float Sys_VectorNormalize(float *v);
 void Sys_CrossProduct(const float *v1, const float *v2, float *cross);
 
 // Logging wrappers
+// Re-read com_logLevel and developer. Com_Init calls this after the command line has been
+// applied, because Sys_SubsystemInit runs before the command line is parsed.
+void Sys_LogApplyLevel(void);
 void Sys_SetConsoleSink(void (*sink)(const char *msg));
 void Sys_LogDebug(const char *msg);
 void Sys_LogInfo(const char *msg);

@@ -1,4 +1,5 @@
 #include "sys_local.h"
+#include "logger/logger.hpp"
 #include <SDL.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -111,6 +112,7 @@ char *Sys_DefaultHomePath(void) {
         // Create the parents too. On macOS the path is $HOME/Library/Application Support/Quake3
         // and a single mkdir fails with ENOENT whenever an intermediate directory is absent,
         // which is any $HOME that Finder has not populated.
+        LOG_DEBUG("Sys_DefaultHomePath: ", homePath);
         if (!Sys_MkdirRecursive(homePath, 0700)) {
             Com_Printf("Sys_DefaultHomePath: Unable to create \"%s\": %s\n", homePath, strerror(errno));
             return Sys_DefaultInstallPath();

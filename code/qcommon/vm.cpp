@@ -34,6 +34,7 @@ and one exported function: Perform
 */
 
 #include "vm_local.h"
+#include "../sys/logger/logger.hpp"
 
 
 vm_t	*currentVM = NULL; // bk001212
@@ -481,12 +482,14 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 
 	if ( interpret == VMI_NATIVE ) {
 		// try to load as a system dll
+		LOG_INFO("VM_Create: ", module, " as a native module");
 		Com_Printf( "Loading dll file %s.\n", vm->name );
 		vm->dllHandle = Sys_LoadDll( module, vm->fqpath , &vm->entryPoint, VM_DllSyscall );
 		if ( vm->dllHandle ) {
 			return vm;
 		}
 
+		LOG_WARN("VM_Create: no native module for ", module, ", falling back to the bytecode virtual machine");
 		Com_Printf( "Failed to load dll, looking for qvm.\n" );
 		interpret = VMI_COMPILED;
 	}
@@ -571,6 +574,7 @@ VM_Free
 ==============
 */
 void VM_Free( vm_t *vm ) {
+	LOG_DEBUG("VM_Free: ", (vm && vm->name[0]) ? vm->name : "(unnamed)");
 
 	if ( vm->dllHandle ) {
 		Sys_UnloadDll( vm->dllHandle );

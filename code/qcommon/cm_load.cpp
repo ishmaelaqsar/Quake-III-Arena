@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // cmodel.c -- model loading
 
 #include "cm_local.h"
+#include "../sys/logger/logger.hpp"
 
 #ifdef BSPC
 
@@ -567,6 +568,7 @@ Loads in the map and all submodels
 ==================
 */
 void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
+	LOG_INFO("CM_LoadMap: ", name ? name : "(null)", clientload ? " (client load)" : "");
 	int				*buf;
 	int				i;
 	dheader_t		header;

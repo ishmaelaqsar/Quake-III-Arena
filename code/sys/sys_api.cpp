@@ -68,6 +68,12 @@ void Sys_SubsystemInit(void) {
     LOG_INFO("Sys_SubsystemInit: Mounted baseq3 into VirtualFileSystem");
 }
 
+void Sys_LogApplyLevel(void) {
+    ApplyLogLevel();
+    LOG_DEBUG("Sys_LogApplyLevel: com_logLevel is now ",
+              g_logLevelCvar ? g_logLevelCvar->integer : -1);
+}
+
 void Sys_SubsystemFrame(int msec) {
     if ((g_logLevelCvar && g_logLevelCvar->modified) ||
         (g_developerCvar && g_developerCvar->modified)) {
@@ -123,7 +129,9 @@ int Sys_VFS_ReadFile(const char *qpath, void **buffer) {
 
 void Sys_VFS_WriteFile(const char *qpath, const void *buffer, int size) {
     if (!qpath || !buffer) return;
-    LOG_INFO("Sys_VFS_WriteFile: VFS write ", qpath, " (", size, " bytes)");
+    // Per write, so DEBUG: the first version of this layer logged it at INFO, and a level of
+    // info then reported every file the engine wrote.
+    LOG_DEBUG("Sys_VFS_WriteFile: ", qpath, " (", size, " bytes)");
     q3::fs::VirtualFileSystem::instance().write_binary(
         qpath, static_cast<const uint8_t*>(buffer), static_cast<std::size_t>(size)
     );

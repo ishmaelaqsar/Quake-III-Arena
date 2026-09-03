@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/q_shared.h"
 #include "qcommon.h"
+#include "../sys/logger/logger.hpp"
 #include "../sys/sys_api.h"
 
 cvar_t		*cvar_vars;
@@ -329,12 +330,14 @@ cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force ) {
 	{
 		if (var->flags & CVAR_ROM)
 		{
+			LOG_WARN("Cvar_Set2: refused '", var_name, "' = '", value, "': read only");
 			Com_Printf ("%s is read only.\n", var_name);
 			return var;
 		}
 
 		if (var->flags & CVAR_INIT)
 		{
+			LOG_WARN("Cvar_Set2: refused '", var_name, "' = '", value, "': write protected");
 			Com_Printf ("%s is write protected.\n", var_name);
 			return var;
 		}
@@ -353,6 +356,7 @@ cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force ) {
 					return var;
 			}
 
+			LOG_INFO("Cvar_Set2: '", var_name, "' latched to '", value, "', takes effect on restart");
 			Com_Printf ("%s will be changed upon restarting.\n", var_name);
 			var->latchedString = CopyString(value);
 			var->modified = qtrue;
@@ -730,6 +734,7 @@ Resets all cvars to their hardcoded values
 ============
 */
 void Cvar_Restart_f( void ) {
+	LOG_INFO("Cvar_Restart: resetting every cvar that is not read only");
 	cvar_t	*var;
 	cvar_t	**prev;
 
