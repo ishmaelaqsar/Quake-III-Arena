@@ -27,9 +27,27 @@ set(TEST_SOURCES
     test_module_symbols.cpp
     test_sys_paths.cpp
     test_sys_net.cpp
+    test_vm.cpp
+)
+
+# Shared module that tests/test_vm.cpp loads through VM_Create to exercise the 64-bit virtual
+# machine application binary interface. It uses the same name and suffix scheme as the game
+# modules so that Sys_LoadDll finds it, and lands in <build>/tests/baseq3 so that the test can
+# point fs_basepath at <build>/tests without disturbing the real modules.
+add_library(testmodule SHARED vm_testmodule/tm_main.c)
+target_include_directories(testmodule PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../code/game
+    ${CMAKE_CURRENT_SOURCE_DIR}/../code/qcommon
+)
+set_target_properties(testmodule PROPERTIES
+    PREFIX "" OUTPUT_NAME "testmodule${Q3_ARCH}" SUFFIX "${Q3_DLL_EXT}"
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/baseq3
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/baseq3
+    C_VISIBILITY_PRESET hidden
 )
 
 add_executable(quake3_tests ${TEST_SOURCES})
+add_dependencies(quake3_tests testmodule)
 
 target_compile_definitions(quake3_tests PRIVATE
     C_ONLY

@@ -1,17 +1,13 @@
 #include <gtest/gtest.h>
 
+#include "engine_init.hpp"
 #include "q_shared.h"
 #include "qcommon.h"
 
 
 class CvarCmdFixture : public ::testing::Test {
 protected:
-    static void SetUpTestSuite() {
-        Com_InitSmallZoneMemory();
-        Cmd_Init();
-        Cvar_Init();
-        Com_InitZoneMemory();
-    }
+    static void SetUpTestSuite() { EnsureEngineInitialised(); }
 };
 
 TEST_F(CvarCmdFixture, CvarGetAndSet) {
