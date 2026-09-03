@@ -3,6 +3,7 @@
 #include "sys_local.h"
 #include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/select.h>
 #include <sys/time.h>
@@ -123,6 +124,7 @@ void Sys_ConsoleInputInit(void) {
         tc.c_cc[VMIN] = 1;
         tc.c_cc[VTIME] = 0;
         tcsetattr(0, TCSADRAIN, &tc);
+        fcntl(0, F_SETFL, fcntl(0, F_GETFL, 0) | O_NONBLOCK);
         ttycon_on = qtrue;
     } else {
         ttycon_on = qfalse;
@@ -133,6 +135,7 @@ void Sys_ConsoleInputShutdown(void) {
     if (ttycon_on) {
         Com_Printf("Shutdown tty console\n");
         tcsetattr(0, TCSADRAIN, &tty_tc);
+        fcntl(0, F_SETFL, fcntl(0, F_GETFL, 0) & ~O_NONBLOCK);
         ttycon_on = qfalse;
     }
 }
