@@ -533,25 +533,25 @@ set(CGAME_SOURCES
     code/game/bg_misc.cpp
     code/game/bg_pmove.cpp
     code/game/bg_slidemove.cpp
-    code/cgame/cg_consolecmds.c
-    code/cgame/cg_draw.c
-    code/cgame/cg_drawtools.c
-    code/cgame/cg_effects.c
-    code/cgame/cg_ents.c
-    code/cgame/cg_event.c
-    code/cgame/cg_info.c
-    code/cgame/cg_localents.c
-    code/cgame/cg_main.c
-    code/cgame/cg_marks.c
-    code/cgame/cg_players.c
-    code/cgame/cg_playerstate.c
-    code/cgame/cg_predict.c
-    code/cgame/cg_scoreboard.c
-    code/cgame/cg_servercmds.c
-    code/cgame/cg_snapshot.c
-    code/cgame/cg_syscalls.c
-    code/cgame/cg_view.c
-    code/cgame/cg_weapons.c
+    code/cgame/cg_consolecmds.cpp
+    code/cgame/cg_draw.cpp
+    code/cgame/cg_drawtools.cpp
+    code/cgame/cg_effects.cpp
+    code/cgame/cg_ents.cpp
+    code/cgame/cg_event.cpp
+    code/cgame/cg_info.cpp
+    code/cgame/cg_localents.cpp
+    code/cgame/cg_main.cpp
+    code/cgame/cg_marks.cpp
+    code/cgame/cg_players.cpp
+    code/cgame/cg_playerstate.cpp
+    code/cgame/cg_predict.cpp
+    code/cgame/cg_scoreboard.cpp
+    code/cgame/cg_servercmds.cpp
+    code/cgame/cg_snapshot.cpp
+    code/cgame/cg_syscalls.cpp
+    code/cgame/cg_view.cpp
+    code/cgame/cg_weapons.cpp
     code/game/q_math.cpp
     code/game/q_shared.cpp
 )
