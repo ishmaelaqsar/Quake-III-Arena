@@ -46,8 +46,9 @@ what you found, and add a replacement step. The checklist is the record of decis
   headings. Do not write "simply", "just", "easy", or "obvious". Write "might" for possibility
   and keep "may" for permission. Spell out an abbreviation the first time you use it. Use the
   serial comma. Do not use exclamation marks. Code comments explain why, not what.
-- **Commit messages.** When an agent commits, the message ends with the line
-  `Co-Authored-By: Claude <noreply@anthropic.com>`.
+- **Commit messages.** One line. Say what the commit does, in the imperative. No body, and no
+  attribution trailer of any kind. The reasoning belongs on the checklist step, which is the
+  record that survives; a commit body duplicates it and then drifts from it.
 - **Owner decisions are final.** The **Owner decisions** section records every decision the
   owner took during planning. Do not re-ask them. When a step needs a decision that is not
   recorded, the step names the default that the plan proceeds on.
