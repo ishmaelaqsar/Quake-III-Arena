@@ -8,6 +8,7 @@
 #include "zip_writer.hpp"
 #include "q_shared.h"
 #include "qcommon.h"
+#include "threading/job_system.hpp"
 
 namespace {
 
@@ -163,4 +164,67 @@ TEST_F(FilesFixture, PakOrderIsDeterministic) {
     EXPECT_NE(names.find("pak1"), std::string::npos);
     EXPECT_NE(names.find("aaa"), std::string::npos);
     EXPECT_NE(names.find("zzz"), std::string::npos);
+}
+
+TEST(Files, PakOrderAndChecksumsStable) {
+    q3::test::EnsureEngineInitialised();
+    q3::test::TempDir temp_dir;
+    Cvar_Set("fs_basepath", temp_dir.string().c_str());
+    Cvar_Set("fs_homepath", temp_dir.string().c_str());
+    Cvar_Set("fs_cdpath", temp_dir.string().c_str());
+
+    for (int i = 0; i < 8; ++i) {
+        std::vector<q3::test::ZipEntry> files = {
+            {"conflict.txt", "conflict-from-pak" + std::to_string(i)},
+            {"unique" + std::to_string(i) + ".txt", "unique-data-" + std::to_string(i)}
+        };
+        if (i == 0) {
+            files.push_back({"default.cfg", "pak-default"});
+            files.push_back({"productid.txt", "quake3"});
+        }
+        std::string pak_data = q3::test::write_zip(files);
+        temp_dir.write("baseq3/pak" + std::to_string(i) + ".pk3", pak_data);
+    }
+
+    // 1. Single-threaded load
+    q3::threading::JobSystem::instance().resize(1);
+    FS_InitFilesystem();
+
+    std::string single_names = FS_LoadedPakNames();
+    std::string single_checksums = FS_LoadedPakChecksums();
+    std::string single_pure_checksums = FS_LoadedPakPureChecksums();
+
+    void *buf1 = nullptr;
+    int len1 = FS_ReadFile("conflict.txt", &buf1);
+    ASSERT_GT(len1, 0);
+    std::string single_conflict((char *)buf1, len1);
+    FS_FreeFile(buf1);
+
+    // 2. Multi-threaded load
+    q3::threading::JobSystem::instance().resize(8);
+    FS_Restart(0);
+
+    std::string multi_names = FS_LoadedPakNames();
+    std::string multi_checksums = FS_LoadedPakChecksums();
+    std::string multi_pure_checksums = FS_LoadedPakPureChecksums();
+
+    void *buf2 = nullptr;
+    int len2 = FS_ReadFile("conflict.txt", &buf2);
+    ASSERT_GT(len2, 0);
+    std::string multi_conflict((char *)buf2, len2);
+    FS_FreeFile(buf2);
+
+    // Assert parity between single-threaded and multi-threaded
+    EXPECT_EQ(single_names, multi_names);
+    EXPECT_EQ(single_checksums, multi_checksums);
+    EXPECT_EQ(single_pure_checksums, multi_pure_checksums);
+    EXPECT_EQ(single_conflict, multi_conflict);
+
+    // Precedence: pak7 must override pak0..pak6
+    EXPECT_EQ(multi_conflict, "conflict-from-pak7");
+    EXPECT_EQ(multi_names.substr(0, 4), "pak7");
+
+    // Clean up
+    FS_Shutdown(qtrue);
+    q3::threading::JobSystem::instance().resize(0);
 }

@@ -8,7 +8,7 @@ system runs background work, and a dedicated render backend thread executes the 
 lists. The render thread revives the id `r_smp` design correctly and maps onto the Vulkan backend
 planned in checklist 09.
 
-**Status:** In progress. Phases T1 and T2a.1 complete on 4 September 2026 (thread identity, affinity asserts, main-thread queue, logger hook, interim HTTP worker fix, threading docs, sanitizer presets, JobSystem core). Next: Phase T2a.2 (parallel pk3 indexing).
+**Status:** In progress. Phases T1, T2a.1, and T2a.2 complete on 4 September 2026. Next: Phase T2a.3 (asynchronous screenshot encode).
 
 ## Prerequisites
 
@@ -176,7 +176,7 @@ New files: `code/sys/threading/job_system.hpp`, `job_system.cpp`, `tests/test_jo
   (pending jobs, `shutdown()` returns within 2 s).
   **Verify:** `ctest -R Jobs`; TSan build clean.
 
-- [ ] **T2a.2 Parallel pk3 indexing.** Split `FS_LoadZipFile` into a pure
+- [x] **T2a.2 Parallel pk3 indexing.** Done on 4 September 2026. Split `FS_LoadZipFile` into a pure
   `FS_ScanZipFile(const char* ospath, zipIndex_t* out)` that opens its own `unzFile`, walks the
   central directory, collects `{name, pos, crc, uncompressed_size}` and the total name length, and
   keeps the `unzFile` open in `out`; and a main-only `FS_BuildPackFromIndex(zipIndex_t*,

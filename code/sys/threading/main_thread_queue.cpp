@@ -88,14 +88,14 @@ void MainThreadQueue::drain(std::chrono::milliseconds budget) {
             }
         }
 
-        if (has_budget && (std::chrono::steady_clock::now() - start_time) >= budget) {
-            return;
-        }
-
         auto task = std::move(pending_reliable_.front());
         pending_reliable_.pop_front();
         if (task) {
             task();
+        }
+
+        if (has_budget && (std::chrono::steady_clock::now() - start_time) >= budget) {
+            return;
         }
     }
 }

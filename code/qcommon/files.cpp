@@ -32,7 +32,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../game/q_shared.h"
 #include "qcommon.h"
 #include "../sys/logger/logger.hpp"
+#include "threading/job_system.hpp"
 #include "unzip.h"
+
+#include <string>
+#include <vector>
 
 /*
 =============================================================================
@@ -1677,59 +1681,98 @@ ZIP FILE LOADING
 ==========================================================================
 */
 
-/*
-=================
-FS_LoadZipFile
+struct zipFileEntry_t {
+	char			name[MAX_ZPATH];
+	unsigned long	pos;
+	unsigned long	crc;
+	unsigned long	uncompressed_size;
+};
 
-Creates a new pak_t in the search chain for the contents
-of a zip file.
-=================
-*/
-static pack_t *FS_LoadZipFile( char *zipfile, const char *basename )
-{
+struct zipIndex_t {
+	unzFile						uf{nullptr};
+	char						ospath[MAX_OSPATH]{};
+	int							numfiles{0};
+	int							totalNameLen{0};
+	std::vector<zipFileEntry_t>	entries;
+	qboolean					valid{qfalse};
+};
+
+static qboolean FS_ScanZipFile( const char *ospath, zipIndex_t *out ) {
+	unzFile			uf;
+	unz_global_info	gi;
+	unz_file_info	file_info;
+	char			filename_inzip[MAX_ZPATH];
+	int				err, i;
+
+	if ( !out ) return qfalse;
+	out->uf = nullptr;
+	out->ospath[0] = '\0';
+	out->numfiles = 0;
+	out->totalNameLen = 0;
+	out->entries.clear();
+	out->valid = qfalse;
+
+	uf = unzOpen( ospath );
+	if ( !uf ) return qfalse;
+
+	err = unzGetGlobalInfo( uf, &gi );
+	if ( err != UNZ_OK ) {
+		unzClose( uf );
+		return qfalse;
+	}
+
+	out->uf = uf;
+	Q_strncpyz( out->ospath, ospath, sizeof(out->ospath) );
+	out->numfiles = gi.number_entry;
+	out->totalNameLen = 0;
+	out->entries.reserve( gi.number_entry );
+
+	unzGoToFirstFile( uf );
+	for ( i = 0 ; i < gi.number_entry ; i++ ) {
+		err = unzGetCurrentFileInfo( uf, &file_info, filename_inzip, sizeof(filename_inzip), NULL, 0, NULL, 0 );
+		if ( err != UNZ_OK ) {
+			break;
+		}
+		Q_strlwr( filename_inzip );
+
+		zipFileEntry_t e;
+		Q_strncpyz( e.name, filename_inzip, sizeof(e.name) );
+		e.pos = 0;
+		e.crc = file_info.crc;
+		e.uncompressed_size = file_info.uncompressed_size;
+		unzGetCurrentFileInfoPosition( uf, &e.pos );
+
+		out->totalNameLen += strlen( filename_inzip ) + 1;
+		out->entries.push_back( e );
+
+		unzGoToNextFile( uf );
+	}
+
+	out->valid = qtrue;
+	return qtrue;
+}
+
+static pack_t *FS_BuildPackFromIndex( zipIndex_t *index, const char *basename ) {
 	fileInPack_t	*buildBuffer;
 	pack_t			*pack;
-	unzFile			uf;
-	int				err;
-	unz_global_info gi;
-	char			filename_inzip[MAX_ZPATH];
-	unz_file_info	file_info;
-	int				i, len;
+	int				i;
 	long			hash;
-	int				fs_numHeaderLongs;
+	int				fs_numHeaderLongs = 0;
 	int				*fs_headerLongs;
 	char			*namePtr;
 
-	fs_numHeaderLongs = 0;
-
-	uf = unzOpen(zipfile);
-	err = unzGetGlobalInfo (uf,&gi);
-
-	if (err != UNZ_OK)
+	if ( !index || !index->valid || !index->uf ) {
 		return NULL;
-
-	fs_packFiles += gi.number_entry;
-
-	len = 0;
-	unzGoToFirstFile(uf);
-	for (i = 0; i < gi.number_entry; i++)
-	{
-		err = unzGetCurrentFileInfo(uf, &file_info, filename_inzip, sizeof(filename_inzip), NULL, 0, NULL, 0);
-		if (err != UNZ_OK) {
-			break;
-		}
-		len += strlen(filename_inzip) + 1;
-		unzGoToNextFile(uf);
 	}
 
-	buildBuffer = (fileInPack_t *)Z_Malloc( (gi.number_entry * sizeof( fileInPack_t )) + len );
-	namePtr = ((char *) buildBuffer) + gi.number_entry * sizeof( fileInPack_t );
-	fs_headerLongs = (int *)Z_Malloc( gi.number_entry * sizeof(int) );
+	fs_packFiles += index->numfiles;
 
-	// get the hash table size from the number of files in the zip
-	// because lots of custom pk3 files have less than 32 or 64 files
+	buildBuffer = (fileInPack_t *)Z_Malloc( (index->numfiles * sizeof( fileInPack_t )) + index->totalNameLen );
+	namePtr = ((char *) buildBuffer) + index->numfiles * sizeof( fileInPack_t );
+	fs_headerLongs = (int *)Z_Malloc( index->numfiles * sizeof(int) );
+
 	for (i = 1; i <= MAX_FILEHASH_SIZE; i <<= 1) {
-		if (i > gi.number_entry) {
+		if (i > index->numfiles) {
 			break;
 		}
 	}
@@ -1741,38 +1784,30 @@ static pack_t *FS_LoadZipFile( char *zipfile, const char *basename )
 		pack->hashTable[i] = NULL;
 	}
 
-	Q_strncpyz( pack->pakFilename, zipfile, sizeof( pack->pakFilename ) );
+	Q_strncpyz( pack->pakFilename, index->ospath, sizeof( pack->pakFilename ) );
 	Q_strncpyz( pack->pakBasename, basename, sizeof( pack->pakBasename ) );
 
-	// strip .pk3 if needed
 	if ( strlen( pack->pakBasename ) > 4 && !Q_stricmp( pack->pakBasename + strlen( pack->pakBasename ) - 4, ".pk3" ) ) {
 		pack->pakBasename[strlen( pack->pakBasename ) - 4] = 0;
 	}
 
-	pack->handle = uf;
-	pack->numfiles = gi.number_entry;
-	unzGoToFirstFile(uf);
+	pack->handle = index->uf;
+	index->uf = NULL;
+	pack->numfiles = index->numfiles;
 
-	for (i = 0; i < gi.number_entry; i++)
-	{
-		err = unzGetCurrentFileInfo(uf, &file_info, filename_inzip, sizeof(filename_inzip), NULL, 0, NULL, 0);
-		if (err != UNZ_OK) {
-			break;
+	for ( i = 0 ; i < (int)index->entries.size() ; i++ ) {
+		const auto &entry = index->entries[i];
+		if ( entry.uncompressed_size > 0 ) {
+			fs_headerLongs[fs_numHeaderLongs++] = LittleLong( entry.crc );
 		}
-		if (file_info.uncompressed_size > 0) {
-			fs_headerLongs[fs_numHeaderLongs++] = LittleLong(file_info.crc);
-		}
-		Q_strlwr( filename_inzip );
-		hash = FS_HashFileName(filename_inzip, pack->hashSize);
+		hash = FS_HashFileName( entry.name, pack->hashSize );
 		buildBuffer[i].name = namePtr;
-		strcpy( buildBuffer[i].name, filename_inzip );
-		namePtr += strlen(filename_inzip) + 1;
-		// store the file position in the zip
-		unzGetCurrentFileInfoPosition(uf, &buildBuffer[i].pos);
-		//
+		strcpy( buildBuffer[i].name, entry.name );
+		namePtr += strlen( entry.name ) + 1;
+		buildBuffer[i].pos = entry.pos;
+
 		buildBuffer[i].next = pack->hashTable[hash];
 		pack->hashTable[hash] = &buildBuffer[i];
-		unzGoToNextFile(uf);
 	}
 
 	pack->checksum = Com_BlockChecksum( fs_headerLongs, 4 * fs_numHeaderLongs );
@@ -1780,9 +1815,31 @@ static pack_t *FS_LoadZipFile( char *zipfile, const char *basename )
 	pack->checksum = LittleLong( pack->checksum );
 	pack->pure_checksum = LittleLong( pack->pure_checksum );
 
-	Z_Free(fs_headerLongs);
+	Z_Free( fs_headerLongs );
 
 	pack->buildBuffer = buildBuffer;
+	return pack;
+}
+
+/*
+=================
+FS_LoadZipFile
+
+Creates a new pak_t in the search chain for the contents
+of a zip file.
+=================
+*/
+static pack_t *FS_LoadZipFile( const char *zipfile, const char *basename )
+{
+	zipIndex_t index;
+	if ( !FS_ScanZipFile( zipfile, &index ) ) {
+		return NULL;
+	}
+	pack_t *pack = FS_BuildPackFromIndex( &index, basename );
+	if ( !pack && index.uf ) {
+		unzClose( index.uf );
+		index.uf = NULL;
+	}
 	return pack;
 }
 
@@ -2517,10 +2574,30 @@ static void FS_AddGameDirectory( const char *path, const char *dir ) {
 
 	qsort( sorted, numfiles, sizeof( sorted[0] ), paksort );
 
+	std::vector<std::string> pakPaths( numfiles );
+	std::vector<zipIndex_t> indices( numfiles );
+	std::vector<q3::threading::JobHandle> scanJobs( numfiles );
+
 	for ( i = 0 ; i < numfiles ; i++ ) {
 		pakfile = FS_BuildOSPath( path, dir, sorted[i] );
-		if ( ( pak = FS_LoadZipFile( pakfile, sorted[i] ) ) == 0 )
+		pakPaths[i] = pakfile;
+		scanJobs[i] = q3::threading::JobSystem::instance().dispatch(
+			q3::threading::Priority::High,
+			[&indices, i, pathStr = pakPaths[i]]() {
+				FS_ScanZipFile( pathStr.c_str(), &indices[i] );
+			}
+		);
+	}
+
+	for ( i = 0 ; i < numfiles ; i++ ) {
+		scanJobs[i].wait();
+		if ( ( pak = FS_BuildPackFromIndex( &indices[i], sorted[i] ) ) == 0 ) {
+			if ( indices[i].uf ) {
+				unzClose( indices[i].uf );
+				indices[i].uf = NULL;
+			}
 			continue;
+		}
 		// store the game name for downloading
 		strcpy(pak->pakGamename, dir);
 

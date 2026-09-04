@@ -124,9 +124,11 @@ JobHandle JobSystem::dispatch(Priority priority,
     }
 
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock<std::mutex> lock(mutex_);
         if (!initialized_) {
+            lock.unlock();
             init(0);
+            lock.lock();
         }
         queues_[prio_idx].push_back(std::move(item));
         cv_.notify_one();
