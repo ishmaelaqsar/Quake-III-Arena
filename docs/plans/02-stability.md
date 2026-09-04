@@ -8,7 +8,7 @@ the `sys_api` boundary, the VFS hook that bypasses the file system, the busy-wai
 the hostile first-run message, and the CD key and authorize server gates that no longer serve
 a purpose in a GPL build.
 
-**Status:** Complete. Phases B1 through B10 complete on 3 September 2026 (64-bit VM ABI, prototypes, signals, logger, sys_api boundary, VFS hooks removed, frame pacing and monotonic clock, first-run pak diagnostics, CD key and authorize server removed; master server pointer noted for checklist 08).
+**Status:** In progress, reopened on 4 September 2026. Phases B1 through B10 were ticked on 3 September 2026, and the audit that day found step B5.2 not done: `Sys_SubsystemShutdown` exists but the engine never calls it. B5.2 is unticked. B2.1, B3.2, B4.1, and B7.3 stay ticked with deviations recorded in place. Do not delete this file until B5.2 closes. Originally: phases B1 through B10 complete on 3 September 2026 (64-bit VM ABI, prototypes, signals, logger, sys_api boundary, VFS hooks removed, frame pacing and monotonic clock, first-run pak diagnostics, CD key and authorize server removed; master server pointer noted for checklist 08).
 
 ## Prerequisites
 
@@ -131,7 +131,12 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
 
 ### Phase B2: prototype fallout
 
-- [x] **B2.1 Fix every implicit declaration.** Done on 2 September 2026. With `-Werror=implicit-function-declaration`
+- [x] **B2.1 Fix every implicit declaration.** Done on 2 September 2026, with two gaps recorded
+  on 4 September 2026. First, **`-Werror=return-type` was never added**, though this step's
+  verify line and this checklist's done criteria both name it. Second, the three `-Werror=`
+  flags that did land (`CMakeLists.txt:34-36`) are gated `$<$<COMPILE_LANGUAGE:C>>`, and
+  checklist 04 has since made almost all of `code/` C++, so they no longer cover the code they
+  were added to protect. Re-scope them to both languages, or record why not. With `-Werror=implicit-function-declaration`
   (checklist 01 A3.6) active, build and fix each error. Expected sites: add
   `#include "../sys/sys_api.h"` at `code/server/sv_init.c:362` (`Sys_ScriptEvent`) and
   `code/client/cl_main.c:1379` (`Sys_SanitizeDownloadFilename`); remove hand-written externs at
@@ -157,7 +162,12 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
   `code/qcommon/common.c` that calls `Com_Quit_f()` when the flag is set. Delete
   `floating_point_exception_handler` (`code/unix/unix_main.c:457-460`) and its `signal(SIGFPE,
   ...)` call. Delete `code/unix/linux_signals.c` if checklist 01 A4.10 has not already.
-- [x] **B3.2 Install a Windows handler.** Done on 3 September 2026. In `code/sys/sys_win32.cpp` `Sys_InitSignals` calls
+- [x] **B3.2 Install a Windows handler.** Done on 3 September 2026. **Amended 4 September
+  2026: the minidump half is absent and stays absent.** There is no `Q3_MINIDUMP` option and no
+  `MiniDumpWriteDump` call anywhere. That matches owner decision 8 in `docs/plans/README.md`
+  ("Windows crash handling shows a message box only, no minidumps unless asked") and
+  contradicts the local decision recorded in this file's own decisions section, which is
+  therefore struck. The message box is the whole feature. In `code/sys/sys_win32.cpp` `Sys_InitSignals` calls
   `SetUnhandledExceptionFilter` with a filter that calls `Sys_ReleaseDisplay()`, shows
   `MessageBoxA` with the exception code and address, writes an optional minidump through
   `MiniDumpWriteDump` when `Q3_MINIDUMP` is defined (CMake option, default `OFF`), and returns
@@ -185,7 +195,16 @@ and `void dllEntry(intptr_t (QDECL *syscallptr)(intptr_t, ...))`. Engine syscall
 
 ### Phase B4: logger
 
-- [x] **B4.1 Rewrite `code/sys/logger/logger.hpp`.** Done on 3 September 2026. Keep it header-only. Add
+- [x] **B4.1 Rewrite `code/sys/logger/logger.hpp`.** Done on 3 September 2026, with two
+  deviations recorded on 4 September 2026. Cosmetic: the formatting buffer is a reused
+  `thread_local std::ostringstream` (`logger.hpp:89-94`), not the `std::string` this step names.
+  Substantive: the off-main path (`logger.hpp:127-143`) hands lines to checklist 05's
+  `MainThreadQueue` through a `static char s_log_pool[1024][512]` indexed by a
+  `memory_order_relaxed` `fetch_add` modulo the pool size, so **a slot can be overwritten by
+  another producer before the main thread drains it**, and a line over 511 characters is
+  `strncpy`-truncated with no marker. Both are follow-ons, not regressions of what this step
+  asked for; the bounded-queue behaviour it did ask for is covered by
+  `test_modern_logger.cpp:117`. Keep it header-only. Add
   `std::atomic<Level> min_level_` with `set_level()` and `level()`; `log()` returns before any
   formatting when `level < min_level_`. Guard output and the sink with a `std::mutex`. Strip
   `__FILE__` to its basename with a `constexpr std::string_view basename(std::string_view)`
@@ -277,9 +296,21 @@ the failure behind an `if (stat(...) == 0)`.
   with `static std::unique_ptr<q3::scripting::ScriptEngine> g_scriptEngine;` created inside
   `try { ... } catch (const std::exception &e) { Com_Printf("^1Scripting disabled: %s\n",
   e.what()); }` in `Sys_SubsystemInit`.
-- [x] **B5.2 Add `Sys_SubsystemShutdown`.** Done on 3 September 2026. Declare it in `code/sys/sys_api.h`; it cancels the
+- [ ] **B5.2 Add `Sys_SubsystemShutdown`.** Declare it in `code/sys/sys_api.h`; it cancels the
   downloader, resets the script engine, and flushes the logger queue. Call it from
   `Com_Shutdown` in `code/qcommon/common.c`. Checklist 05 T5 extends the order.
+
+  **Unticked on 4 September 2026. The second half was never done.** The function is declared at
+  `code/sys/sys_api.h:17` and defined at `code/sys/sys_api.cpp:79-87`, and **nothing in the
+  engine calls it**: `Com_Shutdown` (`code/qcommon/common.cpp:2783-2794`) closes `logfile` and
+  `com_journalFile` and returns. The only caller in the tree is
+  `tests/test_sys_api_boundary.cpp:17`, so the test passes while the product path is dead. At
+  exit the download is not cancelled, the script engine is not reset, the `JobSystem` started in
+  `Sys_SubsystemInit` is never shut down, and queued log lines are lost.
+  **Tests:** a case that drives the engine shutdown path and asserts the subsystems came down,
+  not one that calls `Sys_SubsystemShutdown` directly. The existing direct-call case is what hid
+  this.
+  **Verify:** `grep -rn Sys_SubsystemShutdown code/` shows a call in `common.cpp`.
 - [x] **B5.3 Add the exception boundary.** Done on 3 September 2026. In `code/sys/sys_api.h` define:
   ```c
   #define Q3_NOEXCEPT_BOUNDARY(body) \
@@ -356,7 +387,16 @@ precedence rules. The C++ class stays as a helper for tests and future code.
   open. `NET_Sleep(0)` on the client falls through to `Sys_Sleep(0)`, which yields.
   `SV_Frame`'s dedicated sleep at `code/server/sv_main.c:784` is unchanged and now uses the
   same path.
-- [x] **B7.3 Confirm the monotonic clock.** Done on 3 September 2026. `Sys_Milliseconds` from checklist 01 A4.2 uses
+- [x] **B7.3 Confirm the monotonic clock.** Done on 3 September 2026 in the engine, but
+  **recorded 4 September 2026: the tests do not exercise it.**
+  `tests/test_platform_stubs.cpp:18-30` still stubs `Sys_Milliseconds` and `Sys_Sleep`, and
+  `code/sys/sys_main.cpp` is not in `TEST_PLATFORM_SOURCES` (`tests/CMakeLists.txt:1-5`), so
+  `SysTime.MillisecondsNeverDecreases` and `SysTime.SleepAdvancesClock` validate
+  `std::chrono::steady_clock`, not the SDL clock this step landed. `sys_main.cpp` carries
+  `main()`, so it cannot be linked into a test binary as it stands. Fix by extracting the two
+  clock functions into their own translation unit and adding it to `TEST_PLATFORM_SOURCES`;
+  until then only `SysTime.NetSleepZeroReturns` touches real code. Checklist 03 step C1.2 has
+  the same note, because it was meant to delete that stub. `Sys_Milliseconds` from checklist 01 A4.2 uses
   `SDL_GetPerformanceCounter`. Confirm no caller depends on wall-clock alignment (grep
   `Sys_Milliseconds` in `code/`); none should.
   - **Tests:** `tests/test_sys_time.cpp` (binary `quake3_tests`). Cases:
@@ -435,7 +475,7 @@ precedence rules. The C++ class stays as a helper for tests and future code.
 | `tests/test_files.cpp` | `quake3_tests` | `ReadFreeLeavesLoadStackAtZero`, `WriteFileLandsOnlyInHomePath`, `MissingDefaultCfgNamesPak0AndPaths` | B6, B8 (harness in checklist 03 C2) |
 | `tests/test_modern_fs.cpp` (rewrite) | `q3sys_tests` | `WriteRejectsParentTraversal`, `WriteRejectsAbsolutePath`, `WriteInsideMountSucceeds` | B6 |
 | `tests/test_sys_time.cpp` | `quake3_tests` | `MillisecondsNeverDecreases`, `SleepAdvancesClock`, `NetSleepZeroReturns` | B7 |
-| `tests/test_server_challenge.cpp` | `quake3_tests` | `AnswersImmediatelyWithoutAuthorize` (optional, see B9) | B9 |
+| ~~`tests/test_server_challenge.cpp`~~ | | Struck on 4 September 2026: never written, and B9 makes it optional | B9 |
 
 ## Out of scope
 
@@ -466,6 +506,15 @@ precedence rules. The C++ class stays as a helper for tests and future code.
   reads.
 - Every row of the test map exists and passes under `ctest --preset dev` and
   `ctest --preset asan`; the logger test also passes under `ctest --preset release`.
+  **Amended 4 September 2026, because this criterion is false as written on two counts.**
+  `tests/test_server_challenge.cpp` does not exist; step B9's own text makes it optional, so the
+  test-map row is struck rather than the step unticked. And there is no `release` **test**
+  preset: `CMakePresets.json` defines a configure preset named `release` but its `testPresets`
+  block has only `dev`, `debug`, `asan`, `tsan`, and `mingw`, so the logger's stated
+  release-build gate cannot be run as named. Every continuous integration leg builds
+  `RelWithDebInfo`, which does define `NDEBUG`, so the behaviour is covered; no leg builds with
+  `Q3_LOG_STRIP_VERBOSE`, which is what the criterion actually cares about. Either add the test
+  preset or restate the criterion in terms of `Q3_LOG_STRIP_VERBOSE`.
 
 ## Last step
 

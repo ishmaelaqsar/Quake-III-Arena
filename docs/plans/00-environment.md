@@ -7,7 +7,7 @@ every other checklist uses. After this checklist, an agent builds, tests, and re
 headless on the owner's machine without installing anything on the host, and the same image runs
 the Linux legs in CI.
 
-**Status:** In progress. Steps 1, 2, 3, 4, 5, and 6 done on 2 September 2026 (image, compose file, Makefile, smoke scripts, pixel gate, CI workflow, building doc). Steps 7 and 8 (MinGW cross image, native macOS targets) added on 2 September 2026; 8 done, 7 needs verification on the Linux machine with Docker. Open: 3b golden image, 7.
+**Status:** In progress. Steps 1, 2, 3, 4, 5, 6, and 8 done on 2 and 3 September 2026 (image, compose file, Makefile, smoke scripts, pixel gate, CI workflow, building doc, native macOS targets). Steps 3c, 3d, 3e, 9, and 10 added on 4 September 2026 after the audit: the smoke harness needs adapting to the OpenArena data set, gate G1 becomes a `workflow_dispatch`-only job with Workload Identity Federation, the architecture question behind owner decision 18 needs answering, and the ThreadSanitizer leg and the sanitizer option conflict are still open. Step 3b is rewritten, because the baseline it was meant to produce before checklist 04 phase P1 can no longer be recovered. Open: 3b, 3c, 3d, 3e, 7, 9, 10.
 
 ## Prerequisites
 
@@ -148,19 +148,121 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
   count and exit 1 (proves the gate detects change); restore the script. `make bot-match`
   prints `pass`.
 
-- [ ] **3b. Produce the first golden image.** Still open on 3 September 2026, now blocked only
-  on game data. Checklist 01 is complete and the tree builds and links, but the machine used so
-  far has no `pak0.pk3`, so `make smoke` stops with `no pak0.pk3 in /paks` (exit code 2). Run
-  this on the Linux machine: put the retail paks in `docker/paks/` or set `Q3_PAKS`, run
-  `make smoke-update-golden`, inspect `ci/smoke/out/smoke.png`, then commit
-  `ci/smoke/golden/smoke.tga` and `.png` with a message that says which build produced them.
-  Until this lands, no rename in checklist 04 has a pixel baseline, so do it before phase P1
-  step P1.2. Original note: blocked on checklist 01 (the tree does not build
-  yet) and owned by checklist `04-cxx-migration.md` phase P0, which produces it from the all-C
-  tree. Until then `make smoke` exits 1.
+- [ ] **3b. Produce the first golden image.** **Rewritten on 4 September 2026.** The step said
+  *"until this lands, no rename in checklist 04 has a pixel baseline, so do it before phase P1
+  step P1.2"*. Steps P1.2 through P1.8 landed anyway, so eight C++ conversions including the
+  renderer have no pixel proof and cannot get one from this tip. That loss is recorded in
+  `04-cxx-migration.md` step P0.7 and in its done criteria. Do not treat this step as the same
+  step it was: the oracle it produces now describes the C++ tree, not the all-C tree.
+
+  The data blocker is also different from what it says. The game data is **OpenArena**, not
+  retail, held in the private bucket `ci-testing-q3-open-arena-assets`, so the harness needs
+  step 3c before it can run at all. Order: 3c, then 3d, then this step.
+
+  Produce the oracle on the Linux x86_64 runner, per owner decision 18, because the owner's
+  machine is arm64 where llvmpipe output is advisory:
+
+  ```sh
+  gh workflow run CI -R ishmaelaqsar/Quake-III-Arena -f smoke=update-golden
+  # download the smoke-test-output artifact, look at smoke.png, then commit
+  # ci/smoke/golden/smoke.tga and .png, naming the run that produced them
+  ```
+
+  **Tests:** none, because this creates the oracle.
+  **Verify:** `ci/smoke/golden/smoke.tga` and `smoke.png` are committed and a second dispatched
+  smoke run reports `0` differing pixels.
+
+- [ ] **3c. Adapt the smoke harness to the OpenArena data set (added 4 September 2026).** The
+  harness is written for id retail data and cannot run on OpenArena as it stands:
+  `ci/smoke/run_smoke.sh:90` plays `demo four`, which ships in the retail 1.32 point-release
+  paks, and `ci/smoke/run_bot_match.sh:14,51` names `q3dm7` and the bots `sarge`, `grunt`,
+  `major`, `visor`, none of which exist in OpenArena.
+
+  1. **Pin the pak set** in a new `ci/smoke/paks.manifest`: the tarball's SHA-256, the paks
+     inside it, and as provenance the upstream OpenArena URL and per-pak checksums it was built
+     from, so anyone can rebuild it without bucket access. `run_smoke.sh` verifies what it is
+     given and fails rather than comparing a frame against an oracle made from different data.
+     The set is `pak0`, `pak1-maps`, `pak2-players`, `pak4-textures`, `pak6-misc`,
+     `pak6-patch085`, `pak6-patch088`, adding `pak5-TA` only if the chosen map needs it.
+     `pak2-players-mature.pk3` is deliberately excluded: it is an alternative to
+     `pak2-players.pk3`, and with both mounted `paksort` makes the plain one win anyway.
+  2. **Record a demo and commit it.** No OpenArena demo can play: the engine loads only
+     `demos/<name>.dm_68` (`code/client/cl_main.cpp:296`, `PROTOCOL_VERSION` at
+     `code/qcommon/qcommon.h:233`) and OpenArena 0.8.x records protocol 71. Load an OpenArena
+     map, `record smoke`, run a fixed length, `stopdemo`, and commit
+     `ci/smoke/demos/smoke.dm_68`. Demo playback replays recorded snapshots, so it is
+     deterministic from then on whatever produced it. Point `smoke.cfg` at it.
+  3. **Retarget the bot match.** Move the map and the bot roster to variables with OpenArena
+     defaults, so they are one edit and not two hard-coded lists.
+  4. **Say what the data is** in `docker/paks/README.md` and `ci/smoke/README.md`. Both say
+     "retail" and "a Quake III Arena installation" and tell the reader to copy `pak0.pk3` to
+     `pak8.pk3`. Replace with the pinned set, where it comes from, and how to rebuild it from
+     upstream using the manifest.
+
+  Expect asset warnings in the log. The modules are id game logic and OpenArena replaces the
+  assets under mostly matching names; a missing asset falls back deterministically, so it does
+  not threaten the gate. Gate G1 proves this renderer's output does not change. It has never
+  proved parity with id's rendering and does not now.
+  **Tests:** none. Harness work.
+  **Verify:** `make smoke` reaches the comparison frame and exits 1 with a candidate at
+  `ci/smoke/out/smoke.png`, which is the correct "no golden yet" result and proves the harness
+  runs before any oracle exists; `make bot-match` reports four bots joined.
+
+- [ ] **3d. Make gate G1 an on-demand continuous integration job (added 4 September 2026).**
+  Owner decision, 4 September 2026: **the smoke gate runs on `workflow_dispatch` only, never on
+  push.** Move the smoke steps out of the `linux` job into their own job conditioned
+  `if: github.event_name == 'workflow_dispatch'`, the shape the MinGW leg already uses
+  (`.github/workflows/ci.yml:195`), and **delete the `skip=true` / `exit 0` branch at
+  `:87-90` and the `skip == 'false'` guard at `:98`.** On demand is a deliberate choice;
+  reporting green after skipping is not, and that branch is why eight C++ conversions landed
+  with no pixel check. When the job runs, a failed fetch, a checksum mismatch, a missing module,
+  or a missing golden must fail it.
+
+  Give the job its own configure and build rather than `needs: linux`: it reuses the cached
+  `q3-dev` image, and on an on-demand job the extra minutes cost nothing, whereas downloading
+  the `linux-binaries` artifact would need a `chmod +x` because `actions/upload-artifact` does
+  not preserve the executable bit.
+
+  Fetch the paks from the private bucket with Workload Identity Federation, so there is no
+  anonymous URL to loop and no long-lived key. Cloud Storage has no per-object rate limit and a
+  budget alert is reactive, which is why the bucket is not public. Owner setup, once: a workload
+  identity pool and an OIDC provider with issuer `https://token.actions.githubusercontent.com`,
+  mapping `google.subject = assertion.sub` and `attribute.repository = assertion.repository`,
+  **with the attribute condition `assertion.repository == 'ishmaelaqsar/Quake-III-Arena'`** —
+  without that line any repository on the internet can mint tokens against the project. Then
+  grant `roles/storage.objectViewer` on the bucket to the matching `principalSet://` member;
+  direct resource access needs no service account. Workflow side: `permissions: { contents:
+  read, id-token: write }`, `google-github-actions/auth@v2`,
+  `google-github-actions/setup-gcloud@v2`, and `gcloud storage cp`. The provider name and
+  project number are not secrets and belong in the workflow file. Authentication runs on the
+  runner before `docker run`, so no credential enters the container; the paks stay a read-only
+  mount at `/paks`. Cache the tarball with `actions/cache` keyed on the manifest.
+
+  One tarball per data set, never overwritten: upload a new dated object when the set changes,
+  because an old golden must always be able to find the bytes that produced it. The `.pk3` files
+  sit at the top level of the archive, since `run_smoke.sh:70` globs `"$PAKS"/*.pk3` flat and
+  symlinks them into `baseq3/` itself.
+
+  **The consequence, stated so nobody is surprised:** a rendering regression is caught when
+  someone dispatches the run, not at the commit that caused it. The discipline hook is the
+  checklist convention. Every step that touches the renderer names gate G1 on its **Verify**
+  line, so dispatch it before ticking such a step.
   **Tests:** none.
-  **Verify:** `ci/smoke/golden/smoke.tga` and `smoke.png` are committed and `make smoke`
-  passes.
+  **Verify:** a dispatched run authenticates, fetches, verifies the checksum, and reaches the
+  comparison; a dispatched run with the fetch broken on purpose fails the job.
+
+- [ ] **3e. Settle whether llvmpipe output is architecture-independent (added 4 September
+  2026).** This decides whether `make smoke` is a real local check or only advisory. Owner
+  decision 18 defers exactly this question: arm64 llvmpipe output is advisory "until it is shown
+  identical". With the golden produced on x86_64, a local run on the owner's arm64 machine
+  either matches it or is worthless. Produce a candidate in the container on both architectures
+  and compare.
+  - Identical: one golden gates everywhere and the question closes.
+  - Different: keep `golden/smoke-x86_64.tga` and `golden/smoke-aarch64.tga`, select by
+    `uname -m`, accept that both need regenerating when output changes by design, and record
+    which one the dispatched job is authoritative for.
+  **Tests:** none.
+  **Verify:** the answer is written into this step and into `ci/smoke/README.md`.
 
 - [x] **4. Write `ci/smp_pixel_gate.sh` (skeleton).** Done on 2 September 2026.
   Two runs of the same smoke command differ by one cvar pair given as arguments (for example
@@ -200,6 +302,34 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
   this section." Link it from the root `README.md` once checklist 10 creates that file.
   **Tests:** none, because documentation.
   **Verify:** a reader who has only this file and Docker can run `make test`.
+
+### Sanitizer and test-runner gaps, added 4 September 2026
+
+- [ ] **9. Add the ThreadSanitizer leg.** Closes `05-threading.md` step T6.1, which was meant to
+  open with phase T1. T1, T2a.1, and T2a.2 have landed, `make tsan` exists (`Makefile:88`) and
+  the `tsan` preset exists (`CMakePresets.json:58`), but no continuous integration job uses
+  them, so every "ThreadSanitizer clean" verify line in checklist 05 is unverified. Build
+  `-DQ3_SANITIZE=thread` in the container and run both test binaries.
+  **Tests:** the existing 127 cases under ThreadSanitizer.
+  **Verify:** the leg is green, or its findings are recorded as steps. The known one is the
+  unsynchronised `JobState::exception` at `code/sys/threading/job_system.cpp:211`.
+
+- [ ] **10. Fix the sanitizer option conflict and the dead test-runner arguments.**
+  - `tests/CMakeLists.txt:134-144` sets `detect_leaks=1` off Apple through the CTest
+    `ENVIRONMENT` property, which overrides the `-e ASAN_OPTIONS=detect_leaks=0` that
+    `.github/workflows/ci.yml:171-173` passes with a comment explaining that the zone and hunk
+    allocators never free at exit. CMake wins, so the documented rationale is dead. The comment
+    is right: set `detect_leaks=0` in CMake and drop the `-e`, so there is one source of truth.
+  - Add `--gtest_repeat=3` to the sanitizer leg. `03-tests.md` step C8.2 names it and it is
+    nowhere in the repository. `ctest --schedule-random` is not a substitute: repeating a case
+    is what shakes out the order and timing dependence the threading tests introduce.
+  - Drop `EXTRA_ARGS --gtest_shuffle` from `tests/CMakeLists.txt:147-148`. Under
+    `gtest_discover_tests` each case runs in its own process, so it does nothing, and the
+    convention in `docs/plans/README.md` is that `ctest --schedule-random` is the property that
+    matters.
+  **Tests:** the existing cases, repeated three times on the sanitizer leg.
+  **Verify:** `ctest` on the sanitizer leg shows each case three times; `ASAN_OPTIONS` is set in
+  exactly one place.
 
 ### Windows and macOS legs
 

@@ -7,7 +7,10 @@ build path on three platforms, record third-party licences correctly, and remove
 and debug noise. After this checklist, no document claims a feature that has no call site, and
 every new cvar has a reference entry.
 
-**Status:** Not started
+**Status:** In progress. Step 9 (stray build files and tracked binaries) done on 2 September
+2026 and verified at zero on 4 September 2026. Everything else is open. Step 8's line references
+are stale, because checklist 04 renamed the files it names from `.c` to `.cpp`. The most visible
+remaining gap is that the repository's front door is still id's 2005 `README.txt`.
 
 ## Prerequisites
 

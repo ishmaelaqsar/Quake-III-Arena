@@ -119,24 +119,57 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 
 | File | Covers | Status |
 |---|---|---|
-| `00-environment.md` | Docker image, the Makefile targets, gate G1 harness, continuous integration skeleton | In progress (Linux image, compose, Makefile, smoke scripts, pixel gate, CI skeleton, building doc, native targets done; MinGW image verification and golden image open) |
+| `00-environment.md` | Docker image, the Makefile targets, gate G1 harness, continuous integration skeleton | In progress (Linux image, compose, Makefile, smoke scripts, pixel gate, CI skeleton, building doc, native targets done; open: adapt the smoke harness to the OpenArena data set, make gate G1 a dispatch-only job with Workload Identity Federation, the golden image, the ThreadSanitizer leg, the sanitizer option conflict, MinGW verification) |
 | `01-build-portability.md` | Stray files, platform macros, CMake object libraries, platform layer under `code/sys/`, `DEDICATED` at runtime, LuaJIT, CI legs, `docs/building.md` | In progress (Phases A1-A8 complete: platform layer, CMake restructure, CI legs, build docs; MinGW cross-check open) |
-| `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | Complete (Phases B1-B10 complete) |
-| `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, replacement of vacuous tests, sanitizer CI | Complete (All phases C1-C8 complete) |
-| `04-cxx-migration.md` | Compile every directory as C++17, JPEG library swap, header close-out, idiomatic rewrites with `Com_Error` as an exception first | In progress (Phase P0 complete, P1.1-P1.8 complete) |
-| `05-threading.md` | Main-thread ownership, main-thread queue, job system, render backend thread, image precache, sound handoff, shutdown, ThreadSanitizer CI | In progress (Phases T1, T2a.1 complete) |
+| `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | In progress (B1-B10 landed; B5.2 unticked on 4 September 2026 because `Sys_SubsystemShutdown` is never called from the engine) |
+| `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, marking of vacuous tests, sanitizer CI | In progress (C1-C8 landed, 127 cases green on Linux, the sanitizer leg, and macOS; C6.2, C7.5, and C8.2 unticked on 4 September 2026, C7.6 added) |
+| `04-cxx-migration.md` | Compile every directory as C++17, JPEG library swap, header close-out, idiomatic rewrites with `Com_Error` as an exception first | In progress (P1.1-P1.8 landed on Linux, the sanitizer leg, and macOS, but **the Windows legs do not build** and none was checked against gate G1; phase P1.W added for the Windows fallout; P0.7 rewritten) |
+| `05-threading.md` | Main-thread ownership, main-thread queue, job system, render backend thread, image precache, sound handoff, shutdown, ThreadSanitizer CI | In progress (T1, T2a.1, T2a.2 complete, with deviations recorded on T1.3, T1.6, and T2a.1; no ThreadSanitizer leg yet, so every TSan verify line is unverified) |
 | `06-networking.md` | UDP download restore, `sv_dlURL`, download policy, libcurl downloader, allowlist, client state machine, Discord IPC, bitstream facade, netchan loopback test, session slots | In progress (N1.1 UDP download restored) |
-| `07-scripting.md` | Lua sandbox, `q3` API, events and game syscall, script loading, console commands | Not started |
-| `08-renderer-ui.md` | Extension detection, gamma, VSync, mode table, resize and high-DPI, MSAA and anisotropy, VBO ring, GLSL programs, immediate-mode removal, core profile, FBO post-pass, HUD, pillarbox, console scale, video menu, mouse and controller, master servers, Hor+ FOV | Not started |
-| `09-vulkan.md` | Backend vtable seams, milestones M0 to M4, MoltenVK, honest cost | Not started |
-| `10-docs-hygiene.md` | Root README, third-party licences, docs rewrite, cvar reference, changelog, doc comments, formatting configuration, debug prints, stray files | Not started |
+| `07-scripting.md` | Lua sandbox, `q3` API, events and game syscall, script loading, console commands | Not started, and **an unsandboxed interpreter ships today**: `code/sys/scripting/script_engine.cpp:15` opens `sol::lib::package`, so a script gets `require` and `package.loadlib`. There is no `q3` table at all; the registered surface is `print`, `add`, `multiply` |
+| `08-renderer-ui.md` | Extension detection, gamma, VSync, mode table, resize and high-DPI, MSAA and anisotropy, VBO ring, GLSL programs, immediate-mode removal, core profile, FBO post-pass, HUD, pillarbox, console scale, video menu, mouse and controller, master servers, Hor+ FOV | Not started, but scaffolding has landed with no functionality: the VBO, VAO, and GLSL entry points are declared (`code/renderer/qgl.h:164-221`) and resolved (`code/sys/sys_sdl.cpp:200-221`) and **never called**, no `r_vbo` or `r_glsl` cvar exists, `glConfig.extensions_string` is **never assigned** though three sites print it, and `glConfig.deviceSupportsGamma` is hardcoded `qtrue` (`code/sys/sys_sdl.cpp:189`) |
+| `09-vulkan.md` | Backend vtable seams, milestones M0 to M4, MoltenVK, honest cost | Not started. The stub **reports false success**: `code/renderer/vulkan/vk_backend.cpp` is 38 lines with no Vulkan header, `init()` fills a struct with fabricated values, returns `true`, and logs "Successfully initialized Vulkan 1.3 context". `tests/test_vulkan_backend.cpp:14` asserts those values, so it passes with no Vulkan present. Step V0.1 deletes both |
+| `10-docs-hygiene.md` | Root README, third-party licences, docs rewrite, cvar reference, changelog, doc comments, formatting configuration, debug prints, stray files | In progress (step 9 done and verified: zero tracked `.sln`, `.vcproj`, `.bat`, `.lnt`, `Conscript`, `.mak`, or `.exe` files, and `code/unix`, `code/macosx`, and `code/win32` are gone. The root document is still id's 2005 `README.txt`) |
 
-## Current state, 3 September 2026
+## Current state, 4 September 2026
 
-The tree builds and links on Linux and macOS, and **all 77 tests pass** locally, under
-AddressSanitizer too. The Linux continuous integration leg is green.
+The tree builds and links on Linux and macOS and **all 127 tests pass** on Linux, under
+AddressSanitizer and UndefinedBehaviorSanitizer, and on macOS arm64. **The Windows legs are
+red.**
 
-Fixed today beyond the checklist steps, because the platform legs exposed them:
+`gh` resolves to the upstream `id-Software` repository from a clone of this fork, so
+`gh run list` silently returns nothing. Pass the fork explicitly:
+`gh run list -R ishmaelaqsar/Quake-III-Arena`.
+
+| Run | Commit | Result |
+|---|---|---|
+| 27 (push, 4 September 10:55) | `a2a5bba` | Linux, Linux ASan/UBSan, macOS pass 127 of 127. **Windows x64 fails to build.** MinGW skipped, as designed on a push. |
+| 26 (nightly, 4 September 08:01) | `5de1117` | Linux, ASan, macOS, Windows x64 pass. **Windows Cross MinGW fails to build.** |
+| 25 (push, 3 September 12:45) | `015c3d5` | All four legs green. The last fully green run. |
+
+**Seventeen commits landed between `015c3d5` and `a2a5bba` in one push** (server, renderer,
+client, botlib, game, cgame, and ui compiled as C++17; checklist 03; threading T1, T2a.1,
+T2a.2). One continuous integration run covers all of them and it is red, so every one of those
+steps was ticked without a green Windows leg, which the **Build with both compilers** convention
+exists to prevent. MSVC stopped after four error classes with only `q3jpeg`, `q3server`, and
+`qcommon` linked, so `botlib`, `q3client`, `q3renderer`, `q3sys`, the three module targets, and
+both test binaries never compiled: more errors are hidden behind the first four. The classes are
+catalogue rows 26, 27, and 28 in `04-cxx-migration.md`, and phase P1.W there fixes them.
+
+**Gate G1 has never run.** `ci/smoke/golden/` holds only a `README.md`, and the smoke step in
+the workflow skipped itself whenever the paks secret was absent, which it always was. So the
+whole of phase P1 landed with no pixel baseline, which `00-environment.md` step 3b explicitly
+forbade in writing. That baseline cannot be recovered from this tip. Step 3b and step P0.7 are
+rewritten to say so and to re-base the oracle on the current tree.
+
+**The game data is OpenArena**, not retail, in the private bucket
+`ci-testing-q3-open-arena-assets`. The smoke harness cannot run on it as written: it plays
+`demo four`, which is id retail content, and the engine loads only `demos/<name>.dm_68` while
+OpenArena records protocol 71, so the gate needs a demo recorded by this engine. Steps 3c to 3e
+in `00-environment.md` cover the harness, the dispatch-only job with Workload Identity
+Federation, and the arm64 question behind owner decision 18.
+
+Fixed on 3 September beyond the checklist steps, because the platform legs exposed them:
 
 - `Q_rsqrt` read eight bytes from a four-byte float and returned a sign-flipped result on
   x86_64, which is wrong arithmetic in `VectorNormalizeFast` and the renderer.
@@ -155,13 +188,26 @@ Fixed today beyond the checklist steps, because the platform legs exposed them:
 All are recorded in `00-environment.md`, and the two C++ migration classes are catalogue rows 23
 and 24 in `04-cxx-migration.md`.
 
-Continuous integration state: **all four platform legs green**, confirmed on run for commit
-`015c3d5`. Linux, Linux with sanitizers, and macOS pass 77 of 77; Windows passes 76 of 76, the
-difference being one home-path test that is compiled off Windows because `SDL_GetPrefPath` reads
-no variable a test can redirect. The MinGW cross leg runs nightly.
+### What the audit of 4 September 2026 found
 
-One blocker remains: gate G1 has no golden image, because no machine used so far has game data.
-Produce it with `make smoke-update-golden` on the Linux machine before the next rename.
+The checklists are self-reported, so an audit read every ticked step against the tree. The
+record-keeping discipline is real: every code commit carries its checklist edit. Four ticks were
+wrong and are now unticked, with the reason recorded on the step:
+
+| Step | Finding |
+|---|---|
+| `02` B5.2 | `Sys_SubsystemShutdown` exists but **the engine never calls it**. Its only caller is a test, so the test passes while the product path is dead: at exit the download is not cancelled, the script engine is not reset, and the `JobSystem` never shuts down. |
+| `03` C6.2 | `VmAbi.SyscallReceivesSixteenIntptrArgs` was never written, so nothing guards the 16-slot syscall widening that phase B1 landed. |
+| `03` C7.5 | Never written. Reassigned to `06-networking.md` step N1.4, which deletes the code the tests would have covered. |
+| `03` C8.2 | `--gtest_repeat=3` is nowhere in the repository. |
+
+About a dozen more ticks are defensible but no longer match the tree; each now carries a
+recorded deviation. The ones worth knowing about: no ThreadSanitizer leg exists although
+`05` T6.1 was meant to open with T1; `tests/CMakeLists.txt` and the workflow disagree about
+`ASAN_OPTIONS=detect_leaks`, and the CMake side silently wins; the tests still stub
+`Sys_Milliseconds`, so the monotonic-clock cases validate `std::chrono` rather than the engine;
+and `-Werror=return-type` and `-Werror=write-strings` were never added, so two enforcement
+promises do not exist.
 
 ## Dependency order
 
@@ -176,6 +222,8 @@ start when the rows it depends on are at the state the **Depends on** column nam
 | 3 | `02-stability.md` steps 1 and 2 (VM ABI in C, prototypes); `01-build-portability.md` step 7 (CI legs) | 01 steps 2 to 6 |
 | 4 | `04-cxx-migration.md` phase P0 (preparation pull request, golden images) | 02 steps 1 and 2 |
 | 5 | `04-cxx-migration.md` phase P1 pull requests 1 to 4 (qcommon, server, renderer, client) | 04 P0 |
+| 5a | **`04-cxx-migration.md` phase P1.W (Windows fallout). Added 4 September 2026 and it comes before anything else, because the tip does not build on Windows** | 04 P1 pull requests 1 to 8 |
+| 5b | `00-environment.md` steps 3c, 3d, 3e (OpenArena smoke harness, dispatch-only gate G1 job, the architecture question), then 3b and `04` P0.7 (produce the golden) | 05a |
 | 6 | `05-threading.md` phase T1; `02-stability.md` steps 3 to 9 | 04 P1 pull request 4 |
 | 7 | `04-cxx-migration.md` phase P1 pull requests 5 to 8 (botlib, game, cgame, q3_ui) | 06 row |
 | 8 | `03-tests.md` all steps; `10-docs-hygiene.md` steps 1, 2, 5, 6, 7, 8; `05-threading.md` phases T2a and T4 | 05 T1 |
@@ -270,9 +318,9 @@ the tree was build-verified. The project did not compile on the owner's macOS ma
 | Stability | The client has no working crash handler; the handler is not async-signal-safe; no backtrace; `Sys_Error` leaves fullscreen and mouse grab | `code/unix/linux_signals.c:34-60`, `code/unix/unix_main.c:393-416` |
 | Stability | The main loop busy-waits; no sleep anywhere; `gettimeofday` timer | `code/qcommon/common.c:2708-2713`, `code/unix/unix_shared.c:62-77` |
 | Stability | Logger: no mutex, every `LOG_*` including errors vanishes under `NDEBUG`, absolute `__FILE__` paths, console sink called from a worker thread | `code/sys/logger/logger.hpp:35-72` |
-| Network | The FastDL rewrite dropped the legacy `download` command: a client that needs a file stalls at connect | `code/client/cl_main.c:1378-1426` |
-| Network | HTTP downloader: no TLS, blocking sockets, no status or redirect handling, `stoi` and `stoull` on server input inside a thread (remote `std::terminate`), cwd-relative final filename, `Cvar_SetValue` from the worker | `code/sys/net/http_downloader.cpp`, `code/sys/sys_api.cpp:119-129` |
-| Network | `sv_dlURL` is server-controlled with no host or scheme check (server-side request forgery); the `ws.q3df.org` fallback has no opt-in; the sanitizer is a case-sensitive blacklist | `code/client/cl_main.c:1403-1417`, `code/sys/sys_api.cpp:82-117` |
+| Network | ~~The FastDL rewrite dropped the legacy `download` command: a client that needs a file stalls at connect~~ **Fixed by checklist 06 step N1.1 on 2 September 2026.** The UDP path is restored at `code/client/cl_main.cpp:1337-1361` | `code/client/cl_main.c:1378-1426` |
+| Network | HTTP downloader: still no TLS (an `https://` URL sets port 443 and then speaks cleartext), blocking sockets with no connect timeout, no status or redirect handling, `stoi` and `stoull` on server input inside a thread with no `catch` (remote `std::terminate`). **Nothing in the shipping client calls it** — only tests do — so the vulnerable code is dead until checklist 06 N1.4 rewrites it. The `Cvar_SetValue` from the worker was fixed by checklist 05 step T1.5 | `code/sys/net/http_downloader.cpp:50,87,113,171`, `code/sys/sys_api.cpp:257-263` |
+| Network | `sv_dlURL` **no longer exists in the tree at all**, which is the safe state: N1.1 deleted the client-side cvar and N1.2, which adds it back server-side, is unstarted. The risk is latent, not live, so do not "fix" it before N1.2 and N1.3 land the policy cvars together. The blacklist is gone: `Sys_SanitizeDownloadFilename` (`code/sys/sys_api.cpp:199-243`) is a real allowlist with a recorded rationale | `code/client/cl_main.c:1403-1417`, `code/sys/sys_api.cpp:82-117` |
 | Network | Master and authorize servers are dead hostnames with no cvar override | `code/qcommon/qcommon.h:237,240`, `code/client/cl_main.c:2903-2909` |
 | Graphics | No VBO/VAO or GLSL code path exists; pointers are resolved and never called | `code/renderer/tr_shade.c:170,261`, `code/sys/sys_sdl.cpp:198-221` |
 | Graphics | Extension detection was deleted with `linux_glimp.c`: `glConfig` strings empty, `isFullscreen` never set so overbright is dead, gamma hardcoded | `code/sys/sys_sdl.cpp:187`, `code/renderer/tr_image.c:2137-2141` |
@@ -284,8 +332,8 @@ the tree was build-verified. The project did not compile on the owner's macOS ma
 | UI | Console fixed at 78 columns and raw 8x16 pixels; video menu lists 1999 modes and dead cvars | `code/client/cl_console.c:253`, `code/q3_ui/ui_video.c:762-777` |
 | UX | CD-key gate live in a GPL build; intro cinematic on first run; missing-pak error names only `default.cfg`; no `--help` | `code/q3_ui/ui_menu.c:276-282`, `code/qcommon/files.c:3250-3280` |
 | Docs | `README.txt` is the 2005 id file; no build docs; `docs/*.md` describe VBO, GLSL, Vulkan, HTTPS, Discord, and a Lua mod API that do not exist; Sol2 missing from the licence inventory | `docs/*.md`, `README.txt` |
-| Tests | 49 tests; none for `files.c`, `net_chan.c`, `cm_*`, `snd_*`, the VM bridge, or FastDL. Vulkan, Discord, and VM-syscall tests are tautologies. The logger test fails under `NDEBUG`. No sanitizers | `tests/` |
-| Hygiene | 65 stray `.sln`, `.vcproj`, `.bat`, `.lnt`, `Conscript`, and `.mak` files, three tracked `.exe` files, a tracked screenshot, orphaned `code/macosx/`; debug prints left in UI and server code | `lcc/bin/*.exe`, `code/q3_ui/ui_gameinfo.c:132`, `code/server/sv_ccmds.c:151` |
+| Tests | Was 49 tests, now **127** across two binaries, with coverage for `files.cpp`, `net_chan.cpp`, `cm_*`, `snd_*`, and the VM bridge, plus an AddressSanitizer leg. Still open: the Vulkan and Discord tautologies survive by design (checklist 03 step C7.2 only marked them), and there is no ThreadSanitizer leg | `tests/` |
+| Hygiene | ~~65 stray build files, three tracked `.exe` files, a tracked screenshot, orphaned `code/macosx/`~~ **Fixed by checklist 10 step 9 on 2 September 2026**, verified at zero. Debug prints in UI and server code are still open (step 8), and its line references are stale because checklist 04 renamed those files to `.cpp` | `lcc/bin/*.exe`, `code/q3_ui/ui_gameinfo.c:132`, `code/server/sv_ccmds.c:151` |
 
 ### Subsystem reality check
 
@@ -296,13 +344,13 @@ the tree was build-verified. The project did not compile on the owner's macOS ma
 | VFS | `std::filesystem` resolver that shadows `files.c` | Yes, harmful |
 | `CvarManager` | Thin wrapper; `find()` creates cvars as a side effect | Only `notify_change` |
 | Logger | Real, unsafe | Yes |
-| FastDL and HTTP | Broken end to end | Yes |
-| `ScriptEngine` (Lua) | Runs Lua; hooks, sandbox, script loading, and the documented API are absent | One `game_init` dispatch, no subscriber |
+| FastDL and HTTP | UDP restored and working; the HTTP downloader is unreachable from the client | UDP yes, HTTP no |
+| `ScriptEngine` (Lua) | Runs Lua **with `sol::lib::package` open**, so a script can load native libraries; hooks, sandbox, script loading, and the documented API are all absent | One `game_init` dispatch, no subscriber |
 | Discord RPC | Logging stub | Tests only |
 | Bitstream and transport | Wire-incompatible reimplementation of `msg.c` | Tests only |
 | `SessionManager` | Slot array with viewport maths | One `reset()` call |
 | VBO/VAO, GLSL | Do not exist | No |
-| Vulkan | Stub | Tests only |
+| Vulkan | Stub that logs a successful Vulkan 1.3 initialisation that never happened | Tests only |
 
 ## Lifecycle of this directory
 

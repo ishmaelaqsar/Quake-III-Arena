@@ -173,6 +173,27 @@ handshake. This file does not touch them.
   **Verify:** `cvarlist cl_dl` lists the three new cvars with their defaults.
 
 - [ ] **N1.4 Rewrite `HttpDownloader` on `curl_multi` with no thread.**
+
+  **This step also owns the downloader tests, reassigned from `03-tests.md` step C7.5 on
+  4 September 2026.** C7.5 was ticked without being written; rather than write an in-process
+  HTTP server against socket code this step deletes, its content moves here: an in-process
+  server thread bound to `127.0.0.1:0` in a new `tests/test_http_server.hpp`, asserting bytes
+  received, monotonic progress, and `Completed`; a connection-refused case asserting `Failed`
+  with a non-empty error; and a `cancel()` mid-transfer case that returns within 2 seconds.
+  Delete the `ParseAndDownloadMock` tautology at `tests/test_http_downloader.cpp:5-11` with the
+  code it pretends to cover.
+
+  What the current implementation gets wrong, so the rewrite has a target: an `https://` URL
+  sets port 443 and then speaks cleartext (`code/sys/net/http_downloader.cpp:72-75,134-137`);
+  there is no connect timeout at all, only `SO_RCVTIMEO` (`:113-121`), so a black-holed host
+  blocks the worker in `connect` and `cancel()` blocks the caller behind a `join`; `std::stoi`
+  (`:87`) and `std::stoull` (`:171`) run on server-controlled input on a thread with no `catch`,
+  which is `std::terminate`; the `Content-Length` parse hardcodes the header length and is
+  case-sensitive, so a lower-case header is simply not read; there is no status-code check, so a
+  404 body is written to disk and reported `Completed`; and `hints.ai_family = AF_INET` makes it
+  IPv4-only. None of this is reachable from the shipping client today, which is why it is a
+  latent bug and not an incident.
+
   Files: `code/sys/net/http_downloader.hpp`, `code/sys/net/http_downloader.cpp` (rewrite),
   `code/sys/sys_api.h`, `code/sys/sys_api.cpp` (replace `:119-139`), `CMakeLists.txt`
   (`find_package(CURL REQUIRED)` under `Q3_USE_CURL`, link `CURL::libcurl` to `q3sys` as

@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** In progress. Phase P0 complete and phase P1 steps P1.1 through P1.8 complete on 3 September 2026 (all engine subsystems, botlib, and game modules qagame, cgame, ui build and link as C++). Next: P1.9 JPEG swap. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.9-P1.10), P2.
+**Status:** In progress. Phase P1 steps P1.1 through P1.8 complete on 3 September 2026 (all engine subsystems, botlib, and game modules qagame, cgame, ui build and link as C++), but **on Linux, the sanitizer leg, and macOS only: the Windows legs do not build at the tip**, and **none of the eight was checked against gate G1**, because no golden image exists. Phase P1.W, added 4 September 2026, fixes the Windows fallout and is the next work. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols); P0.7 is rewritten, because the all-C baseline it specified can no longer be produced. Catalogue rows 26 to 28 added for the Windows classes. Open: P1.W, P0.7, P1.9, P1.10, P2.
 
 ## Prerequisites
 
@@ -110,6 +110,9 @@ ninja -C build/scout 2>&1 | grep 'error:' | sed 's/.*error: //' | sort | uniq -c
 | 24 | **Clang rejects what GCC only warns about.** Two families showed up only on the macOS leg. First, the `register` storage class specifier is removed in C++17: GCC emits `-Wregister` but Apple Clang makes it an error. Second, Clang folds discarded `const` qualifiers into `-Wincompatible-pointer-types-discards-qualifiers`, which the build promotes with `-Werror=incompatible-pointer-types`, while GCC keeps them in `-Wdiscarded-qualifiers` and stays quiet. A GCC-clean rename is therefore not portable-clean. | Yes: 1 `register` and 23 qualifier sites after P0 and P1.1 | `grep -rn '\bregister\b' <renamed>.cpp` and build once with `-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -- -k 0` | Drop `register`. For each qualifier site decide which side is wrong: propagate `const` when the callee only reads (`G_ModelIndex`, `G_SoundIndex`, `G_FindConfigstringIndex`, `G_PickTarget`, and the locals in `CG_RegisterItemSounds` and `cg_weapons.c`), or revert the field when it is a write target (`menutext_s.string`). **Build every rename with both compilers before ticking it**, because the continuous integration macOS leg does. |
 
 | 25 | **MSVC decorates global variable names; the Itanium ABI does not.** A file-local `extern int x;` in a C++ file whose definition has C linkage links fine with GCC and Clang, because a namespace-scope variable's symbol is just its name there, and fails on MSVC, which encodes the type into the symbol (`?c_traces@@3HA`). So this is row 23 for variables, and it is invisible on every platform except Windows. Note also that a linkage specification is only allowed at namespace scope: `extern "C"` cannot wrap a declaration inside a function body, so such declarations have to be hoisted. | Yes: `c_traces`, `c_brush_traces`, `c_patch_traces`, `c_pointcontents`, `cl_shownet` twice, `com_fullyInitialized`, `oldsize`, and `stdin_active` | `grep -rnE '^[[:space:]]*extern[[:space:]]+(int\|cvar_t\|qboolean\|float\|char\|unsigned)' code/**/*.cpp \| grep -v 'extern "C"'` | Give the declaration the same linkage as the definition, hoisting it to namespace scope when it sits in a function. Better still, declare the variable once in the header that owns it and delete the local declaration. |
+| 26 | **Windows type collisions from a third-party C header.** `code/jpeg-6` typedefs `INT32`, `INT16`, `UINT8`, `UINT16`, and `boolean`, and `#undef`s `FAR` before redefining it empty. The Windows SDK declares all of them, so any translation unit that sees both `<windows.h>` and `jpeglib.h` fails. The upstream jpeg-6b guards were commented out in this tree. It is invisible off Windows, and the renderer only started tripping it when P1.3 made `tr_image.cpp` a C++ translation unit. | Yes: `INT32` broke both Windows legs; `INT16`, `UINT8`, `UINT16`, and `boolean` are latent | Compile on MSVC, or `grep -n 'typedef.*\(INT32\|INT16\|UINT8\|UINT16\|boolean\)' code/jpeg-6/*.h` | Restore the upstream guards. Reordering includes is not a fix, because `code/jpeg-6/jerror.c:22` includes `../renderer/tr_local.h` and so pulls in `<windows.h>` from `qgl.h` itself. P1.9 deletes the tree and the whole class with it. |
+| 27 | **`abs()` on a float or double.** In C the argument converts to `int` first, so the call truncates before taking the magnitude: `abs(DotProduct(a, b)) < 0.1` is true for every input but exactly plus or minus one. GCC and Clang compile it silently; MSVC finds the `<cmath>` overloads and reports C2668, an ambiguous call. So the C++ migration surfaces a family of arithmetic bugs that has been in the tree since 1999. | Yes: 12 sites in botlib, game, and client | `grep -rnE '\babs *\(' code/*/*.cpp \| grep -v fabs` then check each argument's type | Write `fabs()`. Never write `abs((int)x)`: it compiles but preserves the bug. Then check whether the corrected magnitude can overflow a narrow destination, as it does at `code/game/ai_main.cpp:879`, where the product feeds a `signed char` that a later `+= 127` can push out of range. |
+| 28 | **Preprocessor directives inside a function-like macro's argument list.** Undefined behaviour. GCC and Clang accept it, MSVC's preprocessor rejects it with C2121 and a cascade of syntax errors that name the wrong line. A macro with a single parameter is also broken by any top-level comma in the body. | Yes: one site, `#ifdef NDEBUG` inside `Q3_NOEXCEPT_BOUNDARY(` at `code/sys/sys_api.cpp:56-60` | `grep -n 'Q3_NOEXCEPT_BOUNDARY(' code/sys/*.cpp` and read each body for a `#` at line start | Hoist the directive out of the argument list into a file-scope constant. Making the macro variadic fixes the comma hazard but not this one. |
 
 ## Compiler flags
 
@@ -123,7 +126,9 @@ game modules) with `target_compile_options` and `$<$<COMPILE_LANGUAGE:CXX>:...>`
   -Wno-unused-function -Wno-unused-variable -Wno-unused-but-set-variable
   -Wno-deprecated-declarations -Wno-format-security -Wno-implicit-fallthrough
   -Wno-class-memaccess -Werror=return-type`. Add `-Werror=write-strings` (GCC) or
-  `-Werror=writable-strings` (clang) after C-P0 step 4 has landed.
+  `-Werror=writable-strings` (clang) after C-P0 step 4 has landed. **Not done, recorded
+  4 September 2026:** neither flag is in `CMakeLists.txt`, so the enforcement P0.4 promised
+  "for PR 1 onward" does not exist and new `char*` literals can still land unnoticed.
 - `-Wold-style-cast` off in phase 1. The fixes add hundreds of C casts by design.
 - `-fno-strict-aliasing` on every legacy target (decision C2). Phase 2 removes it per subsystem
   after `q3::bit_cast<T>` (a `memcpy`-based helper in `code/sys/util/bit_cast.hpp`) replaces the
@@ -138,6 +143,13 @@ MSVC: `/permissive- /Zc:__cplusplus /Zc:preprocessor /W3 /EHsc /GR`, `_CRT_SECUR
 on legacy targets. `/permissive-` implies `/Zc:strictStrings`, so the const sweep is mandatory for
 the Windows leg. Under `/permissive-` the alternative token `or` is a keyword. Expect C4838
 narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_shared.h:29` stays.
+
+**What actually landed, recorded 4 September 2026.** `CMakeLists.txt` carries only `/W3
+/wd4996 /wd4244 /wd4267 /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE /utf-8`. Step
+P1.W.4 adds `/Zc:__cplusplus` and an explicit `/EHsc`. **`/permissive-` is deliberately
+deferred:** turning it on across 1999 C code produces a large new error set that would bury the
+four classes P1.W exists to fix, and the const sweep it depends on is not enforced either (see
+the note on P0.4). It lands per directory alongside `-Werror`, in step P1.W.5.
 
 ## Steps
 
@@ -230,21 +242,42 @@ narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_share
   appear.
   **Verify:** `ctest -R ModuleSymbols` passes.
 
-- [ ] **P0.7 Golden screenshots.** With the tree still all C, run the checklist 00 smoke
-  harness and store the result as the golden for this checklist:
+- [ ] **P0.7 Golden screenshots.** **Rewritten on 4 September 2026, because the step as
+  written is now impossible.** It said *"with the tree still all C"*. Phase P1 steps P1.1 to
+  P1.8 have landed, so no all-C tree exists to photograph, and the baseline that was meant to
+  prove those eight renames changed no pixel cannot be recovered from this repository's tip.
+  `00-environment.md` step 3b said the same thing in the other direction and was ignored the
+  same way. The replacement accepts the loss and re-bases the oracle on the current tree:
 
-  ```sh
-  make smoke              # writes build/smoke/*.tga
-  cp build/smoke/*.tga ci/smoke/golden/
-  ```
+  1. Adapt the harness to the OpenArena data set first: `00-environment.md` step 3c. The
+     harness cannot run at all until that lands, because `ci/smoke/run_smoke.sh` plays `demo
+     four`, which is id retail content.
+  2. Produce the oracle from the current tree on the Linux x86_64 runner, per owner decision
+     18, and commit it:
 
-  Determinism prerequisites are fixed in `ci/smoke/smoke.cfg`: `r_mode -1`, `r_customwidth 640`,
-  `r_customheight 480`, `r_fullscreen 0`, `r_picmip 1`, `r_texturebits 32`,
+     ```sh
+     gh workflow run CI -R ishmaelaqsar/Quake-III-Arena -f smoke=update-golden
+     # download the artifact, look at smoke.png, then commit ci/smoke/golden/smoke.tga and .png
+     ```
+
+  3. From that commit onward, gate G1 guards every later change: threading T3, the renderer
+     rewrite in checklist 08, and the JPEG swap in P1.9.
+
+  Determinism prerequisites, extended: the cvars fixed in `ci/smoke/smoke.cfg` (`r_mode -1`,
+  `r_customwidth 640`, `r_customheight 480`, `r_fullscreen 0`, `r_picmip 1`, `r_texturebits 32`,
   `r_ext_compressed_textures 0`, `s_initsound 0`, `com_maxfps 0`, `vm_game 0`, `vm_cgame 0`,
-  `vm_ui 0`, and the pinned Docker image digest.
+  `vm_ui 0`), the pinned Docker image digest, **the pinned OpenArena pak set in
+  `ci/smoke/paks.manifest`**, and **the committed demo under `ci/smoke/demos/`**. A change to
+  any of them invalidates the golden.
   **Tests:** none, because this creates the oracle.
-  **Verify:** `compare -metric AE ci/smoke/golden/smoke.tga build/smoke/smoke.tga /dev/null`
-  prints `0` on a second run.
+  **Verify:** a second dispatched smoke run against the committed golden reports `0` differing
+  pixels.
+
+  **What this costs, recorded so nobody assumes otherwise:** P1.1 to P1.8 have no pixel proof
+  and never will from this tip. P1.3 (renderer) is the exposure that matters. A retroactive
+  baseline is still available by building the last pre-P1.3 commit with the same paks and the
+  same demo and comparing it with the tip; it is one extra dispatched run and it either retires
+  the risk or finds a real regression.
 
   Landed on 3 September 2026 in addition to the original step: `vmMain` and `dllEntry` are now
   declared inside the `extern "C"` blocks of `code/game/g_public.h`, `code/cgame/cg_public.h`,
@@ -392,6 +425,86 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
   - Cast `(uiMenuCommand_t)` in `ui_main.cpp`.
   - Cast `(weapon_t)` in `ui_controls2.cpp` and `ui_players.cpp`.
   - Cast `(e_status)` in `ui_syscalls.cpp`.
+
+### P1.W Windows fallout from phase P1 (added 4 September 2026)
+
+Phase P1 steps P1.2 to P1.8 were ticked against a green Linux, sanitizer, and macOS matrix, but
+they were all pushed in one batch and the single continuous integration run that covers them
+(run 27, commit `a2a5bba`) fails to build on Windows. The nightly MinGW leg (run 26) fails too.
+MSVC stopped after four error classes with only `q3jpeg`, `q3server`, and `qcommon` linked, so
+`botlib`, `q3client`, `q3renderer`, `q3sys`, the three module targets, and both test binaries
+never compiled: **expect more errors behind these**. Catalogue rows 26, 27, and 28 describe the
+classes.
+
+This phase does not change the shared verify block for P1.2 to P1.8. Those steps stay ticked,
+with the note that none of them was ever checked against gate G1.
+
+- [ ] **P1.W.1 Restore the jpeg-6 Windows guards and fix the `qgl.h` include case.** Catalogue
+  row 26. Guard `typedef long INT32;` (`code/jpeg-6/jmorecfg.h:152`), `typedef short INT16;`
+  (`:157`), `UINT8` (`:137`), `UINT16` (`:149`), and `typedef unsigned char boolean;`
+  (`code/jpeg-6/jpeglib.h:18`) the way upstream jpeg-6b does, extended to the Windows SDK. Leave
+  the `#undef FAR` block at `jmorecfg.h:199-203` alone unless it breaks a build; it is recorded
+  in row 26. Separately, spell `code/renderer/qgl.h:48` as `<GL/gl.h>`: mingw-w64 ships the
+  directory capitalised and the cross build runs on a case-sensitive filesystem, which is the
+  MinGW failure. The lower-case spelling also happens to work on MSVC, so this is a portability
+  fix, not a behaviour change.
+  **Tests:** none. A compile fix, and no target's output changes on Linux or macOS.
+  **Verify:** the `Windows x64` and `Windows Cross MinGW` jobs both get past `q3jpeg` and
+  `q3renderer`.
+
+- [ ] **P1.W.2 Hoist the preprocessor directives out of `Q3_NOEXCEPT_BOUNDARY`.** Catalogue row
+  28. `code/sys/sys_api.cpp:56-60` puts `#ifdef NDEBUG` / `#else` / `#endif` inside the macro
+  argument list opened at `:49`. Move the default level to a file-scope `static const char* const`
+  above `Sys_SubsystemInit` and pass that. The other eleven `Q3_NOEXCEPT_BOUNDARY` calls in the
+  file are clean. Do not make the macro variadic in the same commit; that addresses the separate
+  comma hazard row 28 records.
+  **Tests:** the existing `SysApiBoundary` cases still pass.
+  **Verify:** `q3sys` compiles on MSVC.
+
+- [ ] **P1.W.3 Replace `abs()` on floats with `fabs()`.** Catalogue row 27. Twelve sites:
+  `code/botlib/be_aas_entity.cpp:393,395`, `be_aas_move.cpp:171`,
+  `be_aas_reach.cpp:2480,2481,2489,2614`, `be_ai_move.cpp:2096`,
+  `code/game/ai_main.cpp:781,879`, and `code/client/cl_input.cpp:562,565`. Every other `abs()`
+  call in the tree takes an integer and is correct.
+
+  **This changes behaviour, by owner decision on 4 September 2026, and that is the point.** The
+  run-time blast radius:
+
+  | Sites | Effect |
+  |---|---|
+  | `be_aas_entity.cpp:393,395`, `be_aas_move.cpp:171`, `be_ai_move.cpp:2096`, `ai_main.cpp:781,879` | Live in gameplay. Bot navigation changes. |
+  | `be_aas_reach.cpp:2480,2481,2489,2614` | Dead at run time. `AAS_InitReachability` (`be_aas_reach.cpp:4515-4531`) returns early when the loaded `.aas` already carries reachability, which every shipped map does. These run in `bspc`, and in the engine only under `forcereachability`. |
+  | `cl_input.cpp:562,565` | Debug only, behind `cl_debugMove`, feeding `SCR_DebugGraph`. |
+
+  `code/game/ai_main.cpp:879` needs one extra line. `ucmd->upmove` is a `signed char`
+  (`code/game/q_shared.h:1132`) and `bi->speed` is already scaled to [0, 127]. Truncation makes
+  the product zero almost always today, so a jumping bot gets exactly 127 from the later
+  `+= 127`. With `fabs()` the product reaches plus or minus 127 and that addition overflows the
+  `signed char`, which can turn a jump into a crouch. Clamp `upmove` to [-127, 127] in the same
+  commit, with a comment saying why.
+  **Tests:** `tests/test_math.cpp` gains a case asserting that the magnitude of a sub-unit float
+  is not truncated to zero. Add a case that `upmove` stays inside the `signed char` range when
+  the movement direction and `ACTION_JUMP` both push up.
+  **Verify:** `make bot-match` completes 60 seconds with four bots and no error in the log. Gate
+  G1 is unaffected, because no site is in the renderer.
+
+- [ ] **P1.W.4 Add the safe MSVC conformance flags.** `/Zc:__cplusplus` and an explicit `/EHsc`,
+  per the note in the compiler-flags section. Not `/permissive-`.
+  **Tests:** none. **Verify:** the MSVC leg still compiles what it compiled before.
+
+- [ ] **P1.W.5 Turn on `/permissive-` per directory.** Deferred from P1.W.4. Enable it for one
+  target at a time, alongside `-Werror` for that target, and expect the const sweep (P0.4) to
+  become mandatory as `/permissive-` implies `/Zc:strictStrings`.
+  **Tests:** none new. **Verify:** the MSVC leg is green with `/permissive-` on the target.
+
+- [ ] **P1.W.6 Get both Windows legs green and record the run.** The build stops early, so
+  fixing the four classes above will expose the errors in `qagame`, `cgame`, `ui`, and the test
+  binaries that MSVC never reached. Iterate with `gh workflow run CI -R
+  ishmaelaqsar/Quake-III-Arena`, which also runs the MinGW leg. When both pass, tick
+  `01-build-portability.md` step A6.3 and `00-environment.md` step 7 on that run.
+  **Tests:** the full 127 cases on every leg.
+  **Verify:** `Windows x64` and `Windows Cross MinGW` are both green on one named run. Record
+  the run number here.
 
 - [ ] **P1.9 JPEG swap (decision C1).** Add `code/third_party/stb/stb_image.h`,
   `stb_image_write.h`, and a `VERSION` file with the pinned upstream commit. Add one translation
@@ -591,11 +704,16 @@ converted files, never to compiled-as-C++ legacy, so `git blame` stays useful.
 ## Done criteria
 
 - `grep -rln '\.c$'` under the built directories lists only `code/qcommon/unzip.c` and
-  `code/qcommon/md4.c`.
+  `code/qcommon/md4.c`. **Amended 4 September 2026:** `code/qcommon/vm_ppc.c`,
+  `vm_ppc_new.c`, `vm_x86.c`, `code/server/sv_rankings.c`, and `code/game/bg_lib.c` also remain.
+  Each is justified in the landing note of the step that left it, and none is compiled, so the
+  criterion reads: no *built* source outside `unzip.c` and `md4.c` is C.
 - All three CI legs (Linux GCC and clang in Docker, macOS arm64, Windows MSVC) are green with
   `-Werror` on every converted target.
 - The smoke screenshot is pixel-identical to `ci/smoke/golden/` for every PR except the JPEG
-  swap, which passes the PSNR gate.
+  swap, which passes the PSNR gate. **Not met for P1.1 to P1.8, recorded 4 September 2026:**
+  no golden image existed while those eight steps landed, so none of them has a pixel baseline.
+  See `00-environment.md` step 3b and step P0.7.
 - The `q3ded` 60 s bot match passes with the native module and with `vm_game 1`.
 - ASan and UBSan runs of the smoke and the bot match are clean.
 - Every row of the test map exists and passes under `ctest --preset dev` and `ctest --preset asan`.

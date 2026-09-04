@@ -5,10 +5,17 @@
 Turn the test suite from 49 mostly shallow cases into infrastructure that every other
 checklist builds on: two test binaries with a clear link contract, shared fixtures, coverage
 of the subsystems that have none today (`files.c`, `net_chan.c`, `cm_*`, `snd_*`, the VM
-bridge), replacement of the tests that cannot fail, and sanitizer runs in continuous
+bridge), marking of the tests that cannot fail (see C7.2: only `test_legacy_vm_syscalls.cpp` was actually removed), and sanitizer runs in continuous
 integration (CI).
 
-**Status:** Complete. Phases C1 through C8 complete on 4 September 2026.
+**Status:** In progress, reopened on 4 September 2026. Phases C1 through C8 were ticked on
+4 September 2026 and the audit that day found three ticks wrong: C6.2 is missing the 16-argument
+syscall case that guards the 64-bit application binary interface, C7.5 was never written at all
+(and is now reassigned to checklist 06 step N1.4, which deletes the code it would cover), and
+C8.2 is missing `--gtest_repeat=3`. C7.6 is added for a no-assertion case that phase B5 left
+behind. C1.1, C1.2, C1.4, C3.1, C7.2, and C8.1 stay ticked with deviations recorded in place.
+The suite is 127 cases, 56 in `q3sys_tests` and 71 in `quake3_tests`, green on Linux, the
+sanitizer leg, and macOS. Do not delete this file until C6.2, C7.6, and C8.2 close.
 
 ## Prerequisites
 
@@ -40,7 +47,17 @@ integration (CI).
 
 ### Phase C1: infrastructure
 
-- [x] **C1.1 Split the test binaries.** Done on 4 September 2026. In `tests/CMakeLists.txt` define two executables:
+- [x] **C1.1 Split the test binaries.** Done on 4 September 2026, with the link contract
+  diluted; recorded 4 September 2026. Both targets exist and each case gets `TIMEOUT 60`
+  (`tests/CMakeLists.txt:140-148`). But `q3sys_tests` is not "pure C++ tests for `code/sys`":
+  beyond the specified dependencies it also links `q3server` and `botlib` and compiles
+  `test_platform_stubs.cpp`, `TEST_PLATFORM_SOURCES`, and
+  `code/renderer/vulkan/vk_backend.cpp` (`:32-33,47,65-76`), so the two binaries have
+  near-identical dependency sets. The split delivered process separation, which is what the
+  timeouts and the random schedule need; it did not deliver the link discipline that was the
+  other half of the point. Also, `quake3_tests` does not link the `code/null/*` stubs this step
+  names: the `CL_*` and `GLimp_*` stubs in `tests/test_platform_stubs.cpp:109-132` cover it
+  instead. Both are defensible choices, and neither is what the step says. In `tests/CMakeLists.txt` define two executables:
   - `q3sys_tests`: pure C++ tests for `code/sys`. Sources: `test_modern_logger.cpp`,
     `test_modern_fs.cpp`, `test_modern_net.cpp`, `test_modern_scripting.cpp`,
     `test_modern_cvar.cpp`, `test_modern_multiplayer.cpp`, `test_http_downloader.cpp`,
@@ -64,7 +81,13 @@ integration (CI).
     after the move.
   - **Verify:** `make test` runs both binaries and reports the same pass count as before
     plus zero failures; `ctest -N` lists tests from both.
-- [x] **C1.2 Shrink `test_platform_stubs.cpp`.** Done on 4 September 2026. Because the real `Sys_ListFiles`, `Sys_LoadDll`,
+- [x] **C1.2 Shrink `test_platform_stubs.cpp`.** Done on 4 September 2026, with two misses
+  recorded 4 September 2026. **`Sys_Milliseconds` was not removed** (`:18-22`), though this step
+  names it, so `SysTime.MillisecondsNeverDecreases` and `SysTime.SleepAdvancesClock` test
+  `std::chrono` rather than the engine's SDL clock; see checklist 02 step B7.3 for the fix, which
+  is to extract the clock from `sys_main.cpp` into its own translation unit. And `Sys_Error`
+  (`:39`) is not declared `[[noreturn]]` as required, so control flow after a `Com_Error` in a
+  test differs from the engine's. Because the real `Sys_ListFiles`, `Sys_LoadDll`,
   `Sys_Mkdir`, `Sys_Milliseconds`, and `Sys_SendPacket` now link, remove their stubs. Keep:
   `Sys_Error` (throws a C++ exception `q3::test::SysErrorException{message}` so tests can
   assert on `Com_Error(ERR_FATAL)`; declare it `[[noreturn]]`), `Sys_Print` (appends to a
@@ -88,7 +111,11 @@ integration (CI).
   - **Tests:** none, because this is the fixture. It is exercised by every C2 to C6 test.
   - **Verify:** one trivial test that instantiates `FsFixture` passes and leaves no directory behind
     (`ls /tmp | grep q3t-` is empty after the run).
-- [x] **C1.4 Add `tests/fixtures/`.** Done on 4 September 2026. Directory for small committed inputs: `sounds/sine440.wav`
+- [x] **C1.4 Add `tests/fixtures/`.** Done on 4 September 2026, and currently unused; recorded
+  4 September 2026. The directory, its `README.md`, `gen.py`, and `sounds/sine440.wav` are
+  tracked and the `Q3_TEST_FIXTURES` definition is set on both targets, but **no test reads
+  either**: `test_sound.cpp` generates its sine in memory per C5.1. Keep it for checklist 05 step
+  T2a.2 and checklist 06, or delete it if nothing claims it. Directory for small committed inputs: `sounds/sine440.wav`
   (generated by a script in `tests/fixtures/gen.py`, 0.1 s, 22050 Hz, 16 bit; commit the
   output, keep it under 10 KB), `demos/` stays empty because `four.dm_68` is retail content,
   and `maps/` stays empty until C4's one-brush BSP exists. Add a `README.md` that says what
@@ -137,7 +164,14 @@ integration (CI).
 
 ### Phase C3: `net_chan.c`
 
-- [x] **C3.1 Write `tests/test_netchan.cpp`.** Done on 4 September 2026. Uses `EngineFixture`. Replace `Sys_SendPacket` in
+- [x] **C3.1 Write `tests/test_netchan.cpp`.** Done on 4 September 2026, by a third route that
+  this step did not offer; recorded so it is a decision and not an accident. Rather than a weak
+  symbol or a link-time swap, a **production test seam** was added:
+  `Sys_SetSendPacketOverride` (`code/sys/net/sys_net.cpp:134`), declared in
+  `code/qcommon/qcommon.h:1011` and installed at `tests/test_netchan.cpp:37`. It is cleaner than
+  a weak symbol and it works on MSVC, at the cost of a test-only function pointer in the
+  shipping network layer. Accepted. If checklist 06 N3.2 introduces a transport seam, fold this
+  into it. Uses `EngineFixture`. Replace `Sys_SendPacket` in
   this binary with a stub that records `(length, data, to)` into a vector the test owns (guard
   with a `#define` in `test_platform_stubs.cpp` or a weak symbol so the real `sys_net.cpp` one
   is not linked twice; if linking both is impossible, compile `sys_net.cpp` out of this binary
@@ -198,12 +232,23 @@ integration (CI).
   from checklist 02 B1. Command `0` returns `arg0 + arg1`. Command `1` calls
   `syscall(1, (intptr_t)ptr_from_arg0_arg1)` and returns the result. Make `quake3_tests` depend
   on `testmodule`.
-- [x] **C6.2 Write `tests/test_vm.cpp`.** Done on 3 September 2026 / 4 September 2026. Uses `FsFixture` with `fs_basepath` set to
+- [ ] **C6.2 Write `tests/test_vm.cpp`.** Uses `FsFixture` with `fs_basepath` set to
   `Q3_TEST_BUILD_DIR "/tests"` and `fs_game` to `baseq3`. Cases are listed in checklist 02 B1:
   `VmAbi.HeapPointerSurvivesRoundTrip`, `VmAbi.AddCommandReturnsSum`,
   `VmAbi.MissingModuleReturnsNull`. Add `VmAbi.SyscallReceivesSixteenIntptrArgs`, which passes
   16 distinct values through `VM_Call` to a recording `TestSyscalls(intptr_t *args)` and asserts
   each slot.
+  **Unticked on 4 September 2026: the one new case this step asked for does not exist.** The
+  three cases from checklist 02 B1 are there, plus `VmAbi.MissingModuleReturnsNull` and a real
+  `VmAbi.HighAddressSurvivesRoundTrip`. But there is no `SyscallReceivesSixteenIntptrArgs`:
+  `tests/test_vm.cpp:33-43` `TestSyscalls` reads `args[0]` and `args[1]` only, so **nothing
+  verifies the 16-slot widening at `code/qcommon/vm_interpreted.cpp:520-528` or the
+  twelve-argument entry-point call at `code/qcommon/vm.cpp:702-704`**, which is the guard on the
+  whole 64-bit application binary interface phase. Also, the file uses a hand-rolled
+  `VmAbiFixture` (`tests/test_vm.cpp:45`) instead of `FsFixture`, so `Cvar_Set("fs_basepath",
+  ...)` at `:52` is never undone and `FS_Shutdown` never runs. That is benign while
+  `gtest_discover_tests` gives each case its own process, and fragile if that ever changes.
+  Nothing yet drives the interpreted path, so `VM_CallInterpreted` stays uncovered.
   - **Tests:** this step is the content.
   - **Verify:** `ctest --preset dev -R VmAbi` passes in the container and on the macOS CI leg,
     where heap addresses exceed 32 bits.
@@ -212,7 +257,14 @@ integration (CI).
 
 - [x] **C7.1 Delete `tests/test_legacy_vm_syscalls.cpp`.** Done on 4 September 2026. C6 supersedes it. Remove it from the
   source list.
-- [x] **C7.2 Mark the two stub tests.** Done on 4 September 2026. `tests/test_vulkan_backend.cpp` is rewritten by checklist
+- [x] **C7.2 Mark the two stub tests.** Done on 4 September 2026, correctly as written; the
+  wider claim around it is what was wrong. Both TODO markers are present. **Both tests still
+  assert nothing that can fail:** `tests/test_vulkan_backend.cpp:14` asserts
+  `api_version == 130` against the literal hardcoded in `code/renderer/vulkan/vk_backend.cpp`,
+  so it passes on a machine with no Vulkan at all, and `tests/test_discord_rpc.cpp:9-25` writes
+  a struct through a setter and reads it back. That is by design here, since this step says "do
+  not spend time improving them"; the Purpose line of this checklist has been corrected to stop
+  claiming the tautologies were replaced. `tests/test_vulkan_backend.cpp` is rewritten by checklist
   `09-vulkan.md` and `tests/test_discord_rpc.cpp` by checklist `06-networking.md` N2. Add a
   one-line `// TODO(docs/plans/09-vulkan.md): replace with a skipped-without-ICD test.` and
   `// TODO(docs/plans/06-networking.md): replace with the fake IPC server test.` comment at the
@@ -222,14 +274,41 @@ integration (CI).
   already done it, skip.
 - [x] **C7.4 Rewrite `tests/test_modern_fs.cpp`** Done on 3 September 2026. per checklist 02 B6.2 (local instance,
   containment negatives). If checklist 02 has already done it, skip.
-- [x] **C7.5 Extend `tests/test_http_downloader.cpp`** Done. only if checklist 06 N1.4 has not replaced
+- [ ] **C7.5 Extend `tests/test_http_downloader.cpp`** only if checklist 06 N1.4 has not replaced
   the downloader yet: add an in-process server thread that binds `127.0.0.1:0`, accepts one
   connection, and replies `HTTP/1.0 200` with a small body; assert bytes, monotonic progress,
   and `Completed`; add a connection-refused case that asserts `Failed` with a non-empty error;
   add a `cancel()` mid-transfer case that returns within 2 s. Remove the mock at `:5-11`.
+
+  **Unticked on 4 September 2026, and deliberately deferred.** The tick was wrong: the step's
+  own condition holds, because `06-networking.md:175` step N1.4 is unchecked, so all of this
+  work was required and none of it exists. `tests/test_http_downloader.cpp` is still 13 lines
+  with one case, `ParseAndDownloadMock`, asserting that a freshly constructed object is `Idle`
+  and its error string empty, which is exactly the kind of test phase C7 exists to remove. There
+  is no `tests/test_http_server.hpp`.
+
+  **The decision is not to write it here.** Checklist 06 step N1.4 rewrites the downloader on
+  `curl_multi` and deletes the socket code these tests would cover, so an in-process HTTP server
+  written now is thrown away with it. This step is therefore reassigned: **06 N1.4 owns the
+  downloader tests**, and its Tests line carries them. Note while it waits that the current
+  downloader speaks cleartext to port 443 for an `https://` URL and calls `std::stoi`
+  (`code/sys/net/http_downloader.cpp:87`) and `std::stoull` (`:171`) on server-controlled input
+  on a thread with no `catch`, which is `std::terminate`. Nothing in the shipping client reaches
+  it, only tests, so the risk is latent rather than live.
   - **Tests (for C7):** the rewritten files are the content.
   - **Verify:** `ctest --preset dev` lists no test named `LegacyVmSyscalls`; `grep -rn TODO
     tests/test_vulkan_backend.cpp tests/test_discord_rpc.cpp` shows the two pointers.
+
+- [ ] **C7.6 Remove the vacuous case phase B5 added (added 4 September 2026).**
+  `SysApiBoundary.InitWithoutLuaStillReturns` (`tests/test_sys_api_boundary.cpp:24-28`) calls
+  `Sys_SubsystemInit()` and returns with **no assertion at all**. Checklist 02 step B5 says the
+  case "is skipped unless a build flag disables Lua", and no such flag exists, so it is an
+  unconditional no-op test written by the phase that was meant to remove no-op tests. Either
+  gate it on a real flag and assert that start-up survives a missing interpreter, or delete it.
+  Note also that the sibling case at `:17` is the only caller of `Sys_SubsystemShutdown` in the
+  tree, which is what hid checklist 02 step B5.2.
+  **Tests:** this step is the content.
+  **Verify:** every case in `tests/test_sys_api_boundary.cpp` has at least one assertion.
 
 ### Phase C8: sanitizers in CI
 
@@ -239,8 +318,26 @@ integration (CI).
   through the `gtest_discover_tests` `PROPERTIES` argument. Leak detection is unavailable on
   macOS arm64; set `detect_leaks=0` on Apple. Add `-fno-sanitize=alignment` for the engine
   binary because the network code misaligns by design.
-- [x] **C8.2 Add the CI leg.** Done on 4 September 2026. The Linux `asan` preset from checklist 01 A7 runs both binaries
+
+  **Conflict recorded 4 September 2026.** This step sets `detect_leaks=1` off Apple, and
+  `.github/workflows/ci.yml:171-173` passes `-e ASAN_OPTIONS=detect_leaks=0` with a comment
+  explaining that the zone and hunk allocators deliberately never free at exit, so leak
+  detection reports every engine allocation. A CTest `ENVIRONMENT` property sets the variable in
+  the child process, so **this file wins and the workflow's documented rationale is dead**. The
+  comment is the correct judgement. `00-environment.md` step 10 resolves it by setting
+  `detect_leaks=0` here and deleting the `-e`, so there is one source of truth.
+- [ ] **C8.2 Add the CI leg.** The Linux `asan` preset from checklist 01 A7 runs both binaries
   with `--gtest_shuffle --gtest_repeat=3`. Checklist 05 T6 adds the `tsan` leg.
+
+  **Unticked on 4 September 2026.** The leg itself exists and is green
+  (`.github/workflows/ci.yml:126-185`, `-DQ3_SANITIZE=address,undefined`), but
+  **`--gtest_repeat=3` is nowhere in the repository.** `ctest --schedule-random` is not a
+  substitute: it randomises the order in which cases run as separate processes, whereas
+  repeating a case is what shakes out the order and timing dependence the new threading tests
+  introduce. `--gtest_shuffle` is passed (`tests/CMakeLists.txt:147-148`) but does nothing,
+  because `gtest_discover_tests` gives each case its own process. Closed by
+  `00-environment.md` step 10, which also drops the dead `--gtest_shuffle` and resolves the
+  `ASAN_OPTIONS` conflict below.
   - **Tests:** none, because this is CI wiring.
   - **Verify:** `ctest --preset asan` is green in the container and on the Linux CI leg.
 

@@ -8,7 +8,13 @@ system runs background work, and a dedicated render backend thread executes the 
 lists. The render thread revives the id `r_smp` design correctly and maps onto the Vulkan backend
 planned in checklist 09.
 
-**Status:** In progress. Phases T1, T2a.1, and T2a.2 complete on 4 September 2026. Next: Phase T2a.3 (asynchronous screenshot encode).
+**Status:** In progress. Phases T1, T2a.1, and T2a.2 complete on 4 September 2026, with
+deviations recorded in place on T1.3, T1.6, and T2a.1 by the audit of 4 September 2026: the
+`q3ded` worker clamp from decision T-a is missing, `JobState::exception` is unsynchronised, the
+lossy lane is mutex-guarded rather than lock-free, and `docs/threading.md` has no job-system
+section. **Step T6.1 was meant to open with T1 and has not: there is no ThreadSanitizer leg, so
+every "TSan build clean" verify line in this checklist is unverified.** Next: T6.1 (tracked as
+`00-environment.md` step 9), then T2a.3 (asynchronous screenshot encode).
 
 ## Prerequisites
 
@@ -108,6 +114,14 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
   on drain).
   **Verify:** `ctest -R Queue`; TSan build of `q3sys_tests` clean.
 
+  **Deviation from decision T-b, recorded 4 September 2026.** The lossy lane is a
+  mutex-guarded ring (`main_thread_queue.cpp:31`, `lossy_mutex_`), not the lock-free
+  multi-producer single-consumer ring the decision specifies. It still never waits for space,
+  which is the property the logger needs, so nothing here is broken; a producer can contend with
+  the drain, which the decision was written to avoid. Reconcile the decision and the code, and
+  fix `docs/threading.md`, which repeats the lock-free claim: see step T1.6. The verify line's
+  ThreadSanitizer build has never run, because there is no such leg; see T6.1.
+
 - [x] **T1.4 Logger hook.** Done on 3 September 2026. In `Logger::log`, keep the stdout and stderr writes under a small
   mutex to avoid interleaving, call the console sink directly when `is_main_thread()`, otherwise
   `post_lossy` the formatted line so `ConsolePrintSink` runs on main. This is the hook that
@@ -134,6 +148,15 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
   system (T2a), and the render thread contract (T3) as they land.
   **Tests:** none, because documentation.
   **Verify:** the file exists and checklist 10's link check passes.
+
+  **Two corrections owed, recorded 4 September 2026.** The file has no job-system section
+  although T2a.1 and T2a.2 have landed, and this step says to document the job system "as they
+  land". And it describes the lossy lane as a lock-free multi-producer single-consumer ring,
+  which overstates the code: `code/sys/threading/main_thread_queue.cpp:31` guards the ring with
+  `lossy_mutex_`. It never waits for space, which is the property the design needs, but it is
+  not lock-free, so a logging worker can contend with the drain. Either implement decision T-b
+  as written or describe what the code does; describing it is the smaller honest change, and it
+  matters because the logger's off-main path is the main producer.
 
 - [x] **T1.7 Sanitizer option (with T6).** Done on 3 September 2026. Add `Q3_SANITIZE` to `CMakeLists.txt` if checklist 01
   has not: values `thread`, `address`, `undefined`; adds `-fsanitize=<value> -fno-omit-frame-pointer
@@ -175,6 +198,32 @@ New files: `code/sys/threading/job_system.hpp`, `job_system.cpp`, `tests/test_jo
   (completion queued while `wait()` is called on the draining thread); `Jobs.ShutdownJoinsWithin2s`
   (pending jobs, `shutdown()` returns within 2 s).
   **Verify:** `ctest -R Jobs`; TSan build clean.
+
+  **Two deviations found by the audit on 4 September 2026. Both are small and both need fixing;
+  the step stays ticked because everything else it names is present and tested.**
+
+  1. **The `q3ded` worker clamp is missing.** `auto_worker_count()`
+     (`code/sys/threading/job_system.cpp:36-44`) implements only the client half of decision
+     T-a, `clamp(hardware_concurrency() - 2, 1, 8)`. The dedicated-server half,
+     `clamp(hardware_concurrency() - 1, 1, 4)`, is absent, and there is no `DEDICATED` compile
+     definition to branch on because checklist 01 made it a run-time property. Branch on
+     `com_dedicated`. Until then `com_jobThreads 0` on `q3ded` reserves a render thread that
+     does not exist.
+  2. **`JobState::exception` is a data race.** The worker writes it at `job_system.cpp:211`
+     outside `state->mutex`, while `JobHandle::has_exception()` and `get_exception()`
+     (`code/sys/threading/job_system.hpp:66-72`) read it with no synchronisation. Write and read
+     it under the mutex. This is exactly what the step's own "TSan build clean" verify line
+     would have caught, and that line has never run, because there is no ThreadSanitizer leg:
+     see step T6.1 and `00-environment.md` step 9.
+
+  A third, smaller point, recorded rather than fixed: the completion always runs, even when the
+  job was cancelled (`job_system.cpp:207-217` skips `body` but still posts
+  `on_main_complete`), so the C shim's `done` callback fires for a cancelled job and
+  `Sys_JobCancel` leaves its entry in `s_c_handles`. Decide whether a cancelled job should
+  report completion before checklist 06 relies on the shim.
+  **Tests (for the two fixes):** `Jobs.DedicatedAutoCountReservesOneCore` and a case that reads
+  `has_exception()` from another thread while a throwing job completes, which must be clean
+  under ThreadSanitizer.
 
 - [x] **T2a.2 Parallel pk3 indexing.** Done on 4 September 2026. Split `FS_LoadZipFile` into a pure
   `FS_ScanZipFile(const char* ospath, zipIndex_t* out)` that opens its own `unzFile`, walks the
