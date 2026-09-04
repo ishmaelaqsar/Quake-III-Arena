@@ -61,15 +61,22 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU
 elseif(MSVC)
     # /Zc:__cplusplus: without it MSVC reports __cplusplus as 199711L whatever the standard
     # setting, so a C++17 feature check in code/sys or Sol2 silently takes the wrong branch.
-    # /EHsc is what CMake supplies by default, set here because exceptions on everywhere is
-    # decision C5 and this should not depend on a default.
+    #
+    # /EHs, not the /EHsc that CMake supplies by default. The `c` in /EHsc lets the compiler
+    # assume an extern "C" function never throws, and this engine does exactly that: the test
+    # build's Sys_Error throws from an extern "C" frame and the exception unwinds through
+    # Com_Error and FS_ReadFile, which are also extern "C". Under /EHsc that is undefined, and
+    # in practice the catch does not run: VmAbiFixture.MissingModuleReturnsNull escaped its own
+    # catch clause on the MSVC leg while passing everywhere else. Checklist 04 step P2.0 turns
+    # Com_Error itself into a C++ exception thrown across those same boundaries, so /EHs is what
+    # this codebase needs rather than an expedient.
+    string(REPLACE "/EHsc" "/EHs" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     #
     # /permissive- is deliberately absent. Checklist 04 requires it, but it implies
     # /Zc:strictStrings and turning it on across the 1999 C tree produces a large error set at
     # once. It lands per directory in checklist 04 step P1.W.5, alongside -Werror.
     add_compile_options(/W3 /wd4996 /wd4244 /wd4267 /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE /utf-8
-                        $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
-                        $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
+                        $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>)
     if(Q3_SANITIZE STREQUAL "address")
         add_compile_options(/fsanitize=address)
     endif()

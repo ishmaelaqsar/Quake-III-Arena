@@ -139,14 +139,23 @@ game modules) with `target_compile_options` and `$<$<COMPILE_LANGUAGE:CXX>:...>`
 Set on `code/sys` and on all new phase-2 code: `-Wall -Wextra -Wpedantic -Wold-style-cast -Wshadow
 -Werror`.
 
-MSVC: `/permissive- /Zc:__cplusplus /Zc:preprocessor /W3 /EHsc /GR`, `_CRT_SECURE_NO_WARNINGS`
+MSVC: `/permissive- /Zc:__cplusplus /Zc:preprocessor /W3 /EHs /GR`, `_CRT_SECURE_NO_WARNINGS`
 on legacy targets. `/permissive-` implies `/Zc:strictStrings`, so the const sweep is mandatory for
 the Windows leg. Under `/permissive-` the alternative token `or` is a keyword. Expect C4838
 narrowing in brace tables. `#pragma warning(disable:4018)` at `code/game/q_shared.h:29` stays.
 
+**Corrected on 4 September 2026: `/EHs`, not the `/EHsc` this line used to name.** The `c` in
+`/EHsc` lets the compiler assume an `extern "C"` function never throws. This engine throws from
+exactly there: the test build's `Sys_Error` throws and the exception unwinds through `Com_Error`
+and `FS_ReadFile`, all of which are `extern "C"`. Under `/EHsc` that is undefined behaviour, and
+it showed as `VmAbiFixture.MissingModuleReturnsNull` escaping its own `catch` clause on the MSVC
+leg while passing on every other leg. Step P2.0 makes `Com_Error` itself a C++ exception
+crossing those same boundaries, so this is a prerequisite for phase 2, not a local fix. CMake
+puts `/EHsc` in `CMAKE_CXX_FLAGS` by default, so it has to be replaced rather than appended to.
+
 **What actually landed, recorded 4 September 2026.** `CMakeLists.txt` carries only `/W3
 /wd4996 /wd4244 /wd4267 /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE /utf-8`. Step
-P1.W.4 adds `/Zc:__cplusplus` and an explicit `/EHsc`. **`/permissive-` is deliberately
+P1.W.4 adds `/Zc:__cplusplus` and replaces `/EHsc` with `/EHs`. **`/permissive-` is deliberately
 deferred:** turning it on across 1999 C code produces a large new error set that would bury the
 four classes P1.W exists to fix, and the const sweep it depends on is not enforced either (see
 the note on P0.4). It lands per directory alongside `-Werror`, in step P1.W.5.
@@ -499,9 +508,13 @@ with the note that none of them was ever checked against gate G1.
   set, so it runs after `00-environment.md` step 3c. Gate G1 is unaffected, because no site is
   in the renderer.
 
-- [ ] **P1.W.4 Add the safe MSVC conformance flags.** `/Zc:__cplusplus` and an explicit `/EHsc`,
-  per the note in the compiler-flags section. Not `/permissive-`.
-  **Tests:** none. **Verify:** the MSVC leg still compiles what it compiled before.
+- [ ] **P1.W.4 Add the safe MSVC conformance flags.** `/Zc:__cplusplus`, and replace CMake's
+  default `/EHsc` with `/EHs`, per the corrected note in the compiler-flags section. Not
+  `/permissive-`.
+  **Tests:** `VmAbiFixture.MissingModuleReturnsNull` is the case that proves `/EHs` is needed.
+  It catches the exception `Sys_Error` throws through three `extern "C"` frames, which `/EHsc`
+  permits the compiler to assume cannot happen.
+  **Verify:** the MSVC leg compiles and that case passes.
 
 - [ ] **P1.W.5 Turn on `/permissive-` per directory.** Deferred from P1.W.4. Enable it for one
   target at a time, alongside `-Werror` for that target, and expect the const sweep (P0.4) to
