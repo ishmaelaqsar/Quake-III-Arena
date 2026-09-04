@@ -10,7 +10,7 @@
 namespace q3::threading {
 
 void JobHandle::wait() {
-    if (!state_ || is_done()) {
+    if (!state_) {
         return;
     }
     if (q3::threading::is_main_thread()) {
@@ -18,6 +18,14 @@ void JobHandle::wait() {
             q3::threading::MainThreadQueue::instance().drain(std::chrono::milliseconds(1));
             std::this_thread::yield();
         }
+        // The worker posts the completion before it sets done (see worker_loop), so observing
+        // done does not mean the completion has run: it can still be sitting in the queue. The
+        // release store synchronises with the load above, so the post is guaranteed visible
+        // here, and draining once more is enough to run it. Without this, wait() on the main
+        // thread can return before the completion it was waiting for, which is what
+        // JobsFixture.WaitOnMainDoesNotDeadlock caught intermittently on macOS. An unbudgeted
+        // drain runs both lanes until they are empty, so it needs no drain_all loop.
+        q3::threading::MainThreadQueue::instance().drain(std::chrono::milliseconds::max());
     } else {
         std::unique_lock<std::mutex> lock(state_->mutex);
         state_->cv.wait(lock, [this]() { return is_done(); });

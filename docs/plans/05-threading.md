@@ -216,7 +216,17 @@ New files: `code/sys/threading/job_system.hpp`, `job_system.cpp`, `tests/test_jo
      would have caught, and that line has never run, because there is no ThreadSanitizer leg:
      see step T6.1 and `00-environment.md` step 9.
 
-  A third, smaller point, recorded rather than fixed: the completion always runs, even when the
+  A third defect, found on 4 September 2026 when the macOS leg failed
+  `JobsFixture.WaitOnMainDoesNotDeadlock` under `--schedule-random`, and **fixed the same day**:
+  `JobHandle::wait()` on the main thread could return before the completion it was waiting for
+  had run. The worker posts the completion and only then sets `done`, so the last loop iteration
+  observed `done`, exited, and left the completion in the queue. It passed on Linux and failed
+  intermittently on macOS, which is what an order-randomised suite is for. `wait()` now drains
+  once more after the loop; the release store makes the post visible, so one unbudgeted drain is
+  enough. The redundant `is_done()` early return went with it, because a job that is already
+  done can still have a queued completion.
+
+  A fourth, smaller point, recorded rather than fixed: the completion always runs, even when the
   job was cancelled (`job_system.cpp:207-217` skips `body` but still posts
   `on_main_complete`), so the C shim's `done` callback fires for a cancelled job and
   `Sys_JobCancel` leaves its entry in `s_c_handles`. Decide whether a cancelled job should
