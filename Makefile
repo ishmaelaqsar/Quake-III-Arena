@@ -82,13 +82,16 @@ asan: image ## Linux build and tests with AddressSanitizer and UndefinedBehavior
 	$(RUN) cmake -S . -B build-asan $(CMAKE_COMMON) -DQ3_SANITIZE=address,undefined $(CMAKE_ARGS)
 	$(RUN) cmake --build build-asan
 	$(COMPOSE) run --rm $(TTY_FLAG) $(ASAN_ENV) dev \
-	    ctest --test-dir build-asan --output-on-failure $(CTEST_ARGS)
+	    ctest --test-dir build-asan --output-on-failure --repeat-until-fail 3 $(CTEST_ARGS)
 
 tsan: image ## Linux build and tests with ThreadSanitizer
 	$(RUN) cmake -S . -B build-tsan $(CMAKE_COMMON) -DQ3_SANITIZE=thread $(CMAKE_ARGS)
 	$(RUN) cmake --build build-tsan
+	# setarch -R: ThreadSanitizer needs its shadow mapping at a fixed address and aborts with
+	# "unexpected memory mapping" under the container's default address-space randomisation,
+	# before a single test runs. uname is evaluated inside the container, not on the host.
 	$(COMPOSE) run --rm $(TTY_FLAG) $(TSAN_ENV) dev \
-	    ctest --test-dir build-tsan --output-on-failure $(CTEST_ARGS)
+	    bash -c 'setarch $$(uname -m) -R ctest --test-dir build-tsan --output-on-failure --repeat-until-fail 3 $(CTEST_ARGS)'
 
 smoke: build ## Gate G1: headless timedemo screenshot compared with ci/smoke/golden
 	$(RUN) ci/smoke/run_smoke.sh $(BUILD_DIR)

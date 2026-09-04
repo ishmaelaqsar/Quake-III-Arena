@@ -14,6 +14,14 @@ VM_Call -> vmMain -> syscall -> handler -> vmMain -> VM_Call. That path truncate
 #define TM_ADD              0   /* return arg0 + arg1 */
 #define TM_SYSCALL_ECHO     1   /* return syscall(1, arg0) */
 #define TM_SYSCALL_POINTER  2   /* return syscall(2), which is a heap pointer */
+#define TM_SYSCALL_MANY     3   /* syscall(3, tm_wide(1) .. tm_wide(15)) */
+
+/* Wider than 32 bits, so an int anywhere in the syscall path truncates it. The engine builds
+   intptr_t args[16] in both VM_DllSyscall and the interpreter, and tests/test_vm.cpp mirrors
+   this formula to check every slot. */
+static intptr_t tm_wide( int n ) {
+	return ( (intptr_t)n << 33 ) | (intptr_t)n;
+}
 
 static intptr_t (QDECL *tm_syscall)( intptr_t arg, ... ) = (intptr_t (QDECL *)( intptr_t, ... ))-1;
 
@@ -31,6 +39,12 @@ Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, i
 		return tm_syscall( TM_SYSCALL_ECHO, arg0 );
 	case TM_SYSCALL_POINTER:
 		return tm_syscall( TM_SYSCALL_POINTER );
+	case TM_SYSCALL_MANY:
+		/* 15 arguments after the command, which is what VM_DllSyscall collects. */
+		return tm_syscall( TM_SYSCALL_MANY,
+			tm_wide( 1 ), tm_wide( 2 ), tm_wide( 3 ), tm_wide( 4 ), tm_wide( 5 ),
+			tm_wide( 6 ), tm_wide( 7 ), tm_wide( 8 ), tm_wide( 9 ), tm_wide( 10 ),
+			tm_wide( 11 ), tm_wide( 12 ), tm_wide( 13 ), tm_wide( 14 ), tm_wide( 15 ) );
 	default:
 		return -1;
 	}

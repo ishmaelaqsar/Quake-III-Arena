@@ -53,9 +53,62 @@ The queue provides two delivery lanes:
    - Triggers a high-water warning if queued items exceed 4096.
 
 2. **Lossy lane:**
-   - Fixed 1024-slot multi-producer single-consumer ring buffer.
+   - Fixed 1024-slot ring buffer, guarded by a mutex. The design calls for a lock-free
+     multi-producer single-consumer ring; the implementation is not there yet, so a producer can
+     contend briefly with the drain. It never waits for space, which is the property the logger
+     needs.
    - Accepts 64-byte `FixedTask` objects without memory allocation.
    - If the ring buffer fills, incoming tasks are dropped and an atomic counter increments.
    - When drained, prints a coalesced diagnostic message with the drop count.
 
 The main thread drains both lanes in `Sys_SubsystemFrame` before updating timer events. The engine drains all remaining tasks during shutdown in `Sys_SubsystemShutdown`.
+
+## Job system
+
+`q3::threading::JobSystem` is a singleton pool of worker threads named `q3-job-0` upward. Work
+goes into one of three queues, `High`, `Normal`, and `Background`, each a `std::deque` under a
+single mutex and condition variable. There is no work stealing: at this granularity it would
+cost more than it saves, and the interface leaves room to add it.
+
+Submit work with `dispatch(priority, body, on_main_complete, cancel_token)`. `body` runs on a
+worker. `on_main_complete`, if given, is posted to the main-thread queue rather than called on
+the worker, so a completion may touch main-thread state. `parallel_for(begin, end, grain, fn)`
+splits a range into chunked jobs behind a counting latch and returns one handle for all of them.
+
+`JobHandle` carries the result:
+
+- `wait()` blocks until the job is done. On the main thread it drains the main-thread queue
+  while it waits, so a job whose completion is queued cannot deadlock against it, and it drains
+  once more before returning, so the completion has run by then.
+- `cancel()` sets the job's `CancelToken`. A cancelled job that has not started skips its body.
+  A running job sees `is_cancelled()` and is expected to return early. **The completion still
+  runs**, so a completion must not assume the body did.
+- `has_exception()` and `get_exception()` report an exception the body threw. Both read as empty
+  until the job is done, because that is the point at which the worker's write is visible. An
+  exception never escapes a worker and never reaches `Com_Error`.
+
+### Thread count
+
+The cvar `com_jobThreads` (archived, latched) sets the pool size. `0` means automatic:
+
+| Build | Automatic count | Reason |
+|---|---|---|
+| Client | `clamp(cores - 2, 1, 8)` | leaves the main and render threads a core each |
+| `q3ded` | `clamp(cores - 1, 1, 4)` | no render thread, and a server gains nothing past four |
+
+The pool starts in `Sys_SubsystemInit` with the client count, because `q3config.cfg` has not run
+and `com_dedicated` does not exist yet. The end of `Com_Init` corrects it: an explicit
+`com_jobThreads` wins, and otherwise a dedicated server is resized to its own count.
+
+### C interface
+
+`Sys_JobSubmit(fn, ctx, done, priority)` returns an `int` handle for C callers, with
+`Sys_JobWait(int)` and `Sys_JobCancel(int)`. The handle is released when the completion runs on
+the main thread, so a C caller that never drains the queue leaks handles.
+
+### Determinism
+
+A job may not change what the engine computes. `FS_Startup` indexes pk3 files in parallel
+(`FS_ScanZipFile` on a worker, `FS_BuildPackFromIndex` on the main thread) and still builds
+`fs_searchpaths` in the order `paksort` gives, so the search order and the pure-server checksums
+are byte-identical to the serial path whatever `com_jobThreads` is set to.

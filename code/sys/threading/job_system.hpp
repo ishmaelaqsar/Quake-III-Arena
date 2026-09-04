@@ -63,12 +63,20 @@ public:
         return state_ && state_->cancel_token && state_->cancel_token->is_cancelled();
     }
 
+    // Both accessors gate on done. The worker writes exception and then release-stores done,
+    // so a reader that observes done is guaranteed to see the write; reading before then is a
+    // data race, which is what these two used to be. Reporting "no exception" for a job that
+    // has not finished is the honest answer, and it needs no lock.
     bool has_exception() const noexcept {
-        return state_ && (state_->exception != nullptr);
+        return state_ && state_->done.load(std::memory_order_acquire) &&
+               state_->exception != nullptr;
     }
 
     std::exception_ptr get_exception() const noexcept {
-        return state_ ? state_->exception : nullptr;
+        if (!state_ || !state_->done.load(std::memory_order_acquire)) {
+            return nullptr;
+        }
+        return state_->exception;
     }
 
     std::shared_ptr<CancelToken> cancel_token() const noexcept {
@@ -112,6 +120,12 @@ public:
 
     std::size_t worker_count() const noexcept;
 
+    // Decision T-a: 0 means auto, clamp(cores - 2, 1, 8) on the client to leave the main and
+    // render threads room, and clamp(cores - 1, 1, 4) on q3ded, which has no render thread and
+    // does not benefit past four. DEDICATED is a run-time property since checklist 01, so the
+    // caller decides which one applies; code/sys does not read engine cvars.
+    static std::size_t auto_worker_count(bool dedicated = false) noexcept;
+
 private:
     JobSystem() = default;
     ~JobSystem();
@@ -126,7 +140,6 @@ private:
     };
 
     void worker_loop(std::size_t index);
-    static std::size_t auto_worker_count() noexcept;
 
     mutable std::mutex mutex_;
     std::condition_variable cv_;

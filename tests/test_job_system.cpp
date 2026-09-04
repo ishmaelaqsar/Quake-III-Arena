@@ -184,3 +184,50 @@ TEST_F(JobsFixture, ShutdownJoinsWithin2s) {
 
     EXPECT_LT(elapsed.count(), 2);
 }
+
+// Decision T-a: 0 means auto, and the two profiles differ. The client reserves the main and
+// render threads and caps at eight; q3ded has no render thread, reserves one core, and caps at
+// four. Assert the invariants rather than the arithmetic, so the case says what the decision
+// promises instead of restating the formula.
+TEST(Jobs, DedicatedAutoCountReservesOneCoreAndCapsAtFour) {
+    const std::size_t client = q3::threading::JobSystem::auto_worker_count(false);
+    const std::size_t dedicated = q3::threading::JobSystem::auto_worker_count(true);
+    const unsigned int cores = std::thread::hardware_concurrency();
+
+    EXPECT_GE(client, 1u);
+    EXPECT_LE(client, 8u);
+    EXPECT_GE(dedicated, 1u);
+    EXPECT_LE(dedicated, 4u);
+
+    // Below three cores both clamp to one and there is nothing left to reserve.
+    if (cores >= 3) {
+        EXPECT_LE(dedicated, cores - 1u) << "q3ded must leave the main thread a core";
+        EXPECT_LE(client, cores - 2u) << "the client must leave the main and render threads room";
+        EXPECT_GE(dedicated, client) << "q3ded reserves one core, the client reserves two";
+    }
+}
+
+// The exception is written by the worker and read through the handle. Reading it before done is
+// observed is a data race, which is what the accessors used to do; they now gate on done. This
+// case exercises that read from another thread while the job completes, so the ThreadSanitizer
+// leg is what makes it meaningful. Without a sanitizer it only proves the value arrives.
+TEST_F(JobsFixture, ExceptionIsVisibleOnlyThroughDone) {
+    std::atomic<bool> reader_saw_exception{false};
+
+    auto handle = q3::threading::JobSystem::instance().dispatch(
+        []() { throw std::runtime_error("job failed"); });
+
+    std::thread reader([&handle, &reader_saw_exception]() {
+        while (!handle.is_done()) {
+            // Racy under the old accessors: has_exception() read the pointer with no ordering.
+            (void)handle.has_exception();
+            std::this_thread::yield();
+        }
+        reader_saw_exception.store(handle.has_exception(), std::memory_order_relaxed);
+    });
+    reader.join();
+
+    EXPECT_TRUE(handle.is_done());
+    EXPECT_TRUE(handle.has_exception());
+    EXPECT_TRUE(reader_saw_exception.load(std::memory_order_relaxed));
+}

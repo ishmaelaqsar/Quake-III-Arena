@@ -41,12 +41,17 @@ JobSystem::~JobSystem() {
     shutdown();
 }
 
-std::size_t JobSystem::auto_worker_count() noexcept {
+std::size_t JobSystem::auto_worker_count(bool dedicated) noexcept {
     unsigned int hw = std::thread::hardware_concurrency();
     if (hw == 0) {
         hw = 4;
     }
-    // Default: reserve main and render threads (clamp to 1..8)
+    if (dedicated) {
+        // q3ded reserves the main thread only, and a server gains nothing past four workers.
+        int count = static_cast<int>(hw) - 1;
+        return static_cast<std::size_t>(std::clamp(count, 1, 4));
+    }
+    // The client reserves the main and render threads.
     int count = static_cast<int>(hw) - 2;
     return static_cast<std::size_t>(std::clamp(count, 1, 8));
 }

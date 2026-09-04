@@ -137,7 +137,10 @@ New files: `code/sys/threading/thread_affinity.hpp`, `thread_affinity.cpp`,
   **Tests:** none, because checklist 06 replaces the code; the TSan build is the check.
   **Verify:** TSan build has no report from `http_downloader.cpp`.
 
-- [x] **T1.6 `docs/threading.md`.** Done on 3 September 2026. State the ownership rule: the main thread owns cvars, cmds,
+- [x] **T1.6 `docs/threading.md`.** Done on 3 September 2026, and brought up to date on
+  4 September 2026 with a job-system section (dispatch, `parallel_for`, the `JobHandle`
+  contract including that a completion runs even for a cancelled job, the two automatic thread
+  counts, the C shim, and the pk3 determinism rule) and a corrected lossy-lane description. State the ownership rule: the main thread owns cvars, cmds,
   the console, zone and hunk memory, file handles, VMs, client and server state, and every
   `refimport_t` callback. List what is legal off main: pure functions on caller-owned buffers,
   `q_shared` string and math helpers, `Com_BlockChecksum` and MD4, the JPEG codec with its own
@@ -225,6 +228,15 @@ New files: `code/sys/threading/job_system.hpp`, `job_system.cpp`, `tests/test_jo
   once more after the loop; the release store makes the post visible, so one unbudgeted drain is
   enough. The redundant `is_done()` early return went with it, because a job that is already
   done can still have a queued completion.
+
+  **The first two were fixed on 4 September 2026.** `auto_worker_count` takes a `dedicated`
+  flag and applies `clamp(cores - 1, 1, 4)` for it; the engine passes it at the end of
+  `Com_Init`, where `com_dedicated` exists, because `code/sys` does not read engine cvars.
+  `has_exception()` and `get_exception()` now gate on `done`, whose release store already
+  happens after the worker writes the exception, so the read is ordered without a lock and the
+  accessors stay `noexcept`. Covered by `Jobs.DedicatedAutoCountReservesOneCoreAndCapsAtFour`
+  and `JobsFixture.ExceptionIsVisibleOnlyThroughDone`; the second is only fully meaningful once
+  the ThreadSanitizer leg exists, which T6.1 records as blocked.
 
   A fourth, smaller point, recorded rather than fixed: the completion always runs, even when the
   job was cancelled (`job_system.cpp:207-217` skips `body` but still posts
@@ -486,7 +498,15 @@ Modified: `code/sys/sys_sdl.cpp` and `.hpp` (replace the `GLimp_*` SMP stubs wit
 
 ### T6 Sanitizer CI (2 to 3 days, opened with T1)
 
-- [ ] **T6.1 TSan leg.** A Docker CI job builds `-DQ3_SANITIZE=thread`, runs `q3sys_tests` and
+- [ ] **T6.1 TSan leg.** **Blocked on LuaJIT, found on 4 September 2026; see
+  `00-environment.md` step 9 for the evidence.** In short: `make tsan` runs now, needing
+  `setarch -R` because ThreadSanitizer aborts under the container's address-space
+  randomisation, and a single pass is clean at 129 of 129. Under `ctest --repeat-until-fail 3`
+  it dies with a SEGV inside `lua_pushvalue`, which is a crash and not a suppressible race
+  report. LuaJIT needs `LUAJIT_USE_SYSMALLOC` to run under a sanitizer on 64-bit and the
+  container does not build it that way, so this needs a `docker/Dockerfile` change first. The
+  workflow job was written and then removed, because a leg that crashes is worse than none.
+  Original text: A Docker CI job builds `-DQ3_SANITIZE=thread`, runs `q3sys_tests` and
   `quake3_tests`, then `quake3_modern +set r_smp 1 +set com_jobThreads 4 +timedemo 1 +demo four
   +quit` under `xvfb-run` with `TSAN_OPTIONS=halt_on_error=1 suppressions=ci/tsan.supp`. The
   suppressions file lists Mesa and llvmpipe internals only, by module. macOS arm64 leg: TSan with

@@ -8,14 +8,15 @@ of the subsystems that have none today (`files.c`, `net_chan.c`, `cm_*`, `snd_*`
 bridge), marking of the tests that cannot fail (see C7.2: only `test_legacy_vm_syscalls.cpp` was actually removed), and sanitizer runs in continuous
 integration (CI).
 
-**Status:** In progress, reopened on 4 September 2026. Phases C1 through C8 were ticked on
-4 September 2026 and the audit that day found three ticks wrong: C6.2 is missing the 16-argument
-syscall case that guards the 64-bit application binary interface, C7.5 was never written at all
-(and is now reassigned to checklist 06 step N1.4, which deletes the code it would cover), and
-C8.2 is missing `--gtest_repeat=3`. C7.6 is added for a no-assertion case that phase B5 left
-behind. C1.1, C1.2, C1.4, C3.1, C7.2, and C8.1 stay ticked with deviations recorded in place.
-The suite is 127 cases, 56 in `q3sys_tests` and 71 in `quake3_tests`, green on Linux, the
-sanitizer leg, and macOS. Do not delete this file until C6.2, C7.6, and C8.2 close.
+**Status:** Complete, after a reopening on 4 September 2026. Phases C1 through C8 were ticked
+that morning and the audit found three ticks wrong: C6.2 was missing the 16-argument syscall
+case that guards the 64-bit application binary interface, C7.5 had never been written, and C8.2
+was missing its repeat. C6.2 and C8.2 were finished the same day, C7.6 was added for a
+no-assertion case that phase B5 left behind and finished, and **C7.5 is reassigned to checklist
+06 step N1.4**, which rewrites the downloader and deletes the socket code those tests would
+cover. C1.1, C1.2, C1.4, C3.1, C7.2, and C8.1 stay ticked with deviations recorded in place. The
+suite is 130 cases, green on all five continuous integration legs and under AddressSanitizer
+with `--repeat-until-fail 3`. Do not delete this file until checklist 06 N1.4 has taken C7.5.
 
 ## Prerequisites
 
@@ -232,7 +233,7 @@ sanitizer leg, and macOS. Do not delete this file until C6.2, C7.6, and C8.2 clo
   from checklist 02 B1. Command `0` returns `arg0 + arg1`. Command `1` calls
   `syscall(1, (intptr_t)ptr_from_arg0_arg1)` and returns the result. Make `quake3_tests` depend
   on `testmodule`.
-- [ ] **C6.2 Write `tests/test_vm.cpp`.** Uses `FsFixture` with `fs_basepath` set to
+- [x] **C6.2 Write `tests/test_vm.cpp`.** Done on 4 September 2026. Uses `FsFixture` with `fs_basepath` set to
   `Q3_TEST_BUILD_DIR "/tests"` and `fs_game` to `baseq3`. Cases are listed in checklist 02 B1:
   `VmAbi.HeapPointerSurvivesRoundTrip`, `VmAbi.AddCommandReturnsSum`,
   `VmAbi.MissingModuleReturnsNull`. Add `VmAbi.SyscallReceivesSixteenIntptrArgs`, which passes
@@ -249,6 +250,14 @@ sanitizer leg, and macOS. Do not delete this file until C6.2, C7.6, and C8.2 clo
   ...)` at `:52` is never undone and `FS_Shutdown` never runs. That is benign while
   `gtest_discover_tests` gives each case its own process, and fragile if that ever changes.
   Nothing yet drives the interpreted path, so `VM_CallInterpreted` stays uncovered.
+
+  **Closed on 4 September 2026.** `VmAbiFixture.SyscallReceivesSixteenIntptrArgs` exists:
+  `tests/vm_testmodule/tm_main.c` gained `TM_SYSCALL_MANY`, which calls the syscall with 15
+  arguments each carrying bits above the low 32 (`(n << 33) | n`), and the handler records all
+  16 slots for the test to check one by one. It covers `VM_DllSyscall`'s `intptr_t args[16]`
+  directly, and the interpreter's widening loop by the same contract. The fixture deviation
+  stands: the file still uses its own `VmAbiFixture` rather than `FsFixture`, which is benign
+  while every case gets its own process.
   - **Tests:** this step is the content.
   - **Verify:** `ctest --preset dev -R VmAbi` passes in the container and on the macOS CI leg,
     where heap addresses exceed 32 bits.
@@ -329,18 +338,33 @@ sanitizer leg, and macOS. Do not delete this file until C6.2, C7.6, and C8.2 clo
   the child process, so **this file wins and the workflow's documented rationale is dead**. The
   comment is the correct judgement. `00-environment.md` step 10 resolves it by setting
   `detect_leaks=0` here and deleting the `-e`, so there is one source of truth.
-- [ ] **C8.2 Add the CI leg.** The Linux `asan` preset from checklist 01 A7 runs both binaries
+- [x] **C8.2 Add the CI leg.** Done on 4 September 2026. The Linux `asan` preset from checklist 01 A7 runs both binaries
   with `--gtest_shuffle --gtest_repeat=3`. Checklist 05 T6 adds the `tsan` leg.
 
-  **Unticked on 4 September 2026.** The leg itself exists and is green
-  (`.github/workflows/ci.yml:126-185`, `-DQ3_SANITIZE=address,undefined`), but
-  **`--gtest_repeat=3` is nowhere in the repository.** `ctest --schedule-random` is not a
-  substitute: it randomises the order in which cases run as separate processes, whereas
-  repeating a case is what shakes out the order and timing dependence the new threading tests
-  introduce. `--gtest_shuffle` is passed (`tests/CMakeLists.txt:147-148`) but does nothing,
-  because `gtest_discover_tests` gives each case its own process. Closed by
-  `00-environment.md` step 10, which also drops the dead `--gtest_shuffle` and resolves the
-  `ASAN_OPTIONS` conflict below.
+  **Unticked and then closed on 4 September 2026, with one substitution.** The leg existed and
+  was green, but neither flag this step names was doing what it says. `--gtest_shuffle` was
+  passed and did nothing, because `gtest_discover_tests` gives every case its own process, so
+  there is no intra-process order to shuffle; it is deleted. `--gtest_repeat=3` was absent, and
+  adding it exactly as named is wrong for the same reason: it repeats *inside* a process, which
+  requires each case to be idempotent against engine globals. Six are not, and they fail:
+  `ModernCvarFixture.DeclareAndAccessTypedCvars`, `ModernCvarFixture.ChangeListeners`,
+  `CvarCmdFixture.CvarGetAndSet`, `SysPaths.HomePathUsesHomeEnv`,
+  `SysPaths.HomePathFallsBackWhenMkdirFails`, and `VmAbiFixture.MissingModuleReturnsNull`.
+
+  **What landed is `ctest --repeat-until-fail 3`** on both sanitizer legs and on the `asan` and
+  `tsan` Make targets. It re-runs the process, which is the property this step is after, and it
+  is clean: 130 of 130 under AddressSanitizer and UndefinedBehaviorSanitizer.
+
+  Two by-products worth keeping. `Sys_Error` in the test stubs now clears `com_errorEntered`
+  before it throws, because in the engine that call ends the process and nothing else clears the
+  latch, so the next `Com_Error` in a test process reported "recursive error" instead of its own
+  message. And the sixth failure above is not a test defect: `VM_Create` writes `vm->name` to
+  claim a slot and can then have an error unwind out of `FS_ReadFile`, leaving a half-built entry
+  that the next `VM_Create` for the same name hands back. That is recorded on
+  `04-cxx-migration.md` step P2.0, which is where the error model changes.
+
+  The six remain worth fixing on their own merits, as in-process idempotence is what would let
+  the suite run in fewer processes later. They are not blocking anything now.
   - **Tests:** none, because this is CI wiring.
   - **Verify:** `ctest --preset asan` is green in the container and on the Linux CI leg.
 

@@ -587,7 +587,17 @@ offsets used by botlib and the modules through `FOFS`), passes the shared verify
 its own reviewable unit. Write the behaviour tests against the C implementation first, then
 refactor under them.
 
-- [ ] **P2.0 `Com_Error` as a C++ exception (1 week, first).** In `code/qcommon/common.cpp`,
+- [ ] **P2.0 `Com_Error` as a C++ exception (1 week, first).**
+
+  **A concrete instance to design against, found on 4 September 2026.** `VM_Create`
+  (`code/qcommon/vm.cpp`) writes `vm->name` early to claim a slot in `vmTable`, and
+  `FS_ReadFile` further down can raise an error. Today that error ends the process, so nobody
+  notices; the moment it is a catchable exception, the half-built entry stays registered and the
+  next `VM_Create` for the same name finds it in the "see if we already have the VM" loop and
+  returns it. It is observable now by re-running one test in the same process, which is how it
+  turned up (`03-tests.md` step C8.2). Every function that mutates engine state before a point
+  where an error can be raised has this shape, so P2.0 needs a scope-guard pattern and not a
+  case-by-case audit. `VM_Create` is a good first target, because its failure is silent. In `code/qcommon/common.cpp`,
   `Com_Error` for `ERR_DROP`, `ERR_SERVERDISCONNECT`, `ERR_DISCONNECT`, and `ERR_NEED_CD` throws
   `q3::ErrorDrop{code, message}`. `Com_Frame` and `Com_Init` catch it where the `setjmp` calls
   were (`common.c:2359`, `:2656`). `ERR_FATAL` still calls `Sys_Error`. `VM_Call` wraps the

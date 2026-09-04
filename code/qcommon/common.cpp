@@ -2460,8 +2460,16 @@ void Com_Init( char *commandLine ) {
 	// make sure single player is off by default
 	Cvar_Set("ui_singlePlayerActive", "0");
 
-	if ( com_jobThreads && com_jobThreads->integer > 0 ) {
-		q3::threading::JobSystem::instance().resize( com_jobThreads->integer );
+	// The pool started in Sys_SubsystemInit, before q3config.cfg ran and before com_dedicated
+	// existed, so it holds the client's automatic count. Correct it now: an explicit
+	// com_jobThreads wins, and otherwise a dedicated server gets its own clamp per decision T-a.
+	if ( com_jobThreads ) {
+		if ( com_jobThreads->integer > 0 ) {
+			q3::threading::JobSystem::instance().resize( com_jobThreads->integer );
+		} else if ( com_dedicated && com_dedicated->integer ) {
+			q3::threading::JobSystem::instance().resize(
+				q3::threading::JobSystem::auto_worker_count( true ) );
+		}
 	}
 
 	com_fullyInitialized = qtrue;

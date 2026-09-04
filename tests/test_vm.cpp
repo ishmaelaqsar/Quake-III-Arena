@@ -24,10 +24,17 @@ enum TestModuleCommand {
     TM_ADD = 0,
     TM_SYSCALL_ECHO = 1,
     TM_SYSCALL_POINTER = 2,
+    TM_SYSCALL_MANY = 3,
 };
+
+// Mirrors tm_wide in tests/vm_testmodule/tm_main.c.
+constexpr intptr_t WideValue(int n) {
+    return (static_cast<intptr_t>(n) << 33) | static_cast<intptr_t>(n);
+}
 
 void *g_pointerToReturn = nullptr;
 intptr_t g_lastEchoArgument = 0;
+intptr_t g_manyArgs[16] = {};
 
 // Engine-side syscall handler, with the same signature the real handlers use.
 intptr_t TestSyscalls(intptr_t *args) {
@@ -37,6 +44,11 @@ intptr_t TestSyscalls(intptr_t *args) {
             return args[1] * 2;
         case TM_SYSCALL_POINTER:
             return reinterpret_cast<intptr_t>(g_pointerToReturn);
+        case TM_SYSCALL_MANY:
+            for (int i = 0; i < 16; ++i) {
+                g_manyArgs[i] = args[i];
+            }
+            return 0;
         default:
             return -1;
     }
@@ -119,6 +131,28 @@ TEST_F(VmAbiFixture, HighAddressSurvivesRoundTrip) {
     EXPECT_EQ(returned, reinterpret_cast<intptr_t>(highAddress))
         << "high address bits were lost in the round trip";
     g_pointerToReturn = nullptr;
+}
+
+// Checklist 03 step C6.2. The engine hands the syscall handler intptr_t args[16], filled by
+// VM_DllSyscall for a native module and by the interpreter's widening loop for bytecode. Nothing
+// checked the slots past args[1], so an int left in either path would have gone unnoticed for
+// every argument but the first. Each value here has bits set above the low 32.
+TEST_F(VmAbiFixture, SyscallReceivesSixteenIntptrArgs) {
+    if (sizeof(intptr_t) <= 4) {
+        GTEST_SKIP() << "32-bit platform, no bits above the low 32 to lose";
+    }
+
+    for (auto &slot : g_manyArgs) {
+        slot = 0;
+    }
+
+    VM_Call(s_vm, TM_SYSCALL_MANY);
+
+    EXPECT_EQ(g_manyArgs[0], static_cast<intptr_t>(TM_SYSCALL_MANY)) << "slot 0 is the command";
+    for (int i = 1; i < 16; ++i) {
+        EXPECT_EQ(g_manyArgs[i], WideValue(i))
+            << "slot " << i << " lost bits; an int is left in the syscall path";
+    }
 }
 
 TEST_F(VmAbiFixture, MissingModuleReturnsNull) {

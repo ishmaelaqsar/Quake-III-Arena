@@ -44,6 +44,14 @@ void Sys_Error(const char *error, ...) {
     std::vsnprintf(text, sizeof(text), error, argptr);
     va_end(argptr);
 
+    // In the engine this call ends the process, so nothing clears the latch Com_Error sets on
+    // the way in. Here the throw is recoverable, and leaving com_errorEntered set makes the
+    // next Com_Error in the same process report "recursive error" instead of its own message.
+    // Clearing it is what process exit would have done. --gtest_repeat=3 on the sanitizer legs
+    // is what surfaced this: three tests that expect a specific fatal message passed on the
+    // first repeat and failed on the second.
+    com_errorEntered = qfalse;
+
     throw q3::test::SysErrorException(text);
 }
 

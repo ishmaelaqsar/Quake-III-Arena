@@ -132,23 +132,37 @@ target_link_libraries(quake3_tests PRIVATE
 )
 
 if(Q3_SANITIZE)
-    if(APPLE)
-        set(TEST_ENV "ASAN_OPTIONS=detect_leaks=0:strict_string_checks=1:abort_on_error=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
-    else()
-        set(TEST_ENV "ASAN_OPTIONS=detect_leaks=1:strict_string_checks=1:abort_on_error=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
-    endif()
+    # detect_leaks=0 on every platform, not only Apple. The zone and hunk allocators
+    # deliberately never free at exit, so leak detection reports every engine allocation and
+    # buries real findings. This used to say 1 off Apple while the continuous integration
+    # workflow passed detect_leaks=0 with a comment explaining why it had to be off; a CTest
+    # ENVIRONMENT property sets the variable in the child, so this file won and the workflow's
+    # rationale was dead. One source of truth, and it is this one.
+    set(TEST_ENV "ASAN_OPTIONS=detect_leaks=0:strict_string_checks=1:abort_on_error=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
     set(TEST_PROPERTIES PROPERTIES TIMEOUT 60 ENVIRONMENT "${TEST_ENV}")
     target_compile_options(quake3_tests PRIVATE -fno-sanitize=alignment)
 else()
     set(TEST_PROPERTIES PROPERTIES TIMEOUT 60)
 endif()
 
+# Repeating a case is what shakes out the timing dependence the threading tests introduce, and
+# checklist 03 step C8.2 asks for it on the sanitizer legs. It is `ctest --repeat-until-fail 3`
+# there, not the `--gtest_repeat=3` that step named. gtest_discover_tests already gives every
+# case its own process, and --gtest_repeat re-runs inside that process, which needs each case to
+# be idempotent against engine globals. It is not: running it that way failed six cases that
+# mutate the cvar registry, the cached home path, or the VM table. --repeat-until-fail re-runs
+# the process, which is the property the step is after and needs no test to change. See C8.3 for
+# the six, which are worth fixing on their own merits.
+
 include(GoogleTest)
 # DISCOVERY_TIMEOUT: the default is 5 seconds, which the Windows cross leg cannot meet. There
 # CMAKE_CROSSCOMPILING_EMULATOR is wine, and the first wine call in a fresh container also
 # initialises the prefix, so listing the cases spent the whole budget on setup and discovery
 # failed with "Process terminated due to timeout" before a single test ran.
-gtest_discover_tests(q3sys_tests ${TEST_PROPERTIES} EXTRA_ARGS --gtest_shuffle
+# --gtest_shuffle used to be passed here and did nothing: DISCOVERY_MODE PRE_TEST gives every
+# case its own process, so there is no intra-process order to shuffle. Randomising which order
+# the processes run in is ctest --schedule-random, which the workflow passes.
+gtest_discover_tests(q3sys_tests ${TEST_PROPERTIES}
                      DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 120)
-gtest_discover_tests(quake3_tests ${TEST_PROPERTIES} EXTRA_ARGS --gtest_shuffle
+gtest_discover_tests(quake3_tests ${TEST_PROPERTIES}
                      DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 120)

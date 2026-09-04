@@ -305,7 +305,26 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
 
 ### Sanitizer and test-runner gaps, added 4 September 2026
 
-- [ ] **9. Add the ThreadSanitizer leg.** Closes `05-threading.md` step T6.1, which was meant to
+- [ ] **9. Add the ThreadSanitizer leg.** **Blocked on LuaJIT, found on 4 September 2026.**
+  `make tsan` now runs at all, which it did not before: ThreadSanitizer needs its shadow mapping
+  at a fixed address and aborted with `unexpected memory mapping` under the container's default
+  address-space randomisation, so the target runs `ctest` under `setarch -R`. That needs
+  `personality()`, which the default seccomp profile blocks, so a continuous integration job
+  also needs `--security-opt seccomp=unconfined --cap-add SYS_PTRACE`, the way `compose.yaml`
+  already grants them.
+
+  With that fixed a single pass is clean at 129 of 129, **but the leg cannot be green yet**:
+  under `ctest --repeat-until-fail 3` the run dies with
+  `SUMMARY: ThreadSanitizer: SEGV (libluajit-5.1.so.2+0x20960) in lua_pushvalue`. That is a
+  crash rather than a race report, so no suppressions file helps. LuaJIT is documented as
+  needing `LUAJIT_USE_SYSMALLOC` to run under a sanitizer on 64-bit, because its allocator
+  reserves address space the sanitizer also wants, and the container builds it without that.
+  The prerequisite is therefore a `docker/Dockerfile` change: build a second LuaJIT with
+  `LUAJIT_USE_SYSMALLOC`, and probably `LUAJIT_DISABLE_JIT`, for sanitizer builds. Do not land
+  the job before then; a leg that crashes is worse than no leg, and the workflow job was written
+  and removed again for exactly that reason.
+
+  Original text: closes `05-threading.md` step T6.1, which was meant to
   open with phase T1. T1, T2a.1, and T2a.2 have landed, `make tsan` exists (`Makefile:88`) and
   the `tsan` preset exists (`CMakePresets.json:58`), but no continuous integration job uses
   them, so every "ThreadSanitizer clean" verify line in checklist 05 is unverified. Build
@@ -314,15 +333,23 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
   **Verify:** the leg is green, or its findings are recorded as steps. The known one is the
   unsynchronised `JobState::exception` at `code/sys/threading/job_system.cpp:211`.
 
-- [ ] **10. Fix the sanitizer option conflict and the dead test-runner arguments.**
+- [x] **10. Fix the sanitizer option conflict and the dead test-runner arguments.** Done on
+  4 September 2026, with one substitution recorded below.
   - `tests/CMakeLists.txt:134-144` sets `detect_leaks=1` off Apple through the CTest
     `ENVIRONMENT` property, which overrides the `-e ASAN_OPTIONS=detect_leaks=0` that
     `.github/workflows/ci.yml:171-173` passes with a comment explaining that the zone and hunk
     allocators never free at exit. CMake wins, so the documented rationale is dead. The comment
     is right: set `detect_leaks=0` in CMake and drop the `-e`, so there is one source of truth.
-  - Add `--gtest_repeat=3` to the sanitizer leg. `03-tests.md` step C8.2 names it and it is
-    nowhere in the repository. `ctest --schedule-random` is not a substitute: repeating a case
-    is what shakes out the order and timing dependence the threading tests introduce.
+  - Repeat each case three times on the sanitizer legs. `03-tests.md` step C8.2 names
+    `--gtest_repeat=3`; **the flag that landed is `ctest --repeat-until-fail 3`**, because
+    `--gtest_repeat` re-runs inside one process and `gtest_discover_tests` already gives every
+    case its own. Running it the way C8.2 named failed six cases that mutate engine globals and
+    are not idempotent in-process: `ModernCvarFixture.DeclareAndAccessTypedCvars`,
+    `ModernCvarFixture.ChangeListeners`, `CvarCmdFixture.CvarGetAndSet`,
+    `SysPaths.HomePathUsesHomeEnv`, `SysPaths.HomePathFallsBackWhenMkdirFails`, and
+    `VmAbiFixture.MissingModuleReturnsNull`. Re-running the process gives the property the step
+    is after and needs no test to change. The six are still worth fixing, and the last of them
+    is a real engine defect rather than a test one; see `04-cxx-migration.md` step P2.0.
   - Drop `EXTRA_ARGS --gtest_shuffle` from `tests/CMakeLists.txt:147-148`. Under
     `gtest_discover_tests` each case runs in its own process, so it does nothing, and the
     convention in `docs/plans/README.md` is that `ctest --schedule-random` is the property that
