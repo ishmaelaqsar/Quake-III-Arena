@@ -778,7 +778,7 @@ void BotChangeViewAngles(bot_state_t *bs, float thinktime) {
 		//
 		if (bot_challenge.integer) {
 			//smooth slowdown view model
-			diff = abs(AngleDifference(bs->viewangles[i], bs->ideal_viewangles[i]));
+			diff = fabs(AngleDifference(bs->viewangles[i], bs->ideal_viewangles[i]));
 			anglespeed = diff * factor;
 			if (anglespeed > maxchange) anglespeed = maxchange;
 			bs->viewangles[i] = BotChangeViewAngle(bs->viewangles[i],
@@ -876,7 +876,7 @@ void BotInputToUserCommand(bot_input_t *bi, usercmd_t *ucmd, int delta_angles[3]
 	//set the view independent movement
 	ucmd->forwardmove = DotProduct(forward, bi->dir) * bi->speed;
 	ucmd->rightmove = DotProduct(right, bi->dir) * bi->speed;
-	ucmd->upmove = abs(forward[2]) * bi->dir[2] * bi->speed;
+	ucmd->upmove = fabs(forward[2]) * bi->dir[2] * bi->speed;
 	//normal keyboard movement
 	if (bi->actionflags & ACTION_MOVEFORWARD) ucmd->forwardmove += 127;
 	if (bi->actionflags & ACTION_MOVEBACK) ucmd->forwardmove -= 127;
@@ -886,6 +886,12 @@ void BotInputToUserCommand(bot_input_t *bi, usercmd_t *ucmd, int delta_angles[3]
 	if (bi->actionflags & ACTION_JUMP) ucmd->upmove += 127;
 	//crouch/movedown
 	if (bi->actionflags & ACTION_CROUCH) ucmd->upmove -= 127;
+	//upmove is a signed char. Until the abs() above became fabs() the product was
+	//truncated to zero, so a jump could only ever reach 127 and the addition above could
+	//not overflow. It can now, and an overflowed upmove reads as a crouch, so clamp it.
+	//forwardmove and rightmove can overflow the same way, but that predates this change.
+	if (ucmd->upmove > 127) ucmd->upmove = 127;
+	else if (ucmd->upmove < -127) ucmd->upmove = -127;
 	//
 	//Com_Printf("forward = %d right = %d up = %d\n", ucmd.forwardmove, ucmd.rightmove, ucmd.upmove);
 	//Com_Printf("ucmd->serverTime = %d\n", ucmd->serverTime);

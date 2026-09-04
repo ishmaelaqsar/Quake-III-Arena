@@ -45,7 +45,7 @@ extern "C" {
 #pragma warning (disable: 4201)
 #pragma warning (disable: 4214)
 #include <windows.h>
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 #elif defined(__APPLE__)
 

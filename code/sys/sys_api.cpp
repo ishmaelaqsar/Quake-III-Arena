@@ -19,6 +19,16 @@ static q3::net::HttpDownloader g_httpDownloader;
 static cvar_t* g_logLevelCvar = nullptr;
 static cvar_t* g_developerCvar = nullptr;
 
+// Quieter by default in an optimised build, because the info lines are development
+// commentary rather than something a player needs to read. Decided here and not at the
+// Cvar_Get call, because that call sits inside Q3_NOEXCEPT_BOUNDARY and a preprocessor
+// directive in a macro argument list is undefined behaviour that MSVC rejects.
+#ifdef NDEBUG
+static const char* const s_defaultLogLevel = "2";
+#else
+static const char* const s_defaultLogLevel = "1";
+#endif
+
 // com_logLevel: 0 debug, 1 info, 2 warn, 3 error. `developer 1` forces debug, so that turning
 // the developer cvar on does not also require remembering this one.
 static void ApplyLogLevel(void) {
@@ -51,13 +61,7 @@ void Sys_SubsystemInit(void) {
         // queued rather than delivered on the wrong thread.
         q3::log::Logger::instance().set_main_thread(std::this_thread::get_id());
 
-        // Quieter by default in an optimised build, because the info lines are development
-        // commentary rather than something a player needs to read.
-#ifdef NDEBUG
-        g_logLevelCvar = Cvar_Get("com_logLevel", "2", CVAR_ARCHIVE);
-#else
-        g_logLevelCvar = Cvar_Get("com_logLevel", "1", CVAR_ARCHIVE);
-#endif
+        g_logLevelCvar = Cvar_Get("com_logLevel", s_defaultLogLevel, CVAR_ARCHIVE);
         g_developerCvar = Cvar_Get("developer", "0", 0);
         ApplyLogLevel();
 

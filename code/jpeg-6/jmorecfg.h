@@ -151,19 +151,26 @@ typedef unsigned short UINT16;
 typedef unsigned int UINT16;
 #endif /* HAVE_UNSIGNED_SHORT */
 
+/* INT32 must hold at least signed 32-bit values.
+ *
+ * Windows declares INT32 as int in basetsd.h, which code/jpeg-6/jerror.c reaches
+ * through code/renderer/tr_local.h and qgl.h. A second typedef of the same name to a
+ * different type is an error, so match the platform spelling there. int and long are
+ * both 32 bits on Windows, so the arithmetic is unchanged. Elsewhere long stays, as
+ * upstream has it. The neighbouring UINT8, UINT16, and INT16 typedefs already agree
+ * with basetsd.h, which is why only this one broke the Windows builds.
+ */
+#ifdef _WIN32
+typedef int INT32;
+#else
 typedef long INT32;
+#endif
 
 /* INT16 must hold at least the values -32768..32767. */
 
 #ifndef XMD_H			/* X11/xmd.h correctly defines INT16 */
 typedef short INT16;
 #endif
-
-/* INT32 must hold at least signed 32-bit values. */
-
-//#ifndef XMD_H			/* X11/xmd.h correctly defines INT32 */
-//typedef long INT32;
-//#endif
 
 /* Datatype used for image dimensions.  The JPEG standard only supports
  * images up to 64K*64K due to 16-bit fields in SOF markers.  Therefore

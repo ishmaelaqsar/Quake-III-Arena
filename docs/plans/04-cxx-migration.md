@@ -110,7 +110,7 @@ ninja -C build/scout 2>&1 | grep 'error:' | sed 's/.*error: //' | sort | uniq -c
 | 24 | **Clang rejects what GCC only warns about.** Two families showed up only on the macOS leg. First, the `register` storage class specifier is removed in C++17: GCC emits `-Wregister` but Apple Clang makes it an error. Second, Clang folds discarded `const` qualifiers into `-Wincompatible-pointer-types-discards-qualifiers`, which the build promotes with `-Werror=incompatible-pointer-types`, while GCC keeps them in `-Wdiscarded-qualifiers` and stays quiet. A GCC-clean rename is therefore not portable-clean. | Yes: 1 `register` and 23 qualifier sites after P0 and P1.1 | `grep -rn '\bregister\b' <renamed>.cpp` and build once with `-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -- -k 0` | Drop `register`. For each qualifier site decide which side is wrong: propagate `const` when the callee only reads (`G_ModelIndex`, `G_SoundIndex`, `G_FindConfigstringIndex`, `G_PickTarget`, and the locals in `CG_RegisterItemSounds` and `cg_weapons.c`), or revert the field when it is a write target (`menutext_s.string`). **Build every rename with both compilers before ticking it**, because the continuous integration macOS leg does. |
 
 | 25 | **MSVC decorates global variable names; the Itanium ABI does not.** A file-local `extern int x;` in a C++ file whose definition has C linkage links fine with GCC and Clang, because a namespace-scope variable's symbol is just its name there, and fails on MSVC, which encodes the type into the symbol (`?c_traces@@3HA`). So this is row 23 for variables, and it is invisible on every platform except Windows. Note also that a linkage specification is only allowed at namespace scope: `extern "C"` cannot wrap a declaration inside a function body, so such declarations have to be hoisted. | Yes: `c_traces`, `c_brush_traces`, `c_patch_traces`, `c_pointcontents`, `cl_shownet` twice, `com_fullyInitialized`, `oldsize`, and `stdin_active` | `grep -rnE '^[[:space:]]*extern[[:space:]]+(int\|cvar_t\|qboolean\|float\|char\|unsigned)' code/**/*.cpp \| grep -v 'extern "C"'` | Give the declaration the same linkage as the definition, hoisting it to namespace scope when it sits in a function. Better still, declare the variable once in the header that owns it and delete the local declaration. |
-| 26 | **Windows type collisions from a third-party C header.** `code/jpeg-6` typedefs `INT32`, `INT16`, `UINT8`, `UINT16`, and `boolean`, and `#undef`s `FAR` before redefining it empty. The Windows SDK declares all of them, so any translation unit that sees both `<windows.h>` and `jpeglib.h` fails. The upstream jpeg-6b guards were commented out in this tree. It is invisible off Windows, and the renderer only started tripping it when P1.3 made `tr_image.cpp` a C++ translation unit. | Yes: `INT32` broke both Windows legs; `INT16`, `UINT8`, `UINT16`, and `boolean` are latent | Compile on MSVC, or `grep -n 'typedef.*\(INT32\|INT16\|UINT8\|UINT16\|boolean\)' code/jpeg-6/*.h` | Restore the upstream guards. Reordering includes is not a fix, because `code/jpeg-6/jerror.c:22` includes `../renderer/tr_local.h` and so pulls in `<windows.h>` from `qgl.h` itself. P1.9 deletes the tree and the whole class with it. |
+| 26 | **Windows type collisions from a third-party C header.** `code/jpeg-6` typedefs `INT32`, `INT16`, `UINT8`, `UINT16`, and `boolean`, and `#undef`s `FAR` before redefining it empty. The Windows SDK declares all of those names, so a translation unit that sees both `<windows.h>` and `jpeglib.h` can fail. **Only a name whose type differs is an error**, and on inspection that is `INT32` alone: jpeg had `long`, `basetsd.h` has `int`. `INT16`, `UINT8`, and `UINT16` already agree with `basetsd.h`, and `boolean` agrees with `rpcndr.h`, so those are benign redeclarations, which is why both Windows legs reported exactly one conflict. The upstream jpeg-6b guard on `INT32` had been commented out. Invisible off Windows, and the renderer only started tripping it when P1.3 made `tr_image.cpp` a C++ translation unit. | Yes: one conflict, `INT32`, which broke both Windows legs | Compile on MSVC, or `grep -n 'typedef.*\(INT32\|INT16\|UINT8\|UINT16\|boolean\)' code/jpeg-6/*.h` | Give the conflicting name the platform's own type under `_WIN32`, so the second declaration is identical rather than conflicting, which is how the neighbouring types already behave. `int` and `long` are both 32 bits on Windows, so nothing about the arithmetic changes. Reordering includes is not a fix, because `code/jpeg-6/jerror.c:22` includes `../renderer/tr_local.h` and so pulls `<windows.h>` in through `qgl.h` itself. P1.9 deletes the tree and the whole class with it. |
 | 27 | **`abs()` on a float or double.** In C the argument converts to `int` first, so the call truncates before taking the magnitude: `abs(DotProduct(a, b)) < 0.1` is true for every input but exactly plus or minus one. GCC and Clang compile it silently; MSVC finds the `<cmath>` overloads and reports C2668, an ambiguous call. So the C++ migration surfaces a family of arithmetic bugs that has been in the tree since 1999. | Yes: 12 sites in botlib, game, and client | `grep -rnE '\babs *\(' code/*/*.cpp \| grep -v fabs` then check each argument's type | Write `fabs()`. Never write `abs((int)x)`: it compiles but preserves the bug. Then check whether the corrected magnitude can overflow a narrow destination, as it does at `code/game/ai_main.cpp:879`, where the product feeds a `signed char` that a later `+= 127` can push out of range. |
 | 28 | **Preprocessor directives inside a function-like macro's argument list.** Undefined behaviour. GCC and Clang accept it, MSVC's preprocessor rejects it with C2121 and a cascade of syntax errors that name the wrong line. A macro with a single parameter is also broken by any top-level comma in the body. | Yes: one site, `#ifdef NDEBUG` inside `Q3_NOEXCEPT_BOUNDARY(` at `code/sys/sys_api.cpp:56-60` | `grep -n 'Q3_NOEXCEPT_BOUNDARY(' code/sys/*.cpp` and read each body for a `#` at line start | Hoist the directive out of the argument list into a file-scope constant. Making the macro variadic fixes the comma hazard but not this one. |
 
@@ -439,14 +439,15 @@ classes.
 This phase does not change the shared verify block for P1.2 to P1.8. Those steps stay ticked,
 with the note that none of them was ever checked against gate G1.
 
-- [ ] **P1.W.1 Restore the jpeg-6 Windows guards and fix the `qgl.h` include case.** Catalogue
-  row 26. Guard `typedef long INT32;` (`code/jpeg-6/jmorecfg.h:152`), `typedef short INT16;`
-  (`:157`), `UINT8` (`:137`), `UINT16` (`:149`), and `typedef unsigned char boolean;`
-  (`code/jpeg-6/jpeglib.h:18`) the way upstream jpeg-6b does, extended to the Windows SDK. Leave
-  the `#undef FAR` block at `jmorecfg.h:199-203` alone unless it breaks a build; it is recorded
-  in row 26. Separately, spell `code/renderer/qgl.h:48` as `<GL/gl.h>`: mingw-w64 ships the
-  directory capitalised and the cross build runs on a case-sensitive filesystem, which is the
-  MinGW failure. The lower-case spelling also happens to work on MSVC, so this is a portability
+- [ ] **P1.W.1 Fix the jpeg-6 `INT32` conflict and the `qgl.h` include case.** Catalogue row
+  26. `code/jpeg-6/jmorecfg.h` typedefs `INT32` as `long` where the Windows SDK has `int`; make
+  it `int` under `_WIN32`, where the two are the same width, so the declaration is a benign
+  duplicate. **Only `INT32` needs touching**: `INT16`, `UINT8`, `UINT16`, and `boolean` already
+  match the platform headers, which is why both Windows legs reported one conflict and not five.
+  Leave the `#undef FAR` block at `jmorecfg.h:199-203` alone; it is recorded in row 26 and no
+  build has complained. Separately, spell `code/renderer/qgl.h:48` as `<GL/gl.h>`: mingw-w64
+  ships the directory capitalised and the cross build runs on a case-sensitive filesystem, which
+  is the MinGW failure. The lower-case spelling also works on MSVC, so this is a portability
   fix, not a behaviour change.
   **Tests:** none. A compile fix, and no target's output changes on Linux or macOS.
   **Verify:** the `Windows x64` and `Windows Cross MinGW` jobs both get past `q3jpeg` and
@@ -482,11 +483,21 @@ with the note that none of them was ever checked against gate G1.
   `+= 127`. With `fabs()` the product reaches plus or minus 127 and that addition overflows the
   `signed char`, which can turn a jump into a crouch. Clamp `upmove` to [-127, 127] in the same
   commit, with a comment saying why.
-  **Tests:** `tests/test_math.cpp` gains a case asserting that the magnitude of a sub-unit float
-  is not truncated to zero. Add a case that `upmove` stays inside the `signed char` range when
-  the movement direction and `ACTION_JUMP` both push up.
-  **Verify:** `make bot-match` completes 60 seconds with four bots and no error in the log. Gate
-  G1 is unaffected, because no site is in the renderer.
+  **Tests: none, and the reason is recorded rather than papered over.** Not one of the twelve
+  sites sits in a translation unit that either test binary links. `code/game/ai_main.cpp` is
+  part of the `qagame` module, `code/client/cl_input.cpp` is part of `q3client`, and the four
+  botlib sites need a loaded `.aas` file to reach. A case asserting that `fabs` of a sub-unit
+  float is non-zero would test the standard library, which is the kind of tautology phase C7 of
+  checklist 03 exists to delete.
+
+  **The regression guard for this class is the MSVC leg itself.** A reintroduced `abs()` on a
+  float is a hard compile error there, which is how the class was found in the first place, so
+  the guard is automatic and needs no maintenance once step P1.W.6 is green. Note it in
+  catalogue row 27 rather than writing a test that proves nothing.
+  **Verify:** `make bot-match` completes 60 seconds with four bots and no error in the log,
+  which is the only check that exercises the changed arithmetic. It needs the OpenArena data
+  set, so it runs after `00-environment.md` step 3c. Gate G1 is unaffected, because no site is
+  in the renderer.
 
 - [ ] **P1.W.4 Add the safe MSVC conformance flags.** `/Zc:__cplusplus` and an explicit `/EHsc`,
   per the note in the compiler-flags section. Not `/permissive-`.
