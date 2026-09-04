@@ -1831,7 +1831,13 @@ PmoveSingle
 
 ================
 */
+#ifdef __cplusplus
+extern "C" {
+#endif
 void trap_SnapVector( float *v );
+#ifdef __cplusplus
+}
+#endif
 
 void PmoveSingle (pmove_t *pmove) {
 	pm = pmove;

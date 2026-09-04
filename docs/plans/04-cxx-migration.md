@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** In progress. Phase P0 complete and phase P1 steps P1.1, P1.2, P1.3, P1.4, and P1.5 complete on 3 September 2026 (qcommon, server, renderer, client, botlib, shared game files, and null stubs build and link as C++). Next: P1.6 game (qagame). Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.6-P1.10), P2.
+**Status:** In progress. Phase P0 complete and phase P1 steps P1.1, P1.2, P1.3, P1.4, P1.5, and P1.6 complete on 3 September 2026 (qcommon, server, renderer, client, botlib, game / qagame, shared game files, and null stubs build and link as C++). Next: P1.7 cgame. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.7-P1.10), P2.
 
 ## Prerequisites
 
@@ -346,13 +346,25 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
   - Removed deprecated `register` storage class in `l_precomp.cpp`.
   - Added `#include "l_memory.h"`, `"l_log.h"`, `"l_crc.h"`, `"be_ea.h"`, `"be_interface.h"` to match `extern "C"` linkage.
 
-- [ ] **P1.6 game (qagame).** `git mv code/game/*.c` except `bg_lib.c` (35 files). Expected
+- [x] **P1.6 game (qagame).** Done on 3 September 2026. `git mv code/game/*.c` except `bg_lib.c` (35 files). Expected
   classes: rows 1 (4 casts), 5 (`weapon_t`, `team_t`, `entity_event_t`, `moverState_t`,
   `trType_t`, `pmtype_t`), 6 (`gitem_t` rows already const). `vmMain`/`dllEntry` already carry
   `extern "C" Q_EXPORT`.
   **Tests:** `tests/test_module_symbols.cpp` must still find both symbols in `qagame<arch>`.
   **Verify:** the shared verify block, both bot-match variants (`vm_game 1` proves the id QVM
   still loads).
+
+  Notes from the landing:
+  - Initialized `bg_itemlist[0].giType` with `IT_BAD`.
+  - Added spaces around macro `EC` in string literals in `ai_team.cpp` and `g_cmds.cpp`.
+  - Cast `void*` in `ai_main.cpp`, `g_bot.cpp`, `g_spawn.cpp`.
+  - Corrected `TeamCount` return type from `team_t` to `int` in `g_local.h` and `g_client.cpp`.
+  - Changed `SetTeam` `team` and `oldTeam` variable types to `team_t` in `g_cmds.cpp`.
+  - Added explicit enum casts for `BG_FindItemForWeapon` and `BG_FindItemForPowerup` in `g_combat.cpp` and `g_misc.cpp`.
+  - Cast `flagStatus_t` sentinel in `g_team.cpp`.
+  - Changed `MatchTeam` moverState parameter from `int` to `moverState_t` in `g_mover.cpp`.
+  - Cast `(intptr_t)ClientConnect` in `g_main.cpp`.
+  - Added `extern "C"` declaration for `trap_SnapVector` in `bg_pmove.cpp`.
 
 - [ ] **P1.7 cgame.** `git mv code/cgame/*.c` (21 files). Expected classes: rows 5
   (`footstep_t`, `impactSound_t`, `leType_t`, `weapon_t`), 6.

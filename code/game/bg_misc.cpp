@@ -52,7 +52,7 @@ gitem_t	bg_itemlist[] =
 /* icon */		NULL,
 /* pickup */	NULL,
 		0,
-		0,
+		IT_BAD,
 		0,
 /* precache */ "",
 /* sounds */ ""
