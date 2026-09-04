@@ -7,7 +7,7 @@ compiles every built `.c` file as C++ with the structure unchanged. Phase 2 rewr
 in an idiomatic style behind the existing C application programming interfaces (APIs), one
 subsystem per pull request, so the tree stays shippable at every step.
 
-**Status:** In progress. Phase P0 complete and phase P1 steps P1.1, P1.2, P1.3, P1.4, P1.5, P1.6, and P1.7 complete on 3 September 2026 (qcommon, server, renderer, client, botlib, game / qagame, cgame, shared game files, and null stubs build and link as C++). Next: P1.8 q3_ui. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.8-P1.10), P2.
+**Status:** In progress. Phase P0 complete and phase P1 steps P1.1 through P1.8 complete on 3 September 2026 (all engine subsystems, botlib, and game modules qagame, cgame, ui build and link as C++). Next: P1.9 JPEG swap. Phase P0 steps P0.1 to P0.6 done on 2 September 2026 (flags, self-guarding headers, keyword renames, const sweep, qboolean as int, unmangled module symbols). Open: P0.7, P1 (P1.9-P1.10), P2.
 
 ## Prerequisites
 
@@ -381,11 +381,17 @@ nm -C --defined-only build/<lib>.a | awk '{print $3}' | sort > /tmp/after.txt   
   - Cast `(gametype_t)` and updated `const char *` in `cg_servercmds.cpp`.
   - Cast `(weapon_t)` in `cg_weapons.cpp`.
 
-- [ ] **P1.8 q3_ui and `code/ui/ui_syscalls.c`.** `git mv code/q3_ui/*.c code/ui/ui_syscalls.c`
+- [x] **P1.8 q3_ui and `code/ui/ui_syscalls.c`.** Done on 3 September 2026. `git mv code/q3_ui/*.c code/ui/ui_syscalls.c`
   (46 files). Expected classes: rows 5, 6 (menu structs already const). `delete` is already
   renamed.
   **Tests:** `tests/test_module_symbols.cpp` for `ui<arch>`.
   **Verify:** the shared verify block.
+
+  Notes from the landing:
+  - Cast `(menucommon_s *)Menu_ItemAtCursor` in `ui_demo2.cpp`, `ui_playermodel.cpp`, and `ui_qmenu.cpp`.
+  - Cast `(uiMenuCommand_t)` in `ui_main.cpp`.
+  - Cast `(weapon_t)` in `ui_controls2.cpp` and `ui_players.cpp`.
+  - Cast `(e_status)` in `ui_syscalls.cpp`.
 
 - [ ] **P1.9 JPEG swap (decision C1).** Add `code/third_party/stb/stb_image.h`,
   `stb_image_write.h`, and a `VERSION` file with the pinned upstream commit. Add one translation
