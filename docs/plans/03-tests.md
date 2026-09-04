@@ -299,7 +299,10 @@ sanitizer leg, and macOS. Do not delete this file until C6.2, C7.6, and C8.2 clo
   - **Verify:** `ctest --preset dev` lists no test named `LegacyVmSyscalls`; `grep -rn TODO
     tests/test_vulkan_backend.cpp tests/test_discord_rpc.cpp` shows the two pointers.
 
-- [ ] **C7.6 Remove the vacuous case phase B5 added (added 4 September 2026).**
+- [x] **C7.6 Remove the vacuous case phase B5 added (added 4 September 2026).** Done on
+  4 September 2026: `InitWithoutLuaStillReturns` is deleted and replaced by
+  `SysApiBoundary.ComShutdownStopsTheJobSystem`, which is the regression case for checklist 02
+  step B5.2 and asserts something that can fail.
   `SysApiBoundary.InitWithoutLuaStillReturns` (`tests/test_sys_api_boundary.cpp:24-28`) calls
   `Sys_SubsystemInit()` and returns with **no assertion at all**. Checklist 02 step B5 says the
   case "is skipped unless a build flag disables Lua", and no such flag exists, so it is an

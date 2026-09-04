@@ -2781,6 +2781,13 @@ Com_Shutdown
 =================
 */
 void Com_Shutdown (void) {
+	// Before the log file closes, so that whatever the subsystems report on the way down still
+	// reaches it. This pairs with the Sys_SubsystemInit call in Com_Init; without it the job
+	// system's workers, the download, and the script engine outlive the engine. Checklist 05
+	// step T5.1 adds the timeout and the ordering against the render thread; until then a long
+	// background job can delay this call, because JobSystem::shutdown drains what is queued.
+	Sys_SubsystemShutdown();
+
 	if (logfile) {
 		FS_FCloseFile (logfile);
 		logfile = 0;

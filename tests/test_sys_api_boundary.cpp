@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include "engine_init.hpp"
 #include "../code/sys/sys_api.h"
+#include "../code/sys/threading/job_system.hpp"
+
+extern "C" void Com_Shutdown(void);
 
 TEST(SysApiBoundary, ThrowingScriptDoesNotTerminate) {
     EnsureEngineInitialised();
@@ -21,8 +24,16 @@ TEST(SysApiBoundary, ShutdownIsIdempotent) {
     Sys_SubsystemInit();
 }
 
-TEST(SysApiBoundary, InitWithoutLuaStillReturns) {
+// Regression for checklist 02 step B5.2. Sys_SubsystemShutdown existed and was correct, but
+// nothing in the engine called it, so the job system's workers, the download, and the script
+// engine outlived Com_Shutdown. Drive the engine entry point rather than Sys_SubsystemShutdown:
+// a direct call is exactly what let the defect pass for a day.
+TEST(SysApiBoundary, ComShutdownStopsTheJobSystem) {
     EnsureEngineInitialised();
-    // In this build configuration LuaJIT is enabled; verify that initialization succeeds.
     Sys_SubsystemInit();
+    EXPECT_GT(q3::threading::JobSystem::instance().worker_count(), 0u);
+
+    Com_Shutdown();
+
+    EXPECT_EQ(q3::threading::JobSystem::instance().worker_count(), 0u);
 }

@@ -8,7 +8,7 @@ the `sys_api` boundary, the VFS hook that bypasses the file system, the busy-wai
 the hostile first-run message, and the CD key and authorize server gates that no longer serve
 a purpose in a GPL build.
 
-**Status:** In progress, reopened on 4 September 2026. Phases B1 through B10 were ticked on 3 September 2026, and the audit that day found step B5.2 not done: `Sys_SubsystemShutdown` exists but the engine never calls it. B5.2 is unticked. B2.1, B3.2, B4.1, and B7.3 stay ticked with deviations recorded in place. Do not delete this file until B5.2 closes. Originally: phases B1 through B10 complete on 3 September 2026 (64-bit VM ABI, prototypes, signals, logger, sys_api boundary, VFS hooks removed, frame pacing and monotonic clock, first-run pak diagnostics, CD key and authorize server removed; master server pointer noted for checklist 08).
+**Status:** Complete. Phases B1 through B10 complete on 3 September 2026, except step B5.2, which the audit of 4 September 2026 found half done (`Sys_SubsystemShutdown` existed but the engine never called it) and which was finished the same day. B2.1, B3.2, B4.1, and B7.3 stay ticked with deviations recorded in place; B2.1's missing `-Werror=return-type` is the one that still wants doing. Originally: phases B1 through B10 complete on 3 September 2026 (64-bit VM ABI, prototypes, signals, logger, sys_api boundary, VFS hooks removed, frame pacing and monotonic clock, first-run pak diagnostics, CD key and authorize server removed; master server pointer noted for checklist 08).
 
 ## Prerequisites
 
@@ -296,7 +296,7 @@ the failure behind an `if (stat(...) == 0)`.
   with `static std::unique_ptr<q3::scripting::ScriptEngine> g_scriptEngine;` created inside
   `try { ... } catch (const std::exception &e) { Com_Printf("^1Scripting disabled: %s\n",
   e.what()); }` in `Sys_SubsystemInit`.
-- [ ] **B5.2 Add `Sys_SubsystemShutdown`.** Declare it in `code/sys/sys_api.h`; it cancels the
+- [x] **B5.2 Add `Sys_SubsystemShutdown`.** Done on 4 September 2026. Declare it in `code/sys/sys_api.h`; it cancels the
   downloader, resets the script engine, and flushes the logger queue. Call it from
   `Com_Shutdown` in `code/qcommon/common.c`. Checklist 05 T5 extends the order.
 
@@ -310,7 +310,14 @@ the failure behind an `if (stat(...) == 0)`.
   **Tests:** a case that drives the engine shutdown path and asserts the subsystems came down,
   not one that calls `Sys_SubsystemShutdown` directly. The existing direct-call case is what hid
   this.
-  **Verify:** `grep -rn Sys_SubsystemShutdown code/` shows a call in `common.cpp`.
+  **Verify:** `grep -rn Sys_SubsystemShutdown code/` shows a call in `common.cpp`. Done: the
+  call is at the top of `Com_Shutdown` (`code/qcommon/common.cpp:2783`), before the log file
+  closes so that anything reported on the way down still reaches it, and
+  `SysApiBoundary.ComShutdownStopsTheJobSystem` asserts through `Com_Shutdown` that the worker
+  count reaches zero. `Com_Shutdown` runs from both teardown paths, `Com_Quit_f` and the fatal
+  branch of `Com_Error`. On the fatal path `JobSystem::shutdown()` still drains what is queued
+  rather than cancelling, so a long background job can delay exit; checklist 05 step T5.1 owns
+  the timeout and the detach.
 - [x] **B5.3 Add the exception boundary.** Done on 3 September 2026. In `code/sys/sys_api.h` define:
   ```c
   #define Q3_NOEXCEPT_BOUNDARY(body) \
