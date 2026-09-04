@@ -1,3 +1,4 @@
+// TODO(docs/plans/09-vulkan.md): replace with a skipped-without-ICD test.
 #include <gtest/gtest.h>
 #include "../code/renderer/vulkan/vk_backend.hpp"
 

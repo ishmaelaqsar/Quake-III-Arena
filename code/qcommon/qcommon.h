@@ -805,6 +805,7 @@ int Z_AvailableMemory( void );
 void Z_LogHeap( void );
 void Com_InitSmallZoneMemory( void );
 void Com_InitZoneMemory( void );
+void Com_InitHunkMemory( void );
 
 void Hunk_Clear( void );
 void Hunk_ClearToMark( void );
@@ -1007,6 +1008,7 @@ void	Sys_ShowConsole( int level, qboolean quitOnClose );
 void	Sys_SetErrorText( const char *text );
 
 void	Sys_SendPacket( int length, const void *data, netadr_t to );
+void	Sys_SetSendPacketOverride( void (*fn)( int length, const void *data, netadr_t to ) );
 
 qboolean	Sys_StringToAdr( const char *s, netadr_t *a );
 //Does NOT parse port numbers, only base addresses.

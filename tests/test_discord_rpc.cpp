@@ -1,3 +1,4 @@
+// TODO(docs/plans/06-networking.md): replace with the fake IPC server test.
 #include <gtest/gtest.h>
 #include "../code/sys/rpc/discord_rpc.hpp"
 

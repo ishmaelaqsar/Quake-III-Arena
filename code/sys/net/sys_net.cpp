@@ -129,7 +129,17 @@ qboolean Sys_GetPacket(netadr_t *net_from, msg_t *net_message) {
     return qfalse;
 }
 
+static void (*s_sendPacketOverride)(int length, const void *data, netadr_t to) = nullptr;
+
+extern "C" void Sys_SetSendPacketOverride(void (*fn)(int length, const void *data, netadr_t to)) {
+    s_sendPacketOverride = fn;
+}
+
 void Sys_SendPacket(int length, const void *data, netadr_t to) {
+    if (s_sendPacketOverride != nullptr) {
+        s_sendPacketOverride(length, data, to);
+        return;
+    }
     int ret;
     struct sockaddr_in addr;
     socket_t net_socket;

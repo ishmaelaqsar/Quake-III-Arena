@@ -575,7 +575,7 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
 	int				length;
 	static unsigned	last_checksum;
 
-	if ( !name || !name[0] ) {
+	if ( !name ) {
 		Com_Error( ERR_DROP, "CM_LoadMap: NULL name" );
 	}
 
@@ -600,6 +600,14 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
 		cm.numClusters = 1;
 		cm.numAreas = 1;
 		cm.cmodels = (cmodel_t *)Hunk_Alloc( sizeof( *cm.cmodels ), h_high );
+		cm.numSubModels = 1;
+		cm.planes = (cplane_t *)Hunk_Alloc( BOX_PLANES * sizeof( *cm.planes ), h_high );
+		cm.brushes = (cbrush_t *)Hunk_Alloc( BOX_BRUSHES * sizeof( *cm.brushes ), h_high );
+		cm.brushsides = (cbrushside_t *)Hunk_Alloc( BOX_SIDES * sizeof( *cm.brushsides ), h_high );
+		cm.leafbrushes = (int *)Hunk_Alloc( BOX_BRUSHES * sizeof( *cm.leafbrushes ), h_high );
+		cm.nodes = (cNode_t *)Hunk_Alloc( sizeof( *cm.nodes ), h_high );
+		cm.numNodes = 1;
+		CM_InitBoxHull();
 		*checksum = 0;
 		return;
 	}

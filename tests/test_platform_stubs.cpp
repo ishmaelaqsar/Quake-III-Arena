@@ -2,10 +2,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <string>
 #include <thread>
 
+#include "engine_fixture.hpp"
 #include "q_shared.h"
 #include "qcommon.h"
+#include "../code/client/snd_local.h"
+
+std::string g_sysPrintBuffer;
+dma_t dma;
 
 extern "C" {
 
@@ -24,7 +30,10 @@ void Sys_Sleep(int msec) {
 }
 
 void Sys_Print(const char *msg) {
-    std::fputs(msg, stdout);
+    if (msg) {
+        g_sysPrintBuffer += msg;
+        std::fputs(msg, stdout);
+    }
 }
 
 void Sys_Error(const char *error, ...) {
@@ -35,8 +44,7 @@ void Sys_Error(const char *error, ...) {
     std::vsnprintf(text, sizeof(text), error, argptr);
     va_end(argptr);
 
-    std::fprintf(stderr, "Sys_Error: %s\n", text);
-    std::abort();
+    throw q3::test::SysErrorException(text);
 }
 
 void Sys_Quit(void) {
@@ -136,6 +144,7 @@ void CL_ShutdownCGame(void) {}
 void CL_ShutdownUI(void) {}
 void CIN_CloseAllVideos(void) {}
 void S_ClearSoundBuffer(void) {}
+void S_FreeOldestSound(void) {}
 qboolean UI_usesUniqueCDKey(void) { return qfalse; }
 
 } // extern "C"

@@ -121,4 +121,14 @@ TEST_F(VmAbiFixture, HighAddressSurvivesRoundTrip) {
     g_pointerToReturn = nullptr;
 }
 
+TEST_F(VmAbiFixture, MissingModuleReturnsNull) {
+    vm_t *missing = nullptr;
+    try {
+        missing = VM_Create("nonexistent_module", TestSyscalls, VMI_NATIVE);
+    } catch (const q3::test::SysErrorException &) {
+        missing = nullptr;
+    }
+    EXPECT_EQ(missing, nullptr);
+}
+
 }  // namespace

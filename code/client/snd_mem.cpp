@@ -170,7 +170,7 @@ static void FindChunk(char *name)
 GetWavinfo
 ============
 */
-static wavinfo_t GetWavinfo (char *name, byte *wav, int wavlength)
+wavinfo_t GetWavinfo (const char *name, byte *wav, int wavlength)
 {
 	wavinfo_t	info;
 

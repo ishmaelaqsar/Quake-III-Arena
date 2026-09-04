@@ -184,9 +184,13 @@ portable_samplepair_t *S_GetRawSamplePointer();
 void S_Spatialize(channel_t *ch);
 
 // adpcm functions
+struct adpcm_state;
+void S_AdpcmEncode( short indata[], char outdata[], int len, struct adpcm_state *state );
+void S_AdpcmDecode( const char indata[], short *outdata, int len, struct adpcm_state *state );
 int  S_AdpcmMemoryNeeded( const wavinfo_t *info );
 void S_AdpcmEncodeSound( sfx_t *sfx, short *samples );
 void S_AdpcmGetSamples(sndBuffer *chunk, short *to);
+wavinfo_t GetWavinfo( const char *name, byte *wav, int wavlength );
 
 // wavelet function
 
