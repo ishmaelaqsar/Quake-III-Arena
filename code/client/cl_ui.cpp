@@ -24,7 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/botlib.h"
 
-extern	botlib_export_t	*botlib_export;
+// C linkage to match the definition in code/server/sv_game.cpp. See cl_cgame.cpp.
+extern "C" botlib_export_t	*botlib_export;
 
 vm_t *uivm;
 

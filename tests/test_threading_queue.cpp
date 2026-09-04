@@ -35,13 +35,16 @@ TEST(Affinity, AssertFiresOffMain) {
     }, "FATAL: Thread affinity assertion failed");
 }
 
+// At file scope because MSVC requires a const local used inside a lambda to be captured
+// explicitly when the lambda has no default capture mode, even where the use is a constant
+// expression.
+constexpr int kProducers = 8;
+constexpr int kItemsPerProducer = 10000;
+
 TEST(Queue, EightProducersTenThousandEach) {
     q3::threading::mark_main_thread();
     auto &queue = q3::threading::MainThreadQueue::instance();
     queue.reset_for_testing();
-
-    constexpr int kProducers = 8;
-    constexpr int kItemsPerProducer = 10000;
 
     std::vector<int> last_seen(kProducers, -1);
     bool fifo_order_ok = true;

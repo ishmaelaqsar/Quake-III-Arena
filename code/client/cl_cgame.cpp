@@ -25,7 +25,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../game/botlib.h"
 
-extern	botlib_export_t	*botlib_export;
+// C linkage to match the definition in code/server/sv_game.cpp, which server.h declares
+// inside its extern "C" block. Without it MSVC asks for a decorated symbol and the link
+// fails; the Itanium ABI does not decorate namespace-scope variables, so GCC and Clang
+// never notice. Catalogue row 25 in docs/plans/04-cxx-migration.md.
+extern "C" botlib_export_t	*botlib_export;
 
 extern qboolean loadCamera(const char *name);
 extern void startCamera(int time);

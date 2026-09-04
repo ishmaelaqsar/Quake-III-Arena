@@ -113,18 +113,22 @@ TEST_F(LoggerFixture, WarningsAndErrorsSurviveNDEBUG) {
     EXPECT_NE(g_captured.find("error survives"), std::string::npos) << g_captured;
 }
 
+// How far past the queue's capacity the worker below logs. At file scope because MSVC
+// requires a const local used inside a lambda to be captured explicitly when the lambda has no
+// default capture mode, even where the use is a constant expression.
+constexpr std::size_t kOverBy = 5;
+
 // The queue is bounded, and the drop is reported rather than passed over in silence.
 TEST_F(LoggerFixture, QueueIsBoundedAndReportsDrops) {
-    constexpr std::size_t overBy = 5;
     std::thread worker([] {
-        for (std::size_t i = 0; i < q3::log::Logger::kMaxQueued + overBy; ++i) {
+        for (std::size_t i = 0; i < q3::log::Logger::kMaxQueued + kOverBy; ++i) {
             LOG_WARN("line ", i);
         }
     });
     worker.join();
 
     EXPECT_EQ(q3::log::Logger::instance().queued_count(), q3::log::Logger::kMaxQueued);
-    EXPECT_EQ(q3::threading::MainThreadQueue::instance().dropped_count(), overBy);
+    EXPECT_EQ(q3::threading::MainThreadQueue::instance().dropped_count(), kOverBy);
 
     q3::log::Logger::instance().flush_queued();
 

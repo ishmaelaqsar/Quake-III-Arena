@@ -44,7 +44,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "be_interface.h"
 
 
-extern botlib_import_t botimport;
 
 //#define REACH_DEBUG
 

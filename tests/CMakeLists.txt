@@ -144,5 +144,11 @@ else()
 endif()
 
 include(GoogleTest)
-gtest_discover_tests(q3sys_tests ${TEST_PROPERTIES} EXTRA_ARGS --gtest_shuffle DISCOVERY_MODE PRE_TEST)
-gtest_discover_tests(quake3_tests ${TEST_PROPERTIES} EXTRA_ARGS --gtest_shuffle DISCOVERY_MODE PRE_TEST)
+# DISCOVERY_TIMEOUT: the default is 5 seconds, which the Windows cross leg cannot meet. There
+# CMAKE_CROSSCOMPILING_EMULATOR is wine, and the first wine call in a fresh container also
+# initialises the prefix, so listing the cases spent the whole budget on setup and discovery
+# failed with "Process terminated due to timeout" before a single test ran.
+gtest_discover_tests(q3sys_tests ${TEST_PROPERTIES} EXTRA_ARGS --gtest_shuffle
+                     DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 120)
+gtest_discover_tests(quake3_tests ${TEST_PROPERTIES} EXTRA_ARGS --gtest_shuffle
+                     DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 120)
