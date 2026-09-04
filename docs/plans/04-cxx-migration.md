@@ -448,7 +448,7 @@ classes.
 This phase does not change the shared verify block for P1.2 to P1.8. Those steps stay ticked,
 with the note that none of them was ever checked against gate G1.
 
-- [ ] **P1.W.1 Fix the jpeg-6 `INT32` conflict and the `qgl.h` include case.** Catalogue row
+- [x] **P1.W.1 Fix the jpeg-6 `INT32` conflict and the `qgl.h` include case.** Done on 4 September 2026. Catalogue row
   26. `code/jpeg-6/jmorecfg.h` typedefs `INT32` as `long` where the Windows SDK has `int`; make
   it `int` under `_WIN32`, where the two are the same width, so the declaration is a benign
   duplicate. **Only `INT32` needs touching**: `INT16`, `UINT8`, `UINT16`, and `boolean` already
@@ -462,7 +462,7 @@ with the note that none of them was ever checked against gate G1.
   **Verify:** the `Windows x64` and `Windows Cross MinGW` jobs both get past `q3jpeg` and
   `q3renderer`.
 
-- [ ] **P1.W.2 Hoist the preprocessor directives out of `Q3_NOEXCEPT_BOUNDARY`.** Catalogue row
+- [x] **P1.W.2 Hoist the preprocessor directives out of `Q3_NOEXCEPT_BOUNDARY`.** Done on 4 September 2026. Catalogue row
   28. `code/sys/sys_api.cpp:56-60` puts `#ifdef NDEBUG` / `#else` / `#endif` inside the macro
   argument list opened at `:49`. Move the default level to a file-scope `static const char* const`
   above `Sys_SubsystemInit` and pass that. The other eleven `Q3_NOEXCEPT_BOUNDARY` calls in the
@@ -471,7 +471,7 @@ with the note that none of them was ever checked against gate G1.
   **Tests:** the existing `SysApiBoundary` cases still pass.
   **Verify:** `q3sys` compiles on MSVC.
 
-- [ ] **P1.W.3 Replace `abs()` on floats with `fabs()`.** Catalogue row 27. Twelve sites:
+- [x] **P1.W.3 Replace `abs()` on floats with `fabs()`.** Done on 4 September 2026, except for the bot-match verification, which needs the OpenArena data set (`00-environment.md` step 3c). Catalogue row 27. Twelve sites:
   `code/botlib/be_aas_entity.cpp:393,395`, `be_aas_move.cpp:171`,
   `be_aas_reach.cpp:2480,2481,2489,2614`, `be_ai_move.cpp:2096`,
   `code/game/ai_main.cpp:781,879`, and `code/client/cl_input.cpp:562,565`. Every other `abs()`
@@ -508,7 +508,7 @@ with the note that none of them was ever checked against gate G1.
   set, so it runs after `00-environment.md` step 3c. Gate G1 is unaffected, because no site is
   in the renderer.
 
-- [ ] **P1.W.4 Add the safe MSVC conformance flags.** `/Zc:__cplusplus`, and replace CMake's
+- [x] **P1.W.4 Add the safe MSVC conformance flags.** Done on 4 September 2026. `/Zc:__cplusplus`, and replace CMake's
   default `/EHsc` with `/EHs`, per the corrected note in the compiler-flags section. Not
   `/permissive-`.
   **Tests:** `VmAbiFixture.MissingModuleReturnsNull` is the case that proves `/EHs` is needed.
@@ -521,14 +521,27 @@ with the note that none of them was ever checked against gate G1.
   become mandatory as `/permissive-` implies `/Zc:strictStrings`.
   **Tests:** none new. **Verify:** the MSVC leg is green with `/permissive-` on the target.
 
-- [ ] **P1.W.6 Get both Windows legs green and record the run.** The build stops early, so
-  fixing the four classes above will expose the errors in `qagame`, `cgame`, `ui`, and the test
-  binaries that MSVC never reached. Iterate with `gh workflow run CI -R
-  ishmaelaqsar/Quake-III-Arena`, which also runs the MinGW leg. When both pass, tick
-  `01-build-portability.md` step A6.3 and `00-environment.md` step 7 on that run.
-  **Tests:** the full 127 cases on every leg.
-  **Verify:** `Windows x64` and `Windows Cross MinGW` are both green on one named run. Record
-  the run number here.
+- [x] **P1.W.6 Get both Windows legs green and record the run.** Done on 4 September 2026 on
+  run 33 (`1304fd7a`, 4 September 2026), where **all five legs are green for the first time**, the MinGW
+  cross leg included: Linux 127 of 127, Linux ASan/UBSan 127, macOS arm64 127, Windows x64 126,
+  Windows Cross MinGW 126. The two Windows legs run one case fewer, because the home-path test
+  is compiled off Windows where `SDL_GetPrefPath` reads no variable a test can redirect.
+
+  It took three iterations, and the prediction that errors were hidden behind the first four
+  classes held. What the earlier failures concealed:
+
+  | Iteration | What appeared once the previous class was fixed |
+  |---|---|
+  | Run 29 | MinGW built for the first time. MSVC got past compilation into three more link failures, all catalogue row 25: `botimport`, `botlib_export`, and `glConfig` declared file-locally with C++ linkage against definitions that have C linkage. Two MSVC lambda-capture errors (C3493) in the tests. MinGW then failed at test discovery, because `gtest_discover_tests` allows 5 seconds and the first `wine` call in a fresh container spends that initialising its prefix. |
+  | Run 31 | MinGW green. MSVC built and failed one test, `VmAbiFixture.MissingModuleReturnsNull`, which escaped its own `catch`. Cause: the `/EHsc` this phase itself had added. See P1.W.4. |
+  | Run 33 | All five legs green. |
+
+  Two findings from this worth carrying forward. The macOS leg failed
+  `JobsFixture.WaitOnMainDoesNotDeadlock` on the way through, which was not a flake but a real
+  race in `JobHandle::wait()`; it is recorded under `05-threading.md` step T2a.1. And `/EHsc` is
+  incompatible with this engine's use of exceptions, which step P2.0 depends on.
+  **Tests:** the full suite on every leg.
+  **Verify:** done, on run 33 (`1304fd7a`, 4 September 2026).
 
 - [ ] **P1.9 JPEG swap (decision C1).** Add `code/third_party/stb/stb_image.h`,
   `stb_image_write.h`, and a `VERSION` file with the pinned upstream commit. Add one translation

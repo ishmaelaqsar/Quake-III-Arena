@@ -7,7 +7,7 @@ every other checklist uses. After this checklist, an agent builds, tests, and re
 headless on the owner's machine without installing anything on the host, and the same image runs
 the Linux legs in CI.
 
-**Status:** In progress. Steps 1, 2, 3, 4, 5, 6, and 8 done on 2 and 3 September 2026 (image, compose file, Makefile, smoke scripts, pixel gate, CI workflow, building doc, native macOS targets). Steps 3c, 3d, 3e, 9, and 10 added on 4 September 2026 after the audit: the smoke harness needs adapting to the OpenArena data set, gate G1 becomes a `workflow_dispatch`-only job with Workload Identity Federation, the architecture question behind owner decision 18 needs answering, and the ThreadSanitizer leg and the sanitizer option conflict are still open. Step 3b is rewritten, because the baseline it was meant to produce before checklist 04 phase P1 can no longer be recovered. Open: 3b, 3c, 3d, 3e, 7, 9, 10.
+**Status:** In progress. Steps 1, 2, 3, 4, 5, 6, 7, and 8 done on 2 to 4 September 2026 (image, compose file, Makefile, smoke scripts, pixel gate, CI workflow, building doc, native macOS targets). Steps 3c, 3d, 3e, 9, and 10 added on 4 September 2026 after the audit: the smoke harness needs adapting to the OpenArena data set, gate G1 becomes a `workflow_dispatch`-only job with Workload Identity Federation, the architecture question behind owner decision 18 needs answering, and the ThreadSanitizer leg and the sanitizer option conflict are still open. Step 3b is rewritten, because the baseline it was meant to produce before checklist 04 phase P1 can no longer be recovered. Open: 3b, 3c, 3d, 3e, 9, 10.
 
 ## Prerequisites
 
@@ -333,13 +333,18 @@ nothing on the dev machine), item 1 (platforms), item 5 (approved dependencies: 
 
 ### Windows and macOS legs
 
-- [ ] **7. Write `docker/Dockerfile.mingw`, `cmake/toolchain-mingw-w64.cmake`, the `win`
-  compose service, and the `win-*` Make targets.** Files written on 2 September 2026. Not yet
-  verified: on the arm64 laptop the image build runs under amd64 emulation and `make image-win`
-  stopped in the SDL2 step with `x86_64-w64-mingw32-gcc-posix: internal compiler error:
-  Segmentation fault` (an emulation fault; the same file compiled for the shared target minutes
-  earlier). Run `make image-win` on the Linux x86_64 machine, fix anything real, and tick this
-  step there. The image is
+- [x] **7. Write `docker/Dockerfile.mingw`, `cmake/toolchain-mingw-w64.cmake`, the `win`
+  compose service, and the `win-*` Make targets.** Files written on 2 September 2026, verified
+  on 4 September 2026 on run 33 (`1304fd7a`), where the `Windows Cross MinGW` leg builds the
+  image, cross-compiles, and runs 126 of 126 cases under Wine. The leg is the verification, not
+  a local `make image-win`: on the owner's arm64 laptop the image build runs under amd64
+  emulation and stopped in the SDL2 step with `x86_64-w64-mingw32-gcc-posix: internal compiler
+  error: Segmentation fault`, an emulation fault rather than a real one, since the same file had
+  compiled for the shared target minutes earlier. Two real defects came out of the first green
+  run, both fixed in `04-cxx-migration.md` phase P1.W: `code/renderer/qgl.h` spelled the OpenGL
+  include `<gl/gl.h>`, which does not exist in mingw-w64 on a case-sensitive filesystem, and
+  `gtest_discover_tests` needed `DISCOVERY_TIMEOUT`, because the first `wine` call in a fresh
+  container spends the default 5 second budget initialising its prefix. The image is
   `linux/amd64` (Wine runs x86_64 Windows binaries natively there; on Apple Silicon it runs
   under emulation) with `gcc-mingw-w64-x86-64-posix`, `g++-mingw-w64-x86-64-posix`, Wine,
   CMake, and Ninja. It builds SDL2 `release-2.32.8` (shared and static), curl `curl-8_19_0`

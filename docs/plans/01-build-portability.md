@@ -8,7 +8,7 @@ project. Replace the Linux-only platform layer under `code/unix/` with a portabl
 before this checklist lands, because the tree does not compile on the owner's macOS machine
 today.
 
-**Status:** In progress. Phases A1 through A8 complete on 2 September 2026 (hygiene, platform macros, CMake restructure, sys platform layer, runtime DEDICATED, LuaJIT/fetch, CI workflow, build docs). Open: A6.3 MinGW verification.
+**Status:** Complete. Phases A1 through A8 complete on 2 September 2026 (hygiene, platform macros, CMake restructure, sys platform layer, runtime DEDICATED, LuaJIT/fetch, CI workflow, build docs), and step A6.3 verified on 4 September 2026 on run 33, where the MinGW cross leg is green for the first time.
 
 ## Prerequisites
 
@@ -518,7 +518,7 @@ found it correct, and change only what each step names.
     needed for the fetch), builds, and passes `ctest`. On Linux in the container,
     `-DQ3_FETCH_DEPS=ON` also works and produces the same test results as the packaged build.
 
-- [ ] **A6.3 Make the MinGW cross build configure.** `cmake/toolchain-mingw-w64.cmake` and
+- [x] **A6.3 Make the MinGW cross build configure.** Done on 4 September 2026, verified green on run 33 (`1304fd7a`, 4 September 2026): the `Windows Cross MinGW` leg builds and runs 126 of 126 cases under Wine. Two things were needed beyond what this step describes, both recorded in `04-cxx-migration.md` phase P1.W: `code/renderer/qgl.h` spelled the OpenGL include `<gl/gl.h>`, which mingw-w64 does not have on a case-sensitive filesystem, and `gtest_discover_tests` needed `DISCOVERY_TIMEOUT`, because the first `wine` call in a fresh container spends the default 5 second budget initialising its prefix. `cmake/toolchain-mingw-w64.cmake` and
   `docker/Dockerfile.mingw` exist (checklist 00 step 7). The image provides SDL2, curl
   (Schannel), and a static LuaJIT under `/opt/mingw-deps` with a `luajit.pc`, and sets
   `PKG_CONFIG_LIBDIR` so `pkg_check_modules(LUAJIT luajit)` finds it. Confirm that A3 and A6.1

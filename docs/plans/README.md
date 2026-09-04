@@ -119,11 +119,11 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 
 | File | Covers | Status |
 |---|---|---|
-| `00-environment.md` | Docker image, the Makefile targets, gate G1 harness, continuous integration skeleton | In progress (Linux image, compose, Makefile, smoke scripts, pixel gate, CI skeleton, building doc, native targets done; open: adapt the smoke harness to the OpenArena data set, make gate G1 a dispatch-only job with Workload Identity Federation, the golden image, the ThreadSanitizer leg, the sanitizer option conflict, MinGW verification) |
-| `01-build-portability.md` | Stray files, platform macros, CMake object libraries, platform layer under `code/sys/`, `DEDICATED` at runtime, LuaJIT, CI legs, `docs/building.md` | In progress (Phases A1-A8 complete: platform layer, CMake restructure, CI legs, build docs; MinGW cross-check open) |
-| `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | In progress (B1-B10 landed; B5.2 unticked on 4 September 2026 because `Sys_SubsystemShutdown` is never called from the engine) |
-| `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, marking of vacuous tests, sanitizer CI | In progress (C1-C8 landed, 127 cases green on Linux, the sanitizer leg, and macOS; C6.2, C7.5, and C8.2 unticked on 4 September 2026, C7.6 added) |
-| `04-cxx-migration.md` | Compile every directory as C++17, JPEG library swap, header close-out, idiomatic rewrites with `Com_Error` as an exception first | In progress (P1.1-P1.8 landed on Linux, the sanitizer leg, and macOS, but **the Windows legs do not build** and none was checked against gate G1; phase P1.W added for the Windows fallout; P0.7 rewritten) |
+| `00-environment.md` | Docker image, the Makefile targets, gate G1 harness, continuous integration skeleton | In progress (Linux and MinGW images, compose, Makefile, smoke scripts, pixel gate, CI workflow, building doc, native targets done; open: adapt the smoke harness to the OpenArena data set, make gate G1 a dispatch-only job with Workload Identity Federation, the golden image, the ThreadSanitizer leg, the sanitizer option conflict) |
+| `01-build-portability.md` | Stray files, platform macros, CMake object libraries, platform layer under `code/sys/`, `DEDICATED` at runtime, LuaJIT, CI legs, `docs/building.md` | Complete (A1-A8, and A6.3 verified on run 33 where the MinGW cross leg is green) |
+| `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | Complete (B1-B10; B5.2 was found half done on 4 September 2026, because nothing called `Sys_SubsystemShutdown`, and finished the same day) |
+| `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, marking of vacuous tests, sanitizer CI | In progress (C1-C8 landed, 127 cases green on all five legs; C6.2, C7.5, and C8.2 unticked on 4 September 2026; C7.6 added and done) |
+| `04-cxx-migration.md` | Compile every directory as C++17, JPEG library swap, header close-out, idiomatic rewrites with `Com_Error` as an exception first | In progress (P1.1-P1.8 complete, and phase P1.W closed the Windows fallout on run 33, so all five legs are green; none of P1.1-P1.8 was checked against gate G1, because no golden exists; P0.7 rewritten; P1.W.5 `/permissive-` open) |
 | `05-threading.md` | Main-thread ownership, main-thread queue, job system, render backend thread, image precache, sound handoff, shutdown, ThreadSanitizer CI | In progress (T1, T2a.1, T2a.2 complete, with deviations recorded on T1.3, T1.6, and T2a.1; no ThreadSanitizer leg yet, so every TSan verify line is unverified) |
 | `06-networking.md` | UDP download restore, `sv_dlURL`, download policy, libcurl downloader, allowlist, client state machine, Discord IPC, bitstream facade, netchan loopback test, session slots | In progress (N1.1 UDP download restored) |
 | `07-scripting.md` | Lua sandbox, `q3` API, events and game syscall, script loading, console commands | Not started, and **an unsandboxed interpreter ships today**: `code/sys/scripting/script_engine.cpp:15` opens `sol::lib::package`, so a script gets `require` and `package.loadlib`. There is no `q3` table at all; the registered surface is `print`, `add`, `multiply` |
@@ -133,41 +133,69 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 
 ## Current state, 4 September 2026
 
-The tree builds and links on Linux and macOS and **all 127 tests pass** on Linux, under
-AddressSanitizer and UndefinedBehaviorSanitizer, and on macOS arm64. **The Windows legs are
-red.**
+**All five continuous integration legs are green**, on run 33 (commit `1304fd7a`), which is the
+first time the MinGW cross leg has ever passed:
+
+| Leg | Result |
+|---|---|
+| Linux (Ubuntu 24.04) | 127 of 127 |
+| Linux ASan/UBSan | 127 of 127 |
+| macOS arm64 (macOS 15) | 127 of 127 |
+| Windows x64 (MSVC, vcpkg) | 126 of 126 |
+| Windows Cross MinGW, under Wine | 126 of 126 |
+
+The two Windows legs run one case fewer, because the home-path test is compiled off Windows
+where `SDL_GetPrefPath` reads no variable a test can redirect.
 
 `gh` resolves to the upstream `id-Software` repository from a clone of this fork, so
 `gh run list` silently returns nothing. Pass the fork explicitly:
 `gh run list -R ishmaelaqsar/Quake-III-Arena`.
 
-| Run | Commit | Result |
-|---|---|---|
-| 27 (push, 4 September 10:55) | `a2a5bba` | Linux, Linux ASan/UBSan, macOS pass 127 of 127. **Windows x64 fails to build.** MinGW skipped, as designed on a push. |
-| 26 (nightly, 4 September 08:01) | `5de1117` | Linux, ASan, macOS, Windows x64 pass. **Windows Cross MinGW fails to build.** |
-| 25 (push, 3 September 12:45) | `015c3d5` | All four legs green. The last fully green run. |
+### How it got there, 4 September 2026
 
-**Seventeen commits landed between `015c3d5` and `a2a5bba` in one push** (server, renderer,
-client, botlib, game, cgame, and ui compiled as C++17; checklist 03; threading T1, T2a.1,
-T2a.2). One continuous integration run covers all of them and it is red, so every one of those
-steps was ticked without a green Windows leg, which the **Build with both compilers** convention
-exists to prevent. MSVC stopped after four error classes with only `q3jpeg`, `q3server`, and
-`qcommon` linked, so `botlib`, `q3client`, `q3renderer`, `q3sys`, the three module targets, and
-both test binaries never compiled: more errors are hidden behind the first four. The classes are
-catalogue rows 26, 27, and 28 in `04-cxx-migration.md`, and phase P1.W there fixes them.
+The tip did not build on Windows. Seventeen commits had landed between `015c3d5` and `a2a5bba`
+in one push (server, renderer, client, botlib, game, cgame, and ui compiled as C++17; checklist
+03; threading T1, T2a.1, T2a.2), one continuous integration run covered all of them, and it was
+red on MSVC while the nightly MinGW leg was red too. So every one of those steps had been ticked
+without a green Windows leg, which the **Build with both compilers** convention exists to
+prevent.
 
-**Gate G1 has never run.** `ci/smoke/golden/` holds only a `README.md`, and the smoke step in
-the workflow skipped itself whenever the paks secret was absent, which it always was. So the
-whole of phase P1 landed with no pixel baseline, which `00-environment.md` step 3b explicitly
-forbade in writing. That baseline cannot be recovered from this tip. Step 3b and step P0.7 are
-rewritten to say so and to re-base the oracle on the current tree.
+MSVC stops at the first target that fails, so the four classes visible at the time were hiding
+others. Three iterations, each exposing what the previous one concealed:
+
+| Run | Result |
+|---|---|
+| 29 | The first four classes fixed. MinGW built for the first time. MSVC reached the link and produced three more failures, all catalogue row 25 (`botimport`, `botlib_export`, `glConfig`), plus two lambda-capture errors in the tests. MinGW then failed at test discovery. |
+| 31 | MinGW green. MSVC built and failed one test that escaped its own `catch` clause, because of the `/EHsc` the previous iteration had added. |
+| 33 | All five legs green. |
+
+Seven classes in total, now catalogue rows 26 to 28 in `04-cxx-migration.md` plus three more
+sites of row 25. Three of them are worth remembering beyond Windows:
+
+- **`abs()` on a float** truncates its argument before taking the magnitude, so
+  `abs(DotProduct(a, b)) < 0.1` has been true for every input but exactly ±1 since 1999. Twelve
+  sites, six of them live in bot navigation. GCC and Clang compile it silently; MSVC rejects it,
+  which is the only reason it was found. The MSVC leg is now the regression guard for the class.
+- **`/EHsc` is incompatible with this engine.** The `c` lets the compiler assume an `extern "C"`
+  function never throws, and `Sys_Error` throws through `Com_Error` and `FS_ReadFile`, all
+  `extern "C"`. Step P2.0 makes `Com_Error` itself an exception across those boundaries, so
+  `/EHs` is a prerequisite for phase 2, not a local fix.
+- **`JobHandle::wait()` could return before the completion it waited for had run.** The macOS
+  leg caught it under `--schedule-random` while the Windows work was in flight. It was a real
+  race, not a flake: the worker posts the completion and only then sets `done`.
+
+**Gate G1 still has never run.** `ci/smoke/golden/` holds only a `README.md`, and the smoke step
+skipped itself whenever the paks secret was absent, which it always was. So the whole of phase P1
+landed with no pixel baseline, which `00-environment.md` step 3b explicitly forbade in writing,
+and that baseline cannot be recovered from this tip. Step 3b and step P0.7 are rewritten to say
+so and to re-base the oracle on the current tree.
 
 **The game data is OpenArena**, not retail, in the private bucket
 `ci-testing-q3-open-arena-assets`. The smoke harness cannot run on it as written: it plays
 `demo four`, which is id retail content, and the engine loads only `demos/<name>.dm_68` while
 OpenArena records protocol 71, so the gate needs a demo recorded by this engine. Steps 3c to 3e
 in `00-environment.md` cover the harness, the dispatch-only job with Workload Identity
-Federation, and the arm64 question behind owner decision 18.
+Federation, and the architecture question behind owner decision 18.
 
 Fixed on 3 September beyond the checklist steps, because the platform legs exposed them:
 
@@ -222,7 +250,7 @@ start when the rows it depends on are at the state the **Depends on** column nam
 | 3 | `02-stability.md` steps 1 and 2 (VM ABI in C, prototypes); `01-build-portability.md` step 7 (CI legs) | 01 steps 2 to 6 |
 | 4 | `04-cxx-migration.md` phase P0 (preparation pull request, golden images) | 02 steps 1 and 2 |
 | 5 | `04-cxx-migration.md` phase P1 pull requests 1 to 4 (qcommon, server, renderer, client) | 04 P0 |
-| 5a | **`04-cxx-migration.md` phase P1.W (Windows fallout). Added 4 September 2026 and it comes before anything else, because the tip does not build on Windows** | 04 P1 pull requests 1 to 8 |
+| 5a | ~~`04-cxx-migration.md` phase P1.W (Windows fallout)~~ Done on 4 September 2026, run 33. `P1.W.5` (`/permissive-` per directory) is the remainder and is not blocking | 04 P1 pull requests 1 to 8 |
 | 5b | `00-environment.md` steps 3c, 3d, 3e (OpenArena smoke harness, dispatch-only gate G1 job, the architecture question), then 3b and `04` P0.7 (produce the golden) | 05a |
 | 6 | `05-threading.md` phase T1; `02-stability.md` steps 3 to 9 | 04 P1 pull request 4 |
 | 7 | `04-cxx-migration.md` phase P1 pull requests 5 to 8 (botlib, game, cgame, q3_ui) | 06 row |
