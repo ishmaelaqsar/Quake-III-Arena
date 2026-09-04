@@ -8,7 +8,7 @@ system runs background work, and a dedicated render backend thread executes the 
 lists. The render thread revives the id `r_smp` design correctly and maps onto the Vulkan backend
 planned in checklist 09.
 
-**Status:** In progress. Phase T1 complete on 3 September 2026 (thread identity, affinity asserts, main-thread queue, logger hook, interim HTTP worker fix, threading docs, sanitizer presets). Next: Phase T2a (job system).
+**Status:** In progress. Phases T1 and T2a.1 complete on 4 September 2026 (thread identity, affinity asserts, main-thread queue, logger hook, interim HTTP worker fix, threading docs, sanitizer presets, JobSystem core). Next: Phase T2a.2 (parallel pk3 indexing).
 
 ## Prerequisites
 
@@ -152,7 +152,7 @@ New files: `code/sys/threading/job_system.hpp`, `job_system.cpp`, `tests/test_jo
 `code/renderer/tr_local.h` (`screenshotCommand_t`), `code/client/snd_mem.cpp` (optional),
 `code/sys/sys_api.cpp` (`Sys_Job*` shims), `code/qcommon/common.cpp` (`com_jobThreads`).
 
-- [ ] **T2a.1 `JobSystem`.** N `std::thread` workers named `q3-job-N`. One shared `std::deque`
+- [x] **T2a.1 `JobSystem`.** Done on 4 September 2026. N `std::thread` workers named `q3-job-N`. One shared `std::deque`
   per priority (`High`, `Normal`, `Background`) under a mutex and condition variable. Work
   stealing is unnecessary at this granularity; keep the interface so it can be swapped.
   `Job { std::function<void()> body; std::function<void()> on_main_complete;

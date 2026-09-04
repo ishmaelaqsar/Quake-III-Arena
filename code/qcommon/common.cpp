@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../game/q_shared.h"
 #include "qcommon.h"
 #include "../sys/logger/logger.hpp"
+#include "threading/job_system.hpp"
 #include <setjmp.h>
 #include <stdint.h>
 #ifdef _WIN32
@@ -63,6 +64,7 @@ cvar_t	*com_dropsim;		// 0.0 to 1.0, simulated packet drops
 cvar_t	*com_journal;
 cvar_t	*com_maxfps;
 cvar_t	*com_busyWait;
+cvar_t	*com_jobThreads;
 cvar_t	*com_timedemo;
 cvar_t	*com_sv_running;
 cvar_t	*com_cl_running;
@@ -2375,6 +2377,7 @@ void Com_Init( char *commandLine ) {
 	//
 	com_maxfps = Cvar_Get ("com_maxfps", "85", CVAR_ARCHIVE);
 	com_busyWait = Cvar_Get ("com_busyWait", "0", CVAR_ARCHIVE);
+	com_jobThreads = Cvar_Get ("com_jobThreads", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	com_blood = Cvar_Get ("com_blood", "1", CVAR_ARCHIVE);
 
 	com_developer = Cvar_Get ("developer", "0", CVAR_TEMP );
@@ -2456,6 +2459,10 @@ void Com_Init( char *commandLine ) {
 
 	// make sure single player is off by default
 	Cvar_Set("ui_singlePlayerActive", "0");
+
+	if ( com_jobThreads && com_jobThreads->integer > 0 ) {
+		q3::threading::JobSystem::instance().resize( com_jobThreads->integer );
+	}
 
 	com_fullyInitialized = qtrue;
 	Com_Printf ("--- Common Initialization Complete ---\n");	

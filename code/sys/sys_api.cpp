@@ -7,6 +7,7 @@
 #include "logger/logger.hpp"
 #include "threading/thread_affinity.hpp"
 #include "threading/main_thread_queue.hpp"
+#include "threading/job_system.hpp"
 
 #include <string>
 #include <string_view>
@@ -44,6 +45,7 @@ extern "C" {
 
 void Sys_SubsystemInit(void) {
     q3::threading::mark_main_thread();
+    q3::threading::JobSystem::instance().init(0);
     Q3_NOEXCEPT_BOUNDARY(
         // Before the sink is installed, so that a line logged from a worker during start-up is
         // queued rather than delivered on the wrong thread.
@@ -78,6 +80,7 @@ void Sys_SubsystemShutdown(void) {
     Q3_NOEXCEPT_BOUNDARY(
         g_httpDownloader.cancel();
         g_scriptEngine.reset();
+        q3::threading::JobSystem::instance().shutdown();
         q3::threading::MainThreadQueue::instance().drain_all();
         q3::log::Logger::instance().flush_queued();
     )

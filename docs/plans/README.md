@@ -124,7 +124,7 @@ ratio is at least 45 dB. The JPEG swap also runs a decoder parity test that deco
 | `02-stability.md` | 64-bit VM ABI, prototypes, crash handling, logger, `sys_api` hardening, VFS hook removal, frame pacing, first-run diagnostics, CD key and authorize removal | Complete (Phases B1-B10 complete) |
 | `03-tests.md` | Test binary split, fixtures, `files.c`, netchan, collision, sound, VM bridge, replacement of vacuous tests, sanitizer CI | Complete (All phases C1-C8 complete) |
 | `04-cxx-migration.md` | Compile every directory as C++17, JPEG library swap, header close-out, idiomatic rewrites with `Com_Error` as an exception first | In progress (Phase P0 complete, P1.1-P1.8 complete) |
-| `05-threading.md` | Main-thread ownership, main-thread queue, job system, render backend thread, image precache, sound handoff, shutdown, ThreadSanitizer CI | In progress (Phase T1 complete) |
+| `05-threading.md` | Main-thread ownership, main-thread queue, job system, render backend thread, image precache, sound handoff, shutdown, ThreadSanitizer CI | In progress (Phases T1, T2a.1 complete) |
 | `06-networking.md` | UDP download restore, `sv_dlURL`, download policy, libcurl downloader, allowlist, client state machine, Discord IPC, bitstream facade, netchan loopback test, session slots | In progress (N1.1 UDP download restored) |
 | `07-scripting.md` | Lua sandbox, `q3` API, events and game syscall, script loading, console commands | Not started |
 | `08-renderer-ui.md` | Extension detection, gamma, VSync, mode table, resize and high-DPI, MSAA and anisotropy, VBO ring, GLSL programs, immediate-mode removal, core profile, FBO post-pass, HUD, pillarbox, console scale, video menu, mouse and controller, master servers, Hor+ FOV | Not started |

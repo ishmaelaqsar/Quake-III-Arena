@@ -41,6 +41,7 @@ set(Q3SYS_TEST_SOURCES
     test_discord_rpc.cpp
     test_modern_math.cpp
     test_threading_queue.cpp
+    test_job_system.cpp
     test_download_policy.cpp
     test_vulkan_backend.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../code/renderer/vulkan/vk_backend.cpp
